@@ -15,8 +15,8 @@
 }
 
 .label-format-modal {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 0.5px solid #000000;
   border-radius: 16px;
   width: 90%;
   max-width: 480px;
@@ -42,14 +42,15 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 0.5px solid #000000;
+  background: #ffffff;
 }
 
 .label-format-modal-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
-  color: #fff;
+  color: #000000;
 }
 
 .label-format-modal-header .close-btn {
@@ -58,24 +59,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  border: 0.5px solid #000000;
+  background: #ffffff;
+  color: #000000;
   border-radius: 8px;
   cursor: pointer;
   transition: background 0.2s ease;
 }
 
 .label-format-modal-header .close-btn:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: #f0f0f0;
 }
 
 .label-format-modal-body {
   padding: 24px;
+  background: #ffffff;
 }
 
 .format-description {
-  color: rgba(255, 255, 255, 0.7);
+  color: #000000;
   font-size: 14px;
   margin: 0 0 20px 0;
   text-align: center;
@@ -92,21 +94,21 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 0.5px solid #000000;
   border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .format-option:hover {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: #f5f5f5;
+  border-color: #000000;
 }
 
 .format-option.selected {
-  background: rgba(99, 102, 241, 0.15);
-  border-color: #6366f1;
+  background: #ffffff;
+  border: 2px solid #000000;
 }
 
 .format-option input[type="radio"] {
@@ -120,7 +122,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.1);
+  background: #ffffff;
+  border: 0.5px solid #000000;
   border-radius: 10px;
 }
 
@@ -134,12 +137,12 @@
 .format-name {
   font-size: 15px;
   font-weight: 600;
-  color: #fff;
+  color: #000000;
 }
 
 .format-desc {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: #000000;
 }
 
 .format-check {
@@ -148,8 +151,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #6366f1;
-  color: #fff;
+  background: #ffffff;
+  color: #000000;
+  border: 0.5px solid #000000;
   border-radius: 50%;
   font-size: 14px;
   font-weight: bold;
@@ -165,15 +169,16 @@
   display: flex;
   gap: 12px;
   padding: 20px 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 0.5px solid #000000;
+  background: #ffffff;
 }
 
 .label-format-modal-footer .cancel-btn {
   flex: 1;
   padding: 12px 20px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: transparent;
-  color: #fff;
+  border: 0.5px solid #000000;
+  background: #ffffff;
+  color: #000000;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
@@ -182,15 +187,15 @@
 }
 
 .label-format-modal-footer .cancel-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #f0f0f0;
 }
 
 .label-format-modal-footer .confirm-btn {
   flex: 1;
   padding: 12px 20px;
-  border: none;
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-  color: #fff;
+  border: 0.5px solid #000000;
+  background: #ffffff;
+  color: #000000;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -199,7 +204,7 @@
 }
 
 .label-format-modal-footer .confirm-btn:hover {
-  background: linear-gradient(135deg, #7c7ff0 0%, #6366f1 100%);
+  background: #f0f0f0;
   transform: translateY(-1px);
 }
 
