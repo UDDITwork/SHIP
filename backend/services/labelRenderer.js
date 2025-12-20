@@ -777,6 +777,15 @@ class LabelRenderer {
       return '<html><body><h1>No labels to print</h1></body></html>';
     }
 
+    // Extract CSS styles from the first label (all labels have same styles)
+    let labelStyles = '';
+    if (labelsHtml.length > 0) {
+      const styleMatch = labelsHtml[0].match(/<style[^>]*>([\s\S]*?)<\/style>/i);
+      if (styleMatch) {
+        labelStyles = styleMatch[1];
+      }
+    }
+
     // Extract just the label content from each HTML
     const labelContents = labelsHtml.map(html => {
       // Extract body content
@@ -794,36 +803,37 @@ class LabelRenderer {
       'Thermal': { width: '100mm', height: '150mm', perRow: 1 },
       'standard': { width: '100mm', height: '150mm', perRow: 1 },
       'Standard': { width: '100mm', height: '150mm', perRow: 1 },
-      '2in1': { width: '137mm', height: '200mm', perRow: 2 },
-      '2 In One': { width: '137mm', height: '200mm', perRow: 2 },
-      '4in1': { width: '98mm', height: '137mm', perRow: 2, rows: 2 },
-      '4 In One': { width: '98mm', height: '137mm', perRow: 2, rows: 2 }
+      '2in1': { width: '100mm', height: '150mm', perRow: 2 },
+      '2 In One': { width: '100mm', height: '150mm', perRow: 2 },
+      '4in1': { width: '100mm', height: '150mm', perRow: 2, rows: 2 },
+      '4 In One': { width: '100mm', height: '150mm', perRow: 2, rows: 2 }
     };
 
     const config = formatConfig[format] || formatConfig['thermal'];
-    const pageBreakStyle = `page-break-after: always;`;
 
     let combinedContent = '';
 
-    if (format === '2in1') {
-      // 2 labels per page
+    if (format === '2in1' || format === '2 In One') {
+      // 2 labels per page on A4
       for (let i = 0; i < labelContents.length; i += 2) {
         const labelPair = labelContents.slice(i, i + 2);
+        const needsPageBreak = i + 2 < labelContents.length;
         combinedContent += `
-          <div class="page-container" style="${i + 2 < labelContents.length ? pageBreakStyle : ''}">
-            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 5mm;">
+          <div class="page-container ${needsPageBreak ? 'page-break' : ''}">
+            <div class="labels-row">
               ${labelPair.map(label => `<div class="label-slot">${label}</div>`).join('')}
             </div>
           </div>
         `;
       }
-    } else if (format === '4in1') {
-      // 4 labels per page
+    } else if (format === '4in1' || format === '4 In One') {
+      // 4 labels per page on A4 (2x2 grid)
       for (let i = 0; i < labelContents.length; i += 4) {
         const labelQuad = labelContents.slice(i, i + 4);
+        const needsPageBreak = i + 4 < labelContents.length;
         combinedContent += `
-          <div class="page-container" style="${i + 4 < labelContents.length ? pageBreakStyle : ''}">
-            <div style="display: flex; flex-wrap: wrap; justify-content: center; gap: 5mm;">
+          <div class="page-container ${needsPageBreak ? 'page-break' : ''}">
+            <div class="labels-grid">
               ${labelQuad.map(label => `<div class="label-slot">${label}</div>`).join('')}
             </div>
           </div>
@@ -832,7 +842,7 @@ class LabelRenderer {
     } else {
       // Single label per page (thermal/standard)
       combinedContent = labelContents.map((label, index) => `
-        <div class="page-container" style="${index < labelContents.length - 1 ? pageBreakStyle : ''}">
+        <div class="page-container ${index < labelContents.length - 1 ? 'page-break' : ''}">
           ${label}
         </div>
       `).join('');
@@ -845,42 +855,131 @@ class LabelRenderer {
   <meta charset="UTF-8">
   <title>Bulk Shipping Labels - Shipsarthi</title>
   <style>
+    /* Include original label styles */
+    ${labelStyles}
+
+    /* Bulk print specific styles */
     @page {
-      size: ${format === '2in1' || format === '4in1' ? 'A4' : '100mm 150mm'};
-      margin: 5mm;
+      size: ${format === '2in1' || format === '2 In One' || format === '4in1' || format === '4 In One' ? 'A4' : '100mm 150mm'};
+      margin: 3mm;
     }
+
     body {
       margin: 0;
-      padding: 10mm;
+      padding: 5mm;
       font-family: Arial, sans-serif;
+      background: white;
     }
+
+    .print-header {
+      text-align: center;
+      margin-bottom: 10px;
+      padding: 10px;
+    }
+
+    .print-header h2 {
+      margin: 0 0 10px 0;
+      font-size: 18px;
+    }
+
+    .print-header button {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      border: 1px solid #000;
+      background: #fff;
+      border-radius: 4px;
+    }
+
+    .print-header button:hover {
+      background: #f0f0f0;
+    }
+
     .page-container {
-      margin-bottom: 10mm;
+      margin-bottom: 5mm;
     }
+
+    .page-break {
+      page-break-after: always;
+    }
+
+    .labels-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 3mm;
+    }
+
+    .labels-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 3mm;
+      justify-items: center;
+    }
+
     .label-slot {
-      display: inline-block;
       width: ${config.width};
-      height: ${config.height};
       overflow: hidden;
-      vertical-align: top;
       border: 1px solid #ccc;
+      background: white;
     }
+
+    /* Ensure label container fits within slot */
+    .label-slot .label-container {
+      width: 100% !important;
+      max-width: ${config.width} !important;
+      transform-origin: top left;
+    }
+
+    /* Constrain all images within labels */
+    .label-slot img {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+
+    .label-slot .company-logo-preview {
+      max-width: 80px !important;
+      max-height: 30px !important;
+      object-fit: contain !important;
+    }
+
+    .label-slot .footer-branding-logo {
+      max-width: 50px !important;
+      max-height: 18px !important;
+      object-fit: contain !important;
+    }
+
+    .label-slot .awb-barcode img,
+    .label-slot .order-barcode img {
+      max-height: 35px !important;
+      max-width: 100% !important;
+    }
+
     @media print {
-      .page-container {
-        margin-bottom: 0;
+      .print-header {
+        display: none;
       }
       body {
         padding: 0;
+        margin: 0;
+      }
+      .page-container {
+        margin-bottom: 0;
+      }
+    }
+
+    @media screen {
+      .label-slot {
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 5mm;
       }
     }
   </style>
 </head>
 <body>
-  <div style="text-align: center; margin-bottom: 15px;">
+  <div class="print-header">
     <h2>Bulk Shipping Labels (${labelsHtml.length} labels)</h2>
-    <button onclick="window.print()" style="padding: 10px 20px; cursor: pointer; font-size: 16px;">
-      Print All Labels
-    </button>
+    <button onclick="window.print()">Print All Labels</button>
   </div>
   ${combinedContent}
   <script>
