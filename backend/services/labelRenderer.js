@@ -62,6 +62,12 @@ class LabelRenderer {
    */
   static getLabelFormat(format) {
     const formatMap = {
+      // API formats (lowercase, from frontend)
+      'thermal': LABEL_FORMATS.THERMAL,
+      'standard': LABEL_FORMATS.STANDARD,
+      '2in1': LABEL_FORMATS.TWO_IN_ONE,
+      '4in1': LABEL_FORMATS.FOUR_IN_ONE,
+      // Display formats (capitalized, from user settings)
       'Thermal': LABEL_FORMATS.THERMAL,
       'Standard': LABEL_FORMATS.STANDARD,
       '2 In One': LABEL_FORMATS.TWO_IN_ONE,
