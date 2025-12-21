@@ -34,7 +34,8 @@ const transactionSchema = new mongoose.Schema({
       'service_tax',
       'adjustment',
       'manual_adjustment',
-      'weight_discrepancy_charge'
+      'weight_discrepancy_charge',
+      'weight_discrepancy_refund'
     ],
     required: true
   },

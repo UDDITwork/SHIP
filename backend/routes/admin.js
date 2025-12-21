@@ -2433,7 +2433,8 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
           weight_discrepancy: weight_discrepancy,
           deduction_amount: deduction_amount,
           upload_batch_id: batchId,
-          processed: false
+          processed: false,
+          dispute_status: 'NEW'
         });
 
         await weightDiscrepancy.save();
@@ -2582,8 +2583,27 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
 // @access  Admin
 router.get('/weight-discrepancies', async (req, res) => {
   try {
-    const { page = 1, limit = 50, search = '', processed = 'all' } = req.query;
-    
+    const { page = 1, limit = 50, search = '', dispute_status = 'all' } = req.query;
+
+    // Check for expired disputes (7 days old with no action)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    await WeightDiscrepancy.updateMany(
+      {
+        dispute_status: 'DISPUTE',
+        dispute_raised_at: { $lte: sevenDaysAgo },
+        action_taken: null
+      },
+      {
+        $set: {
+          dispute_status: 'FINAL WEIGHT',
+          action_taken: 'No Action taken by Courier',
+          action_taken_at: new Date()
+        }
+      }
+    );
+
     const skip = (parseInt(page) - 1) * parseInt(limit);
     const filterQuery = {};
 
@@ -2594,15 +2614,16 @@ router.get('/weight-discrepancies', async (req, res) => {
       ];
     }
 
-    // Processed filter
-    if (processed !== 'all') {
-      filterQuery.processed = processed === 'true';
+    // Dispute status filter
+    if (dispute_status !== 'all') {
+      filterQuery.dispute_status = dispute_status;
     }
 
     const [discrepancies, total] = await Promise.all([
       WeightDiscrepancy.find(filterQuery)
         .populate('client_id', 'company_name email phone_number')
         .populate('order_id', 'order_id')
+        .populate('refund_transaction_id', 'transaction_id amount')
         .sort({ discrepancy_date: -1 })
         .skip(skip)
         .limit(parseInt(limit)),
@@ -2627,6 +2648,166 @@ router.get('/weight-discrepancies', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching weight discrepancies',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Accept dispute - refund amount to client wallet
+// @route   PUT /api/admin/weight-discrepancies/:id/accept-dispute
+// @access  Admin
+router.put('/weight-discrepancies/:id/accept-dispute', async (req, res) => {
+  try {
+    const discrepancy = await WeightDiscrepancy.findById(req.params.id);
+
+    if (!discrepancy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Weight discrepancy not found'
+      });
+    }
+
+    if (discrepancy.dispute_status !== 'DISPUTE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only accept disputes with DISPUTE status'
+      });
+    }
+
+    // Get client and refund the amount
+    const user = await User.findById(discrepancy.client_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    const refundAmount = discrepancy.deduction_amount;
+    const openingBalance = user.wallet_balance || 0;
+    const closingBalance = Math.round((openingBalance + refundAmount) * 100) / 100;
+
+    // Update wallet balance
+    user.wallet_balance = closingBalance;
+    await user.save();
+
+    // Create credit transaction for refund
+    const transaction = new Transaction({
+      transaction_id: `WDR${Date.now()}${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`,
+      user_id: discrepancy.client_id,
+      transaction_type: 'credit',
+      transaction_category: 'weight_discrepancy_refund',
+      amount: refundAmount,
+      description: `Weight discrepancy refund for AWB: ${discrepancy.awb_number}. Dispute accepted.`,
+      related_order_id: discrepancy.order_id,
+      related_awb: discrepancy.awb_number,
+      status: 'completed',
+      balance_info: {
+        opening_balance: openingBalance,
+        closing_balance: closingBalance
+      },
+      transaction_date: new Date()
+    });
+
+    await transaction.save();
+
+    // Update discrepancy
+    discrepancy.dispute_status = 'FINAL WEIGHT';
+    discrepancy.action_taken = 'DISPUTE ACCEPTED BY COURIER';
+    discrepancy.action_taken_at = new Date();
+    discrepancy.refund_transaction_id = transaction._id;
+    await discrepancy.save();
+
+    // Send WebSocket notification
+    try {
+      websocketService.sendNotificationToClient(String(discrepancy.client_id), {
+        type: 'weight_discrepancy_refund',
+        title: 'Weight Discrepancy Dispute Accepted',
+        message: `Your dispute for AWB ${discrepancy.awb_number} has been accepted. ₹${refundAmount.toFixed(2)} has been refunded to your wallet.`,
+        amount: refundAmount,
+        closing_balance: closingBalance,
+        created_at: new Date()
+      });
+      websocketService.sendNotificationToClient(String(discrepancy.client_id), {
+        type: 'wallet_balance_update',
+        balance: closingBalance,
+        currency: 'INR',
+        last_updated: new Date()
+      });
+    } catch (notifError) {
+      console.error('Failed to send notification:', notifError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Dispute accepted and amount refunded',
+      data: {
+        discrepancy,
+        refund_amount: refundAmount,
+        new_balance: closingBalance
+      }
+    });
+
+  } catch (error) {
+    console.error('Accept dispute error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error accepting dispute',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Reject dispute
+// @route   PUT /api/admin/weight-discrepancies/:id/reject-dispute
+// @access  Admin
+router.put('/weight-discrepancies/:id/reject-dispute', async (req, res) => {
+  try {
+    const discrepancy = await WeightDiscrepancy.findById(req.params.id);
+
+    if (!discrepancy) {
+      return res.status(404).json({
+        success: false,
+        message: 'Weight discrepancy not found'
+      });
+    }
+
+    if (discrepancy.dispute_status !== 'DISPUTE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Can only reject disputes with DISPUTE status'
+      });
+    }
+
+    // Update discrepancy
+    discrepancy.dispute_status = 'FINAL WEIGHT';
+    discrepancy.action_taken = 'DISPUTE REJECTED BY COURIER';
+    discrepancy.action_taken_at = new Date();
+    await discrepancy.save();
+
+    // Send WebSocket notification
+    try {
+      websocketService.sendNotificationToClient(String(discrepancy.client_id), {
+        type: 'weight_discrepancy_rejected',
+        title: 'Weight Discrepancy Dispute Rejected',
+        message: `Your dispute for AWB ${discrepancy.awb_number} has been rejected.`,
+        created_at: new Date()
+      });
+    } catch (notifError) {
+      console.error('Failed to send notification:', notifError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Dispute rejected',
+      data: discrepancy
+    });
+
+  } catch (error) {
+    console.error('Reject dispute error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error rejecting dispute',
       error: error.message
     });
   }

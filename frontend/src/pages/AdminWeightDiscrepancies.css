@@ -340,12 +340,90 @@
   cursor: not-allowed;
 }
 
+/* Dispute Status Badge */
+.dispute-status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.dispute-status-badge.new {
+  background-color: #DBEAFE;
+  color: #1E40AF;
+}
+
+.dispute-status-badge.dispute {
+  background-color: #FEF3C7;
+  color: #92400E;
+}
+
+.dispute-status-badge.final-weight {
+  background-color: #D1FAE5;
+  color: #065F46;
+}
+
+/* Action Column */
+.action-cell {
+  min-width: 200px;
+}
+
+.action-placeholder {
+  color: #9CA3AF;
+  font-size: 14px;
+}
+
+.action-select {
+  padding: 6px 10px;
+  border: 1px solid #D1D5DB;
+  border-radius: 4px;
+  font-size: 12px;
+  background-color: white;
+  cursor: pointer;
+  min-width: 180px;
+}
+
+.action-select:hover {
+  border-color: #002B59;
+}
+
+.action-select:focus {
+  outline: none;
+  border-color: #002B59;
+  box-shadow: 0 0 0 2px rgba(0, 43, 89, 0.1);
+}
+
+.action-taken {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.action-taken.accepted {
+  background-color: #D1FAE5;
+  color: #065F46;
+}
+
+.action-taken.rejected {
+  background-color: #FEE2E2;
+  color: #991B1B;
+}
+
+.action-taken.no-action {
+  background-color: #F3F4F6;
+  color: #6B7280;
+}
+
 /* Responsive */
 @media (max-width: 1200px) {
   .discrepancies-table {
     font-size: 12px;
   }
-  
+
   .discrepancies-table th,
   .discrepancies-table td {
     padding: 10px 8px;

@@ -78,6 +78,40 @@ const weightDiscrepancySchema = new mongoose.Schema({
     index: true
   },
 
+  // Dispute Status - NEW, DISPUTE, FINAL WEIGHT
+  dispute_status: {
+    type: String,
+    enum: ['NEW', 'DISPUTE', 'FINAL WEIGHT'],
+    default: 'NEW',
+    index: true
+  },
+
+  // Action taken by admin
+  action_taken: {
+    type: String,
+    enum: [null, 'DISPUTE ACCEPTED BY COURIER', 'DISPUTE REJECTED BY COURIER', 'No Action taken by Courier'],
+    default: null
+  },
+
+  // Timestamp when client raised dispute
+  dispute_raised_at: {
+    type: Date,
+    default: null
+  },
+
+  // Timestamp when admin took action
+  action_taken_at: {
+    type: Date,
+    default: null
+  },
+
+  // Refund transaction reference (if dispute accepted)
+  refund_transaction_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Transaction',
+    index: true
+  },
+
   // Transaction Reference
   transaction_id: {
     type: mongoose.Schema.Types.ObjectId,
@@ -114,6 +148,7 @@ weightDiscrepancySchema.index({ client_id: 1, discrepancy_date: -1 });
 weightDiscrepancySchema.index({ awb_number: 1 });
 weightDiscrepancySchema.index({ processed: 1, discrepancy_date: -1 });
 weightDiscrepancySchema.index({ upload_batch_id: 1 });
+weightDiscrepancySchema.index({ dispute_status: 1, dispute_raised_at: 1 });
 
 // Virtual for calculated discrepancy percentage
 weightDiscrepancySchema.virtual('discrepancy_percentage').get(function() {

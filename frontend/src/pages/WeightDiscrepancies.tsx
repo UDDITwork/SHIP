@@ -22,18 +22,24 @@ interface WeightDiscrepancy {
     transaction_id: string;
     amount: number;
   };
+  dispute_status: 'NEW' | 'DISPUTE' | 'FINAL WEIGHT';
+  action_taken: string | null;
 }
 
 interface Summary {
   total_discrepancies: number;
   total_weight_discrepancy: number;
   total_deduction: number;
+  disputes_accepted: number;
+  disputes_rejected: number;
 }
 
 const INITIAL_SUMMARY: Summary = {
   total_discrepancies: 0,
   total_weight_discrepancy: 0,
-  total_deduction: 0
+  total_deduction: 0,
+  disputes_accepted: 0,
+  disputes_rejected: 0
 };
 
 const createInitialSummary = (): Summary => ({
@@ -44,14 +50,14 @@ const WeightDiscrepancies: React.FC = () => {
   const [discrepancies, setDiscrepancies] = useState<WeightDiscrepancy[]>([]);
   const [summary, setSummary] = useState<Summary>(() => createInitialSummary());
   const [loading, setLoading] = useState(false);
-  
+
   // Filters
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(25);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [total, setTotal] = useState(0);
-  
+
   // Ticket creation state
   const [raisingIssue, setRaisingIssue] = useState<string | null>(null);
   const [ticketMessage, setTicketMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -92,7 +98,7 @@ const WeightDiscrepancies: React.FC = () => {
   // Refresh every 60 seconds to avoid rate limiting while keeping data fresh
   useEffect(() => {
     const pollInterval = setInterval(() => {
-      console.log('⚖️ Polling weight discrepancies from MongoDB...');
+      console.log('Polling weight discrepancies from MongoDB...');
       fetchDiscrepancies();
     }, 60000); // Poll every 60 seconds (1 minute) to avoid rate limiting
 
@@ -104,24 +110,39 @@ const WeightDiscrepancies: React.FC = () => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     if (date.toDateString() === today.toDateString()) {
       return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, Today ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
     }
-    
+
     if (date.toDateString() === yesterday.toDateString()) {
       return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, Yesterday ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
     }
-    
+
     return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
   };
 
-  const handleRaiseIssue = async (discrepancy: WeightDiscrepancy) => {
+  const handleRaiseDispute = async (discrepancy: WeightDiscrepancy) => {
     setRaisingIssue(discrepancy._id);
     setTicketMessage(null);
-    
+
     try {
-      const description = `Weight Discrepancy Issue for AWB: ${discrepancy.awb_number}
+      // First, call the raise-dispute endpoint to update status
+      const disputeResponse = await fetch(`${environmentConfig.apiUrl}/weight-discrepancies/${discrepancy._id}/raise-dispute`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!disputeResponse.ok) {
+        const error = await disputeResponse.json();
+        throw new Error(error.message || 'Failed to raise dispute');
+      }
+
+      // Then create the support ticket as before
+      const description = `Weight Discrepancy Dispute for AWB: ${discrepancy.awb_number}
 
 Order ID: ${discrepancy.order_id?.order_id || 'N/A'}
 AWB Number: ${discrepancy.awb_number}
@@ -144,17 +165,18 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
         comment: description
       });
 
-      setTicketMessage({ type: 'success', text: 'Issue raised successfully! Ticket created and sent to admin.' });
-      
+      setTicketMessage({ type: 'success', text: 'Dispute raised successfully! Ticket created and sent to admin.' });
+      fetchDiscrepancies(); // Refresh to show updated status
+
       // Clear message after 5 seconds
       setTimeout(() => {
         setTicketMessage(null);
       }, 5000);
     } catch (error: any) {
-      console.error('Error raising issue:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to raise issue. Please try again.';
+      console.error('Error raising dispute:', error);
+      const errorMessage = error.message || 'Failed to raise dispute. Please try again.';
       setTicketMessage({ type: 'error', text: errorMessage });
-      
+
       // Clear error message after 5 seconds
       setTimeout(() => {
         setTicketMessage(null);
@@ -162,6 +184,41 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
     } finally {
       setRaisingIssue(null);
     }
+  };
+
+  const getDisputeStatusDisplay = (discrepancy: WeightDiscrepancy) => {
+    if (discrepancy.dispute_status === 'NEW') {
+      return (
+        <button
+          className="raise-issue-btn"
+          onClick={() => handleRaiseDispute(discrepancy)}
+          disabled={raisingIssue === discrepancy._id}
+          title="Raise dispute for this weight discrepancy"
+        >
+          {raisingIssue === discrepancy._id ? 'Raising...' : 'Raise Dispute'}
+        </button>
+      );
+    }
+
+    if (discrepancy.action_taken) {
+      const badgeClass = discrepancy.action_taken.includes('ACCEPTED')
+        ? 'accepted'
+        : discrepancy.action_taken.includes('REJECTED')
+        ? 'rejected'
+        : 'no-action';
+
+      return (
+        <span className={`dispute-badge ${badgeClass}`}>
+          {discrepancy.action_taken.includes('ACCEPTED')
+            ? 'Dispute Accepted'
+            : discrepancy.action_taken.includes('REJECTED')
+            ? 'Dispute Rejected'
+            : 'No Action Taken'}
+        </span>
+      );
+    }
+
+    return <span className="dispute-badge pending">Dispute Pending</span>;
   };
 
   return (
@@ -176,7 +233,7 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
               <div className="summary-card-value">{summary.total_discrepancies}</div>
             </div>
           </div>
-          
+
           <div className="summary-card">
             <div className="summary-card-icon">📊</div>
             <div className="summary-card-content">
@@ -184,12 +241,28 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
               <div className="summary-card-value">{summary.total_weight_discrepancy.toFixed(1)} g</div>
             </div>
           </div>
-          
+
           <div className="summary-card">
             <div className="summary-card-icon">💸</div>
             <div className="summary-card-content">
               <div className="summary-card-label">Total Deduction</div>
               <div className="summary-card-value red">₹{summary.total_deduction.toFixed(2)}</div>
+            </div>
+          </div>
+
+          <div className="summary-card">
+            <div className="summary-card-icon">✅</div>
+            <div className="summary-card-content">
+              <div className="summary-card-label">Disputes Accepted</div>
+              <div className="summary-card-value green">{summary.disputes_accepted}</div>
+            </div>
+          </div>
+
+          <div className="summary-card">
+            <div className="summary-card-icon">❌</div>
+            <div className="summary-card-content">
+              <div className="summary-card-label">Disputes Rejected</div>
+              <div className="summary-card-value red">{summary.disputes_rejected}</div>
             </div>
           </div>
         </div>
@@ -212,7 +285,7 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
               className="filter-input"
             />
           </div>
-          
+
           <div className="filter-group">
             <select
               value={status}
@@ -279,14 +352,7 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
                       <td className="deduction-cell">-₹{disc.deduction_amount.toFixed(2)}</td>
                       <td className="transaction-id">{disc.transaction_id?.transaction_id || 'N/A'}</td>
                       <td>
-                        <button
-                          className="raise-issue-btn"
-                          onClick={() => handleRaiseIssue(disc)}
-                          disabled={raisingIssue === disc._id}
-                          title="Raise issue for this weight discrepancy"
-                        >
-                          {raisingIssue === disc._id ? 'Raising...' : 'Raise Issue'}
-                        </button>
+                        {getDisputeStatusDisplay(disc)}
                       </td>
                     </tr>
                   ))
@@ -302,7 +368,7 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
             <div className="pagination-info">
               Showing {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} of {total}
             </div>
-            
+
             <div className="pagination-per-page">
               <label>Show</label>
               <select
@@ -317,7 +383,7 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
               </select>
               <span>per page</span>
             </div>
-            
+
             <div className="pagination-nav">
               <button
                 onClick={() => setPage(p => Math.max(1, p - 1))}
@@ -343,4 +409,3 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
 };
 
 export default WeightDiscrepancies;
-

@@ -7,7 +7,7 @@
 /* Summary Cards */
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 14px;
   margin-bottom: 20px;
 }
@@ -60,6 +60,10 @@
 
 .summary-card-value.red {
   color: #EF4444;
+}
+
+.summary-card-value.green {
+  color: #10B981;
 }
 
 /* Ticket Message */
@@ -322,6 +326,31 @@
   color: #4B5563;
 }
 
+/* Dispute Badge Styles */
+.dispute-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.dispute-badge.pending {
+  background-color: #FEF3C7;
+  color: #92400E;
+}
+
+.dispute-badge.accepted {
+  background-color: #D1FAE5;
+  color: #065F46;
+}
+
+.dispute-badge.rejected {
+  background-color: #FEE2E2;
+  color: #991B1B;
+}
+
 /* No Data Cell */
 .no-data {
   text-align: center;
@@ -428,20 +457,26 @@
 }
 
 /* Responsive Design */
+@media (max-width: 1400px) {
+  .summary-cards {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
 @media (max-width: 1200px) {
   .summary-cards {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, 1fr);
   }
-  
+
   .filters-section {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-group {
     width: 100%;
   }
-  
+
   .pagination-section {
     flex-direction: column;
     align-items: stretch;
@@ -452,7 +487,11 @@
   .weight-discrepancies-container {
     padding: 0;
   }
-  
+
+  .summary-cards {
+    grid-template-columns: 1fr;
+  }
+
   .pagination-per-page {
     width: 100%;
     justify-content: space-between;

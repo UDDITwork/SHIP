@@ -23,6 +23,10 @@ interface WeightDiscrepancy {
   deduction_amount: number;
   processed: boolean;
   upload_batch_id: string;
+  dispute_status: 'NEW' | 'DISPUTE' | 'FINAL WEIGHT';
+  action_taken: string | null;
+  dispute_raised_at: string | null;
+  action_taken_at: string | null;
 }
 
 const AdminWeightDiscrepancies: React.FC = () => {
@@ -30,10 +34,11 @@ const AdminWeightDiscrepancies: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadResult, setUploadResult] = useState<any>(null);
-  
+  const [processingAction, setProcessingAction] = useState<string | null>(null);
+
   // Filters
   const [search, setSearch] = useState('');
-  const [processed, setProcessed] = useState('all');
+  const [disputeStatus, setDisputeStatus] = useState('all');
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const limit = 50;
@@ -45,7 +50,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
       params.append('page', page.toString());
       params.append('limit', limit.toString());
       if (search) params.append('search', search);
-      if (processed !== 'all') params.append('processed', processed);
+      if (disputeStatus !== 'all') params.append('dispute_status', disputeStatus);
 
       const response = await fetch(`${environmentConfig.apiUrl}/admin/weight-discrepancies?${params}`, {
         headers: {
@@ -64,7 +69,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, processed]);
+  }, [page, limit, search, disputeStatus]);
 
   useEffect(() => {
     fetchDiscrepancies();
@@ -118,9 +123,101 @@ const AdminWeightDiscrepancies: React.FC = () => {
     }
   };
 
+  const handleAcceptDispute = async (id: string) => {
+    if (!window.confirm('Accept this dispute and refund the amount to client wallet?')) return;
+
+    setProcessingAction(id);
+    try {
+      const response = await fetch(`${environmentConfig.apiUrl}/admin/weight-discrepancies/${id}/accept-dispute`, {
+        method: 'PUT',
+        headers: {
+          'x-admin-email': localStorage.getItem('admin_email') || '',
+          'x-admin-password': 'jpmcA123'
+        }
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(`Dispute accepted! ₹${result.data.refund_amount.toFixed(2)} refunded to client.`);
+        fetchDiscrepancies();
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Accept dispute error:', error);
+      alert('Failed to accept dispute');
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  const handleRejectDispute = async (id: string) => {
+    if (!window.confirm('Reject this dispute?')) return;
+
+    setProcessingAction(id);
+    try {
+      const response = await fetch(`${environmentConfig.apiUrl}/admin/weight-discrepancies/${id}/reject-dispute`, {
+        method: 'PUT',
+        headers: {
+          'x-admin-email': localStorage.getItem('admin_email') || '',
+          'x-admin-password': 'jpmcA123'
+        }
+      });
+
+      if (response.ok) {
+        alert('Dispute rejected.');
+        fetchDiscrepancies();
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.message}`);
+      }
+    } catch (error) {
+      console.error('Reject dispute error:', error);
+      alert('Failed to reject dispute');
+    } finally {
+      setProcessingAction(null);
+    }
+  };
+
+  const handleActionChange = (id: string, action: string) => {
+    if (action === 'DISPUTE ACCEPTED BY COURIER') {
+      handleAcceptDispute(id);
+    } else if (action === 'DISPUTE REJECTED BY COURIER') {
+      handleRejectDispute(id);
+    }
+  };
+
+  const getActionDisplay = (disc: WeightDiscrepancy) => {
+    if (disc.dispute_status === 'NEW') {
+      return <span className="action-placeholder">------</span>;
+    }
+
+    if (disc.dispute_status === 'DISPUTE' && !disc.action_taken) {
+      return (
+        <select
+          className="action-select"
+          value=""
+          onChange={(e) => handleActionChange(disc._id, e.target.value)}
+          disabled={processingAction === disc._id}
+        >
+          <option value="">PENDING</option>
+          <option value="DISPUTE ACCEPTED BY COURIER">DISPUTE ACCEPTED BY COURIER</option>
+          <option value="DISPUTE REJECTED BY COURIER">DISPUTE REJECTED BY COURIER</option>
+        </select>
+      );
+    }
+
+    return (
+      <span className={`action-taken ${disc.action_taken?.includes('ACCEPTED') ? 'accepted' : disc.action_taken?.includes('REJECTED') ? 'rejected' : 'no-action'}`}>
+        {disc.action_taken}
+      </span>
+    );
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + 
+    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
            ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
 
@@ -128,7 +225,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
     <div className="admin-weight-discrepancies">
         {/* Header */}
         <div className="page-header">
-          <h1>⚖️ Weight Discrepancies</h1>
+          <h1>Weight Discrepancies</h1>
           <p>Manage weight discrepancies and charges</p>
         </div>
 
@@ -144,7 +241,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
               style={{ display: 'none' }}
             />
             <label htmlFor="file-upload" className="upload-label">
-              {uploading ? '⏳ Uploading...' : '📤 Upload Excel File'}
+              {uploading ? 'Uploading...' : 'Upload Excel File'}
             </label>
           </div>
         </div>
@@ -162,13 +259,14 @@ const AdminWeightDiscrepancies: React.FC = () => {
           </div>
           <div className="filter-group">
             <select
-              value={processed}
-              onChange={(e) => setProcessed(e.target.value)}
+              value={disputeStatus}
+              onChange={(e) => setDisputeStatus(e.target.value)}
               className="filter-select"
             >
               <option value="all">All Status</option>
-              <option value="true">Processed</option>
-              <option value="false">Not Processed</option>
+              <option value="NEW">NEW</option>
+              <option value="DISPUTE">DISPUTE</option>
+              <option value="FINAL WEIGHT">FINAL WEIGHT</option>
             </select>
           </div>
         </div>
@@ -176,7 +274,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
         {/* Results Message */}
         {uploadResult && (
           <div className={`result-box ${uploadResult.failed === 0 ? 'success' : 'warning'}`}>
-            <h3>📊 Upload Results</h3>
+            <h3>Upload Results</h3>
             <p>Total: {uploadResult.total} | Successful: {uploadResult.successful} | Failed: {uploadResult.failed}</p>
             {uploadResult.errors.length > 0 && (
               <details className="error-details">
@@ -206,18 +304,19 @@ const AdminWeightDiscrepancies: React.FC = () => {
                   <th>Client</th>
                   <th>Order ID</th>
                   <th>Date</th>
-                  <th>Status</th>
+                  <th>AWB Status</th>
                   <th>Declared</th>
                   <th>Actual</th>
                   <th>Difference</th>
                   <th>Deduction</th>
-                  <th>Processed</th>
+                  <th>STATUS</th>
+                  <th>ACTION</th>
                 </tr>
               </thead>
               <tbody>
                 {discrepancies.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="no-data">No discrepancies found</td>
+                    <td colSpan={11} className="no-data">No discrepancies found</td>
                   </tr>
                 ) : (
                   discrepancies.map((disc) => (
@@ -241,9 +340,12 @@ const AdminWeightDiscrepancies: React.FC = () => {
                       <td className="diff-cell">{disc.weight_discrepancy.toFixed(2)} g</td>
                       <td className="deduction-cell">-₹{disc.deduction_amount.toFixed(2)}</td>
                       <td>
-                        <span className={`processed-badge ${disc.processed ? 'yes' : 'no'}`}>
-                          {disc.processed ? '✓ Yes' : '✗ No'}
+                        <span className={`dispute-status-badge ${disc.dispute_status.toLowerCase().replace(' ', '-')}`}>
+                          {disc.dispute_status}
                         </span>
+                      </td>
+                      <td className="action-cell">
+                        {getActionDisplay(disc)}
                       </td>
                     </tr>
                   ))
@@ -275,4 +377,3 @@ const AdminWeightDiscrepancies: React.FC = () => {
 };
 
 export default AdminWeightDiscrepancies;
-
