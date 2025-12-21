@@ -805,9 +805,9 @@ const Orders: React.FC = () => {
       return;
     }
 
-    // Open tracking in new tab with AWB number and order reference
+    // Navigate to tracking page in the same tab
     const trackingUrl = `/tracking/detail?awb=${encodeURIComponent(sanitizedAwb)}${orderId ? `&orderId=${encodeURIComponent(orderId.trim())}` : ''}`;
-    window.open(trackingUrl, '_blank');
+    navigate(trackingUrl);
   };
 
   const handleGenerateAWB = async (orderId: string, orderDbId: string) => {
