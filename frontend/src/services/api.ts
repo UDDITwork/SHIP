@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { environmentConfig } from '../config/environment';
-// Note: requestDeduplicator was removed as it was blocking legitimate requests across tabs
+import { requestDeduplicator } from '../utils/requestDeduplicator';
 
 // Use the environment configuration
 const API_BASE_URL = environmentConfig.apiUrl;
@@ -290,6 +290,23 @@ class ApiService {
   }
 
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+    // Use deduplicator ONLY for wallet/payment related endpoints to prevent double payments
+    // These endpoints are critical and should not be called twice
+    const isPaymentEndpoint = url.includes('/wallet') ||
+                              url.includes('/payment') ||
+                              url.includes('/recharge') ||
+                              url.includes('/initiate-payment') ||
+                              url.includes('/handle-payment');
+
+    if (isPaymentEndpoint) {
+      const key = `POST:${url}:${JSON.stringify(data)}`;
+      return requestDeduplicator.get(key, async () => {
+        const response = await this.retryRequest(() => this.api.post<T>(url, data, config));
+        return response.data;
+      });
+    }
+
+    // For all other POST requests, don't use deduplicator
     const response = await this.retryRequest(() => this.api.post<T>(url, data, config));
     return response.data;
   }
