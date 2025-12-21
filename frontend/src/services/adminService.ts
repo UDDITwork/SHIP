@@ -805,12 +805,17 @@ class AdminService {
   }
 
   // Wallet adjustment method (credit or debit)
+  // Includes idempotency key to prevent duplicate transactions
   async adjustWallet(clientId: string, amount: number, type: 'credit' | 'debit', description?: string): Promise<{ success: boolean; message: string; data: any }> {
+    // Generate unique idempotency key to prevent duplicate transactions
+    const idempotency_key = `wallet_${clientId}_${amount}_${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const response = await apiService.post<{ success: boolean; message: string; data: any }>(`/admin/wallet-recharge`, {
       client_id: clientId,
       amount,
       type,
-      description
+      description,
+      idempotency_key
     }, {
       headers: this.getAdminHeaders()
     });

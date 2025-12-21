@@ -2363,7 +2363,8 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
         const parseWeight = (raw) => {
           const n = parseFloat(raw || 0);
           if (!n || !isFinite(n)) return 0;
-          return n;
+          // Round to 2 decimal places to avoid floating-point precision issues (e.g., 10 becoming 9.8999)
+          return Math.round(n * 100) / 100;
         };
 
         const client_declared_weight = parseWeight(row['Client Declared Weight'] || row['client_declared_weight']);
@@ -2375,7 +2376,8 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
         );
         // If discrepancy column is missing/zero, compute from weights (in grams)
         if (!weight_discrepancy && delhivery_updated_weight && client_declared_weight) {
-          weight_discrepancy = delhivery_updated_weight - client_declared_weight;
+          // Round to avoid floating-point precision issues
+          weight_discrepancy = Math.round((delhivery_updated_weight - client_declared_weight) * 100) / 100;
         }
 
         const deduction_amount = parseFloat(row['Latest deduction - Initial manifestation cost'] || row['deduction_amount'] || 0);

@@ -11,10 +11,10 @@ interface WalletRechargeModalProps {
   onUpdateLabel: (clientId: string, label: string) => Promise<void>;
 }
 
-const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({ 
-  client, 
-  isOpen, 
-  onClose, 
+const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
+  client,
+  isOpen,
+  onClose,
   onRecharge,
   onUpdateLabel
 }) => {
@@ -25,6 +25,7 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false); // Extra protection against double-clicks
 
   // Reset form when client changes
   useEffect(() => {
@@ -33,10 +34,18 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
     setReason('');
     setError(null);
     setSuccess(false);
+    setIsSubmitting(false);
   }, [client._id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // CRITICAL: Prevent double submission
+    if (isSubmitting || loading) {
+      console.warn('⚠️ Wallet recharge already in progress, ignoring duplicate submit');
+      return;
+    }
+
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
       return;
@@ -53,6 +62,8 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
       return;
     }
 
+    // Set both flags immediately to prevent any race conditions
+    setIsSubmitting(true);
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -62,14 +73,21 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
       setSuccess(true);
       setAmount('');
       setReason('');
-      
+
       // Show success message for 2 seconds before closing
       setTimeout(() => {
         onClose();
         setSuccess(false);
+        setIsSubmitting(false);
       }, 2000);
     } catch (err: any) {
-      setError(err.message || 'Failed to update wallet');
+      // Check if it's a duplicate transaction error
+      if (err.message?.includes('Duplicate') || err.message?.includes('duplicate')) {
+        setError('⚠️ This transaction was already processed. Please refresh the page and check the balance.');
+      } else {
+        setError(err.message || 'Failed to update wallet');
+      }
+      setIsSubmitting(false);
     } finally {
       setLoading(false);
     }
@@ -182,12 +200,17 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
             {success && <div className="success-message">✅ Wallet updated successfully! Balance updated.</div>}
 
             <div className="form-actions">
-              <button type="button" onClick={handleClose} className="cancel-btn">
+              <button type="button" onClick={handleClose} className="cancel-btn" disabled={loading || isSubmitting}>
                 Cancel
               </button>
-              <button type="submit" disabled={loading} className={`submit-btn ${transactionType === 'debit' ? 'debit-btn' : ''}`}>
-                {loading ? (transactionType === 'credit' ? 'Adding...' : 'Deducting...') : 
-                 transactionType === 'credit' ? 'Add to Wallet' : 'Deduct from Wallet'}
+              <button
+                type="submit"
+                disabled={loading || isSubmitting}
+                className={`submit-btn ${transactionType === 'debit' ? 'debit-btn' : ''}`}
+              >
+                {loading || isSubmitting
+                  ? (transactionType === 'credit' ? 'Processing...' : 'Processing...')
+                  : (transactionType === 'credit' ? 'Add to Wallet' : 'Deduct from Wallet')}
               </button>
             </div>
           </form>
