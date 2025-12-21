@@ -189,11 +189,13 @@ const AdminWeightDiscrepancies: React.FC = () => {
   };
 
   const getActionDisplay = (disc: WeightDiscrepancy) => {
-    if (disc.dispute_status === 'NEW') {
+    const status = disc.dispute_status || 'NEW';
+
+    if (status === 'NEW') {
       return <span className="action-placeholder">------</span>;
     }
 
-    if (disc.dispute_status === 'DISPUTE' && !disc.action_taken) {
+    if (status === 'DISPUTE' && !disc.action_taken) {
       return (
         <select
           className="action-select"
@@ -210,7 +212,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
 
     return (
       <span className={`action-taken ${disc.action_taken?.includes('ACCEPTED') ? 'accepted' : disc.action_taken?.includes('REJECTED') ? 'rejected' : 'no-action'}`}>
-        {disc.action_taken}
+        {disc.action_taken || 'N/A'}
       </span>
     );
   };
@@ -319,36 +321,40 @@ const AdminWeightDiscrepancies: React.FC = () => {
                     <td colSpan={11} className="no-data">No discrepancies found</td>
                   </tr>
                 ) : (
-                  discrepancies.map((disc) => (
-                    <tr key={disc._id}>
-                      <td className="awb-cell">{disc.awb_number}</td>
-                      <td>
-                        <div className="client-info">
-                          <div>{disc.client_id?.company_name || 'N/A'}</div>
-                          <div className="client-email">{disc.client_id?.email || ''}</div>
-                        </div>
-                      </td>
-                      <td>{disc.order_id?.order_id || 'N/A'}</td>
-                      <td>{formatDate(disc.discrepancy_date)}</td>
-                      <td>
-                        <span className={`status-badge ${disc.awb_status.toLowerCase().replace(' ', '-')}`}>
-                          {disc.awb_status}
-                        </span>
-                      </td>
-                      <td>{disc.client_declared_weight.toFixed(2)} g</td>
-                      <td>{disc.delhivery_updated_weight.toFixed(2)} g</td>
-                      <td className="diff-cell">{disc.weight_discrepancy.toFixed(2)} g</td>
-                      <td className="deduction-cell">-₹{disc.deduction_amount.toFixed(2)}</td>
-                      <td>
-                        <span className={`dispute-status-badge ${disc.dispute_status.toLowerCase().replace(' ', '-')}`}>
-                          {disc.dispute_status}
-                        </span>
-                      </td>
-                      <td className="action-cell">
-                        {getActionDisplay(disc)}
-                      </td>
-                    </tr>
-                  ))
+                  discrepancies.map((disc) => {
+                    const awbStatus = disc.awb_status || 'Unknown';
+                    const disputeStatus = disc.dispute_status || 'NEW';
+                    return (
+                      <tr key={disc._id}>
+                        <td className="awb-cell">{disc.awb_number}</td>
+                        <td>
+                          <div className="client-info">
+                            <div>{disc.client_id?.company_name || 'N/A'}</div>
+                            <div className="client-email">{disc.client_id?.email || ''}</div>
+                          </div>
+                        </td>
+                        <td>{disc.order_id?.order_id || 'N/A'}</td>
+                        <td>{formatDate(disc.discrepancy_date)}</td>
+                        <td>
+                          <span className={`status-badge ${awbStatus.toLowerCase().replace(' ', '-')}`}>
+                            {awbStatus}
+                          </span>
+                        </td>
+                        <td>{(disc.client_declared_weight || 0).toFixed(2)} g</td>
+                        <td>{(disc.delhivery_updated_weight || 0).toFixed(2)} g</td>
+                        <td className="diff-cell">{(disc.weight_discrepancy || 0).toFixed(2)} g</td>
+                        <td className="deduction-cell">-₹{(disc.deduction_amount || 0).toFixed(2)}</td>
+                        <td>
+                          <span className={`dispute-status-badge ${disputeStatus.toLowerCase().replace(' ', '-')}`}>
+                            {disputeStatus}
+                          </span>
+                        </td>
+                        <td className="action-cell">
+                          {getActionDisplay(disc)}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
