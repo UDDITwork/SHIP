@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { environmentConfig } from '../config/environment';
-import { requestDeduplicator } from '../utils/requestDeduplicator';
+// Note: requestDeduplicator was removed as it was blocking legitimate requests across tabs
 
 // Use the environment configuration
 const API_BASE_URL = environmentConfig.apiUrl;
@@ -283,12 +283,10 @@ class ApiService {
   }
 
   async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    // Use deduplicator to prevent duplicate requests
-    const key = `GET:${url}`;
-    return requestDeduplicator.get(key, async () => {
-      const response = await this.retryRequest(() => this.api.get<T>(url, config));
-      return response.data;
-    });
+    // Don't use deduplicator for GET requests - it was blocking legitimate requests across tabs
+    // The deduplicator was causing content to not render when multiple tabs/components request the same endpoint
+    const response = await this.retryRequest(() => this.api.get<T>(url, config));
+    return response.data;
   }
 
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
