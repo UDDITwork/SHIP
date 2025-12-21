@@ -50,7 +50,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const path = location.pathname;
 
     // Check which parent menu should be expanded based on current path
-    const shouldExpandTools = path === '/tools' || path === '/packages' || path === '/weight-discrepancies';
+    const shouldExpandTools = path === '/tools' || path === '/rate-calculator' || path === '/packages' || path === '/weight-discrepancies';
     const shouldExpandBilling = path === '/billing' || path === '/invoices' || path === '/remittances' || path.startsWith('/remittances/');
     const shouldExpandSettings = path === '/settings' || path.startsWith('/settings/');
 
@@ -437,6 +437,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: 'Tools',
       svgIcon: vectorIcon,
       children: [
+        { path: '/rate-calculator', icon: '🧮', label: 'Rate Calculator', svgIcon: null },
         { path: '/packages', icon: '📦', label: 'Packages', svgIcon: null },
         { path: '/weight-discrepancies', icon: '⚖️', label: 'Weight Discrepancies', svgIcon: null },
       ]
