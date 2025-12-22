@@ -112,6 +112,18 @@
   transform: translateY(-1px);
 }
 
+.bulk-action-btn.need-help {
+  background: #FFF3E0;
+  color: #F57C00;
+  border-color: #F57C00;
+}
+
+.bulk-action-btn.need-help:hover {
+  background: #F57C00;
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
 .dropdown-arrow {
   font-size: 10px;
   margin-left: 4px;

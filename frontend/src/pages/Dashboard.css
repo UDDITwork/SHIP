@@ -120,6 +120,57 @@
     opacity: 0.8;
   }
 
+  /* Date Presets */
+  .date-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 16px 20px;
+    border-bottom: 1px solid #E5E5E5;
+    background-color: #F9FAFB;
+  }
+
+  .preset-btn {
+    padding: 8px 14px;
+    border: 1px solid #E5E5E5;
+    border-radius: 20px;
+    background-color: #FFFFFF;
+    color: #2C4563;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .preset-btn:hover {
+    border-color: #FF8C42;
+    color: #FF8C42;
+  }
+
+  .preset-btn.active {
+    background-color: #FF8C42;
+    color: #FFFFFF;
+    border-color: #FF8C42;
+  }
+
+  .cancel-date-filter-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background-color: #FFFFFF;
+    color: #2C4563;
+    border: 1px solid #E5E5E5;
+  }
+
+  .cancel-date-filter-btn:hover {
+    background-color: #F5F7FA;
+    border-color: #CCCCCC;
+  }
+
   .date-picker-body {
     padding: 20px;
     display: flex;

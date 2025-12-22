@@ -85,6 +85,76 @@ const Orders: React.FC = () => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
+  // Date preset type and handler
+  type DatePreset = 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'last30days' | 'thisMonth' | 'lastMonth' | 'custom';
+  const [selectedDatePreset, setSelectedDatePreset] = useState<DatePreset>('last30days');
+
+  const getDateRangeForPreset = (preset: DatePreset): { from: string; to: string } => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    switch (preset) {
+      case 'today': {
+        return { from: todayStr, to: todayStr };
+      }
+      case 'yesterday': {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        return { from: yesterdayStr, to: yesterdayStr };
+      }
+      case 'thisWeek': {
+        const last7 = new Date(today);
+        last7.setDate(last7.getDate() - 7);
+        return { from: last7.toISOString().split('T')[0], to: todayStr };
+      }
+      case 'lastWeek': {
+        // Last 7 days before this week
+        const startLastWeek = new Date(today);
+        startLastWeek.setDate(startLastWeek.getDate() - 14);
+        const endLastWeek = new Date(today);
+        endLastWeek.setDate(endLastWeek.getDate() - 7);
+        return { from: startLastWeek.toISOString().split('T')[0], to: endLastWeek.toISOString().split('T')[0] };
+      }
+      case 'last30days': {
+        const last30 = new Date(today);
+        last30.setDate(last30.getDate() - 30);
+        return { from: last30.toISOString().split('T')[0], to: todayStr };
+      }
+      case 'thisMonth': {
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        return { from: firstDayOfMonth.toISOString().split('T')[0], to: todayStr };
+      }
+      case 'lastMonth': {
+        const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          from: firstDayLastMonth.toISOString().split('T')[0],
+          to: lastDayLastMonth.toISOString().split('T')[0]
+        };
+      }
+      case 'custom':
+      default:
+        return getDefaultDateRange();
+    }
+  };
+
+  const handleDatePresetSelect = (preset: DatePreset) => {
+    if (preset === 'custom') {
+      setSelectedDatePreset('custom');
+      // Keep date picker open for custom selection
+      return;
+    }
+    const range = getDateRangeForPreset(preset);
+    setFilters(prev => ({
+      ...prev,
+      dateFrom: range.from,
+      dateTo: range.to
+    }));
+    setSelectedDatePreset(preset);
+    setShowDatePicker(false);
+  };
+
   // Modal States
   const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
   const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
@@ -786,15 +856,14 @@ const Orders: React.FC = () => {
 
   // Action button handlers
   const handleViewOrder = (orderId: string) => {
-    const order = orders.find(o => o._id === orderId);
-    if (order) {
-      setViewOrderModal({ open: true, order });
-    }
+    // Navigate to order details page in the same tab
+    navigate(`/orders/${orderId}`);
   };
 
   const handleEditOrder = (orderId: string) => {
-    // Navigate to edit order page or open edit modal
-    navigate(`/orders/edit/${orderId}`);
+    // Navigate to order details page with edit parameter
+    // For now, this will show the order details - editing can be done from there
+    navigate(`/orders/${orderId}?edit=true`);
   };
 
   const handleTrackOrder = (orderId: string, awb?: string) => {
@@ -1103,6 +1172,12 @@ const Orders: React.FC = () => {
     setShowLabelFormatModal(true);
   };
 
+  const handleBulkNeedHelp = () => {
+    // Navigate to support page with selected order IDs
+    const orderIds = selectedOrders.join(',');
+    navigate(`/support?orderIds=${encodeURIComponent(orderIds)}&bulk=true`);
+  };
+
   const handleBulkLabelConfirm = async (format: string) => {
     setShowLabelFormatModal(false);
 
@@ -1323,11 +1398,11 @@ const Orders: React.FC = () => {
         {/* Filters Section */}
         <div className="filters-section">
           <div className="date-filter">
-            <button 
+            <button
               className="calendar-btn"
               onClick={() => setShowDatePicker(!showDatePicker)}
             >
-              {filters.dateFrom ? formatDateForDisplay(filters.dateFrom) : 'Select Date Range'} 
+              📅 {filters.dateFrom ? formatDateForDisplay(filters.dateFrom) : 'Select Date Range'}
               {filters.dateTo && ` to ${formatDateForDisplay(filters.dateTo)}`}
               {!filters.dateFrom && !filters.dateTo && ' (Last 30 days)'}
             </button>
@@ -1335,11 +1410,49 @@ const Orders: React.FC = () => {
               <div className="date-picker-dropdown">
                 <div className="date-picker-header">
                   <h4>Select Date Range</h4>
-                  <button 
+                  <button
                     className="close-btn"
                     onClick={() => setShowDatePicker(false)}
                   >
                     ✕
+                  </button>
+                </div>
+                <div className="date-presets">
+                  <button
+                    className={`preset-btn ${selectedDatePreset === 'today' ? 'active' : ''}`}
+                    onClick={() => handleDatePresetSelect('today')}
+                  >
+                    Today
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedDatePreset === 'yesterday' ? 'active' : ''}`}
+                    onClick={() => handleDatePresetSelect('yesterday')}
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedDatePreset === 'thisWeek' ? 'active' : ''}`}
+                    onClick={() => handleDatePresetSelect('thisWeek')}
+                  >
+                    This Week
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedDatePreset === 'lastWeek' ? 'active' : ''}`}
+                    onClick={() => handleDatePresetSelect('lastWeek')}
+                  >
+                    Last Week
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedDatePreset === 'thisMonth' ? 'active' : ''}`}
+                    onClick={() => handleDatePresetSelect('thisMonth')}
+                  >
+                    This Month
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedDatePreset === 'lastMonth' ? 'active' : ''}`}
+                    onClick={() => handleDatePresetSelect('lastMonth')}
+                  >
+                    Last Month
                   </button>
                 </div>
                 <div className="date-inputs">
@@ -1348,7 +1461,10 @@ const Orders: React.FC = () => {
                     <input
                       type="date"
                       value={filters.dateFrom}
-                      onChange={(e) => setFilters(prev => ({...prev, dateFrom: e.target.value}))}
+                      onChange={(e) => {
+                        setFilters(prev => ({...prev, dateFrom: e.target.value}));
+                        setSelectedDatePreset('custom');
+                      }}
                       max={new Date().toISOString().split('T')[0]}
                     />
                   </div>
@@ -1357,13 +1473,28 @@ const Orders: React.FC = () => {
                     <input
                       type="date"
                       value={filters.dateTo}
-                      onChange={(e) => setFilters(prev => ({...prev, dateTo: e.target.value}))}
+                      onChange={(e) => {
+                        setFilters(prev => ({...prev, dateTo: e.target.value}));
+                        setSelectedDatePreset('custom');
+                      }}
                       max={new Date().toISOString().split('T')[0]}
                     />
                   </div>
                 </div>
                 <div className="date-picker-actions">
-                  <button 
+                  <button
+                    className="clear-btn"
+                    onClick={handleClearDateFilter}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    className="cancel-btn"
+                    onClick={() => setShowDatePicker(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
                     className="apply-btn"
                     onClick={() => {
                       if (filters.dateFrom && filters.dateTo) {
@@ -1373,23 +1504,7 @@ const Orders: React.FC = () => {
                     }}
                     disabled={!filters.dateFrom || !filters.dateTo}
                   >
-                    Apply Filter
-                  </button>
-                  <button 
-                    className="clear-btn"
-                    onClick={handleClearDateFilter}
-                  >
-                    Clear Filter
-                  </button>
-                  <button 
-                    className="quick-filter-btn"
-                    onClick={() => {
-                      const defaultRange = getDefaultDateRange();
-                      handleDateRangeChange(defaultRange.from, defaultRange.to);
-                      fetchOrders();
-                    }}
-                  >
-                    Last 30 Days
+                    Apply
                   </button>
                 </div>
               </div>
@@ -1628,8 +1743,12 @@ const Orders: React.FC = () => {
                     </td>
                     <td>
                       <div className="shipping-details-cell">
-                        <div>{order.city || 'N/A'}, {order.state || 'N/A'}</div>
-                        <div>PIN: {order.pin || 'N/A'}</div>
+                        <div className="shipping-name">{order.customerName || 'N/A'}</div>
+                        <div className="shipping-phone">{order.customerPhone || 'N/A'}</div>
+                        <div className="shipping-address">{order.customerAddress || 'N/A'}</div>
+                        <div className="shipping-location">
+                          {[order.city, order.state, order.pin].filter(Boolean).join(', ') || 'N/A'}
+                        </div>
                       </div>
                     </td>
                     <td>
@@ -1647,13 +1766,18 @@ const Orders: React.FC = () => {
                                 🚫 Cancelled
                               </span>
                             )}
-                            <button 
-                              className="copy-awb-btn" 
+                            <button
+                              className="copy-awb-btn"
                               title="Copy AWB"
                               onClick={() => {
                                 if (order.awb) {
                                   navigator.clipboard.writeText(order.awb);
-                                  alert('AWB copied to clipboard!');
+                                  // Show toast notification instead of alert
+                                  const toast = document.createElement('div');
+                                  toast.className = 'copy-toast';
+                                  toast.textContent = 'Copied successfully';
+                                  document.body.appendChild(toast);
+                                  setTimeout(() => toast.remove(), 2000);
                                 }
                               }}
                             >
@@ -1750,10 +1874,11 @@ const Orders: React.FC = () => {
                         
                         {/* Edit button - only visible for NEW status orders (without AWB) */}
                         {order.status === 'new' && !order.awb && (
-                          <button 
-                            className="action-icon-btn edit-btn" 
-                            onClick={() => handleEditOrder(order.orderId)}
-                          ></button>
+                          <button
+                            className="action-icon-btn edit-btn"
+                            onClick={() => handleEditOrder(order._id)}
+                            title="Edit Order"
+                          >Edit</button>
                         )}
                         
                         {/* Track button - only visible if AWB exists */}
@@ -1765,11 +1890,76 @@ const Orders: React.FC = () => {
                         )}
                         
                         {/* Print button - always visible to print all order details */}
-                        <button 
-                          className="action-icon-btn print-btn" 
+                        <button
+                          className="action-icon-btn print-btn"
                           onClick={() => handlePrintLabel(order.orderId, order._id, order.awb)}
                           title="Print Order Details"
                         ></button>
+
+                        {/* Additional Action Buttons for Delivered Tab */}
+                        {(activeTab === 'delivered' || order.status === 'delivered') && (
+                          <>
+                            <button
+                              className="action-btn label-btn"
+                              onClick={() => handlePrintLabel(order.orderId, order._id, order.awb)}
+                              title="Print Label"
+                            >
+                              Label
+                            </button>
+                            <button
+                              className="action-btn invoice-btn"
+                              onClick={() => handlePrintLabel(order.orderId, order._id, order.awb)}
+                              title="Print Invoice"
+                            >
+                              Invoice
+                            </button>
+                            <button
+                              className="action-btn need-help-btn"
+                              onClick={() => navigate(`/support?orderId=${order.orderId}`)}
+                              title="Need Help"
+                            >
+                              Need Help
+                            </button>
+                            <button
+                              className="action-btn return-order-btn"
+                              onClick={() => {
+                                if (window.confirm('Are you sure you want to initiate a return for this order?')) {
+                                  // Return order logic can be implemented here
+                                  alert('Return request initiated for order: ' + order.orderId);
+                                }
+                              }}
+                              title="Return Order"
+                            >
+                              Return Order
+                            </button>
+                          </>
+                        )}
+
+                        {/* Need Help and Return Order buttons for In Transit and Out for Delivery */}
+                        {['in_transit', 'out_for_delivery'].includes(activeTab) && (
+                          <>
+                            <button
+                              className="action-btn need-help-btn"
+                              onClick={() => navigate(`/support?orderId=${order.orderId}`)}
+                              title="Need Help"
+                            >
+                              Need Help
+                            </button>
+                            {activeTab === 'in_transit' && (
+                              <button
+                                className="action-btn return-order-btn"
+                                onClick={() => {
+                                  if (window.confirm('Are you sure you want to initiate a return for this order?')) {
+                                    alert('Return request initiated for order: ' + order.orderId);
+                                  }
+                                }}
+                                title="Return Order"
+                              >
+                                Return Order
+                              </button>
+                            )}
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -2013,6 +2203,7 @@ const Orders: React.FC = () => {
           onBulkPickup={handleBulkPickup}
           onBulkCancel={handleBulkCancel}
           onBulkLabel={handleBulkLabel}
+          onBulkNeedHelp={handleBulkNeedHelp}
           onClearSelection={handleClearSelection}
         />
       )}

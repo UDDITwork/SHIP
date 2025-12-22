@@ -42,12 +42,58 @@ const Dashboard: React.FC = () => {
       endDate: endDate.toISOString().split('T')[0]
     };
   };
-  
+
+  // Date preset options
+  type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'custom';
+
+  const getDateRangeForPreset = (preset: DatePreset): { startDate: string; endDate: string } => {
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+
+    switch (preset) {
+      case 'today': {
+        return { startDate: todayStr, endDate: todayStr };
+      }
+      case 'yesterday': {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        return { startDate: yesterdayStr, endDate: yesterdayStr };
+      }
+      case 'last7days': {
+        const last7 = new Date(today);
+        last7.setDate(last7.getDate() - 7);
+        return { startDate: last7.toISOString().split('T')[0], endDate: todayStr };
+      }
+      case 'last30days': {
+        const last30 = new Date(today);
+        last30.setDate(last30.getDate() - 30);
+        return { startDate: last30.toISOString().split('T')[0], endDate: todayStr };
+      }
+      case 'thisMonth': {
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        return { startDate: firstDayOfMonth.toISOString().split('T')[0], endDate: todayStr };
+      }
+      case 'lastMonth': {
+        const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+        return {
+          startDate: firstDayLastMonth.toISOString().split('T')[0],
+          endDate: lastDayLastMonth.toISOString().split('T')[0]
+        };
+      }
+      case 'custom':
+      default:
+        return getDefaultDateRange();
+    }
+  };
+
   const defaultRange = getDefaultDateRange();
   const [dateFilter, setDateFilter] = useState({
     startDate: defaultRange.startDate,
     endDate: defaultRange.endDate
   });
+  const [selectedPreset, setSelectedPreset] = useState<DatePreset>('last30days');
   const [showDatePicker, setShowDatePicker] = useState(false);
   
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -309,17 +355,31 @@ const Dashboard: React.FC = () => {
   };
 
   // Handle date filter change
-  const handleDateFilterChange = (startDate: string, endDate: string) => {
+  const handleDateFilterChange = (startDate: string, endDate: string, preset?: DatePreset) => {
     setDateFilter({ startDate, endDate });
+    if (preset) {
+      setSelectedPreset(preset);
+    }
     setShowDatePicker(false);
     // Refresh dashboard data with new date range
     fetchAllDashboardData(false, { startDate, endDate });
   };
 
+  // Handle preset selection
+  const handlePresetSelect = (preset: DatePreset) => {
+    if (preset === 'custom') {
+      setSelectedPreset('custom');
+      // Keep date picker open for custom selection
+      return;
+    }
+    const range = getDateRangeForPreset(preset);
+    handleDateFilterChange(range.startDate, range.endDate, preset);
+  };
+
   // Reset date filter to default (last 30 days)
   const handleResetDateFilter = () => {
     const defaultRange = getDefaultDateRange();
-    handleDateFilterChange(defaultRange.startDate, defaultRange.endDate);
+    handleDateFilterChange(defaultRange.startDate, defaultRange.endDate, 'last30days');
   };
 
   // Close date picker when clicking outside
@@ -450,11 +510,49 @@ const Dashboard: React.FC = () => {
               <div className="date-picker-dropdown">
                 <div className="date-picker-header">
                   <h3>Select Date Range</h3>
-                  <button 
-                    className="close-date-picker" 
+                  <button
+                    className="close-date-picker"
                     onClick={() => setShowDatePicker(false)}
                   >
                     ×
+                  </button>
+                </div>
+                <div className="date-presets">
+                  <button
+                    className={`preset-btn ${selectedPreset === 'today' ? 'active' : ''}`}
+                    onClick={() => handlePresetSelect('today')}
+                  >
+                    Today
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedPreset === 'yesterday' ? 'active' : ''}`}
+                    onClick={() => handlePresetSelect('yesterday')}
+                  >
+                    Yesterday
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedPreset === 'last7days' ? 'active' : ''}`}
+                    onClick={() => handlePresetSelect('last7days')}
+                  >
+                    This Week
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedPreset === 'last30days' ? 'active' : ''}`}
+                    onClick={() => handlePresetSelect('last30days')}
+                  >
+                    Last Week
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedPreset === 'thisMonth' ? 'active' : ''}`}
+                    onClick={() => handlePresetSelect('thisMonth')}
+                  >
+                    This Month
+                  </button>
+                  <button
+                    className={`preset-btn ${selectedPreset === 'lastMonth' ? 'active' : ''}`}
+                    onClick={() => handlePresetSelect('lastMonth')}
+                  >
+                    Last Month
                   </button>
                 </div>
                 <div className="date-picker-body">
@@ -464,7 +562,10 @@ const Dashboard: React.FC = () => {
                       type="date"
                       value={dateFilter.startDate}
                       max={dateFilter.endDate}
-                      onChange={(e) => setDateFilter({ ...dateFilter, startDate: e.target.value })}
+                      onChange={(e) => {
+                        setDateFilter({ ...dateFilter, startDate: e.target.value });
+                        setSelectedPreset('custom');
+                      }}
                     />
                   </div>
                   <div className="date-input-group">
@@ -474,22 +575,31 @@ const Dashboard: React.FC = () => {
                       value={dateFilter.endDate}
                       min={dateFilter.startDate}
                       max={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => setDateFilter({ ...dateFilter, endDate: e.target.value })}
+                      onChange={(e) => {
+                        setDateFilter({ ...dateFilter, endDate: e.target.value });
+                        setSelectedPreset('custom');
+                      }}
                     />
                   </div>
                 </div>
                 <div className="date-picker-footer">
-                  <button 
-                    className="apply-date-filter-btn"
-                    onClick={() => handleDateFilterChange(dateFilter.startDate, dateFilter.endDate)}
-                  >
-                    Apply Filter
-                  </button>
-                  <button 
+                  <button
                     className="reset-date-filter-btn"
                     onClick={handleResetDateFilter}
                   >
-                    Reset (Last 30 Days)
+                    Reset
+                  </button>
+                  <button
+                    className="cancel-date-filter-btn"
+                    onClick={() => setShowDatePicker(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    className="apply-date-filter-btn"
+                    onClick={() => handleDateFilterChange(dateFilter.startDate, dateFilter.endDate, 'custom')}
+                  >
+                    Apply
                   </button>
                 </div>
               </div>
@@ -585,31 +695,31 @@ const Dashboard: React.FC = () => {
                 <h2>Shipment Status</h2>
               </div>
               <div className="status-grid">
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=all')}>
                   <div className="status-value">{dashboardData?.shipmentStatus?.totalOrder || 0}</div>
                   <div className="status-label">Total Order</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=new')}>
                   <div className="status-value">{dashboardData?.shipmentStatus?.newOrder || 0}</div>
                   <div className="status-label">New Order</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=pickups_manifests')}>
                   <div className="status-value">{dashboardData?.shipmentStatus?.pickupPending || 0}</div>
                   <div className="status-label">Pickup Pending</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=in_transit')}>
                   <div className="status-value">{dashboardData?.shipmentStatus?.inTransit || 0}</div>
                   <div className="status-label">In Transit</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=delivered')}>
                   <div className="status-value">{dashboardData?.shipmentStatus?.delivered || 0}</div>
                   <div className="status-label">Delivered</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=ndr')}>
                   <div className="status-value">{dashboardData?.shipmentStatus?.ndrPending || 0}</div>
                   <div className="status-label">NDR Pending</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=rto')}>
                   <div className="status-value">{dashboardData?.shipmentStatus?.rto || 0}</div>
                   <div className="status-label">RTO</div>
                 </div>
@@ -622,31 +732,31 @@ const Dashboard: React.FC = () => {
                 <h2>NDR Status</h2>
               </div>
               <div className="status-grid">
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=ndr')}>
                   <div className="status-value">{ndrStatus?.total_ndr || 0}</div>
                   <div className="status-label">Total NDR</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=ndr&filter=reattempt')}>
                   <div className="status-value">{ndrStatus?.new_reattempt || 0}</div>
                   <div className="status-label">Your Reattempt</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=ndr&filter=buyer_reattempt')}>
                   <div className="status-value">{ndrStatus?.buyer_reattempt || 0}</div>
                   <div className="status-label">Buyer Reattempt</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=ndr&filter=delivered')}>
                   <div className="status-value">{ndrStatus?.ndr_delivered || 0}</div>
                   <div className="status-label">NDR Delivered</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=ndr&filter=undelivered')}>
                   <div className="status-value">{ndrStatus?.ndr_undelivered || 0}</div>
                   <div className="status-label">NDR Undelivered</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=rto&filter=transit')}>
                   <div className="status-value">{ndrStatus?.rto_transit || 0}</div>
                   <div className="status-label">RTO Transit</div>
                 </div>
-                <div className="status-box">
+                <div className="status-box" onClick={() => navigate('/orders?status=rto&filter=delivered')}>
                   <div className="status-value">{ndrStatus?.rto_delivered || 0}</div>
                   <div className="status-label">RTO Delivered</div>
                 </div>
@@ -659,15 +769,15 @@ const Dashboard: React.FC = () => {
                 <h2>COD Status</h2>
               </div>
               <div className="cod-grid">
-                <div className="cod-box">
+                <div className="cod-box" onClick={() => navigate('/billing?filter=cod')}>
                   <div className="cod-value">₹{codStatus?.total_cod || 0}</div>
                   <div className="cod-label">Total COD</div>
                 </div>
-                <div className="cod-box">
+                <div className="cod-box" onClick={() => navigate('/billing?filter=cod_remitted')}>
                   <div className="cod-value">₹{codStatus?.last_cod_remitted || 0}</div>
                   <div className="cod-label">Last COD Remitted</div>
                 </div>
-                <div className="cod-box">
+                <div className="cod-box" onClick={() => navigate('/billing?filter=cod_available')}>
                   <div className="cod-value">₹{codStatus?.next_cod_available || 0}</div>
                   <div className="cod-label">Next COD Available</div>
                 </div>

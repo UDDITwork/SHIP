@@ -11,6 +11,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
+import OrderDetails from './pages/OrderDetails';
 import Packages from './pages/Packages';
 import NDR from './pages/NDR';
 import Support from './pages/Support';
@@ -113,13 +114,21 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/orders/assign-courier/:orderId" 
+            <Route
+              path="/orders/:orderId"
+              element={
+                <ProtectedRoute>
+                  <OrderDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders/assign-courier/:orderId"
               element={
                 <ProtectedRoute>
                   <AssignCourier />
                 </ProtectedRoute>
-              } 
+              }
             />
             <Route 
               path="/customers" 

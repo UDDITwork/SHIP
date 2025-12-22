@@ -47,6 +47,30 @@
   background-color: #e9ecef;
 }
 
+/* Copy Toast Notification */
+.copy-toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #002B59;
+  color: #FFFFFF;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  z-index: 10000;
+  animation: fadeInOut 2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes fadeInOut {
+  0% { opacity: 0; transform: translate(-50%, 20px); }
+  20% { opacity: 1; transform: translate(-50%, 0); }
+  80% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
+}
+
 .no-awb {
   padding: 8px;
   text-align: center;
@@ -325,6 +349,60 @@
   .close-btn:hover {
     background-color: #E9ECEF;
     color: #495057;
+  }
+
+  /* Date Presets */
+  .date-presets {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px 15px;
+    border-bottom: 1px solid #E0E0E0;
+    background-color: #F8F9FA;
+  }
+
+  .preset-btn {
+    padding: 6px 12px;
+    border: 1px solid #E0E0E0;
+    border-radius: 16px;
+    background-color: #FFFFFF;
+    color: #495057;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .preset-btn:hover {
+    border-color: #002B59;
+    color: #002B59;
+  }
+
+  .preset-btn.active {
+    background-color: #002B59;
+    color: #FFFFFF;
+    border-color: #002B59;
+  }
+
+  .cancel-btn {
+    padding: 6px 14px;
+    border-radius: 20px !important;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 1px solid #E0E0E0;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #FFFFFF;
+    color: #495057;
+  }
+
+  .cancel-btn:hover {
+    background-color: #F5F5F5;
+    border-color: #CCCCCC;
   }
 
   .date-inputs {
@@ -1163,10 +1241,40 @@
     flex-direction: column;
     gap: 5px;
   }
-  
+
   .order-details-cell div:first-child {
     font-weight: 700;
     color: #002B59;
+  }
+
+  /* Shipping Details Cell - Enhanced styles for complete address display */
+  .shipping-details-cell {
+    max-width: 250px;
+  }
+
+  .shipping-details-cell .shipping-name {
+    font-weight: 600;
+    color: #002B59;
+    font-size: 13px;
+  }
+
+  .shipping-details-cell .shipping-phone {
+    font-size: 12px;
+    color: #495057;
+    font-weight: 500;
+  }
+
+  .shipping-details-cell .shipping-address {
+    font-size: 11px;
+    color: #6c757d;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+
+  .shipping-details-cell .shipping-location {
+    font-size: 11px;
+    color: #6c757d;
+    font-weight: 500;
   }
   
   .payment-cell {
@@ -1261,6 +1369,63 @@
     background-color: white !important;
     border: 2px solid #000000 !important;
     color: #000000 !important;
+  }
+
+  /* Additional Action Buttons for Delivered, In Transit, Out for Delivery tabs */
+  .label-btn,
+  .invoice-btn,
+  .need-help-btn,
+  .return-order-btn {
+    font-weight: 600;
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+
+  .label-btn {
+    background-color: #E3F2FD !important;
+    border: 1px solid #1976D2 !important;
+    color: #1976D2 !important;
+  }
+
+  .label-btn:hover {
+    background-color: #1976D2 !important;
+    color: #FFFFFF !important;
+  }
+
+  .invoice-btn {
+    background-color: #E8F5E9 !important;
+    border: 1px solid #388E3C !important;
+    color: #388E3C !important;
+  }
+
+  .invoice-btn:hover {
+    background-color: #388E3C !important;
+    color: #FFFFFF !important;
+  }
+
+  .need-help-btn {
+    background-color: #FFF3E0 !important;
+    border: 1px solid #F57C00 !important;
+    color: #F57C00 !important;
+  }
+
+  .need-help-btn:hover {
+    background-color: #F57C00 !important;
+    color: #FFFFFF !important;
+  }
+
+  .return-order-btn {
+    background-color: #FFEBEE !important;
+    border: 1px solid #C62828 !important;
+    color: #C62828 !important;
+  }
+
+  .return-order-btn:hover {
+    background-color: #C62828 !important;
+    color: #FFFFFF !important;
   }
 
   /* Action icon buttons in orders table */
