@@ -432,11 +432,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/ndr', icon: '📦', label: 'NDR', svgIcon: group10Icon },
     {
       id: 'tools',
-      path: '/tools',
       icon: '🔧',
       label: 'Tools',
       svgIcon: vectorIcon,
       children: [
+        { path: '/tools', icon: '🔧', label: 'Tools', svgIcon: null },
         { path: '/rate-calculator', icon: '🧮', label: 'Rate Calculator', svgIcon: null },
         { path: '/packages', icon: '📦', label: 'Packages', svgIcon: null },
         { path: '/weight-discrepancies', icon: '⚖️', label: 'Weight Discrepancies', svgIcon: null },
@@ -444,11 +444,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     },
     {
       id: 'billing',
-      path: '/billing',
       icon: '💳',
       label: 'Billing',
       svgIcon: group1BillingIcon,
       children: [
+        { path: '/billing', icon: '💳', label: 'Billing', svgIcon: null },
         { path: '/invoices', icon: '📄', label: 'Invoices', svgIcon: null },
         { path: '/remittances', icon: '', label: 'Remittance', svgIcon: '/money.svg' },
       ]
@@ -458,11 +458,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     { path: '/support', icon: '🎧', label: 'Support', svgIcon: vector2Icon },
     {
       id: 'settings',
-      path: '/settings',
       icon: '⚙️',
       label: 'Setting',
       svgIcon: group3Icon,
       children: [
+        { path: '/settings', icon: '👤', label: 'Profile', svgIcon: null },
         { path: '/settings/manage-label', icon: '🏷️', label: 'Manage Label', svgIcon: null },
       ]
     },
@@ -654,9 +654,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div key={item.path || item.id} className="sidebar-menu-item">
                 {item.children ? (
                   <>
-                    {/* Parent menu item with children - clicking navigates to parent page AND toggles submenu */}
-                    <Link
-                      to={item.path!}
+                    {/* Parent menu item with children - clicking just toggles submenu */}
+                    <div
                       className={`sidebar-item sidebar-parent ${isMenuActive(item) ? 'active-parent' : ''} ${expandedMenus[item.id!] ? 'expanded' : ''}`}
                       onClick={() => {
                         // Toggle this menu, collapse others
@@ -666,6 +665,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           settings: item.id === 'settings' ? !prev.settings : false,
                         }));
                       }}
+                      style={{ cursor: 'pointer' }}
                     >
                       <span className="sidebar-icon">
                         {item.svgIcon ? (
@@ -680,7 +680,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       >
                         &#9660;
                       </span>
-                    </Link>
+                    </div>
                     {/* Child menu items */}
                     <div className={`sidebar-children ${expandedMenus[item.id!] ? 'expanded' : ''}`}>
                       {item.children.map((child) => (
