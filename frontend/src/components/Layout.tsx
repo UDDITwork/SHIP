@@ -19,6 +19,15 @@ import vector1Icon from '../SIDEBARVECTORS/Vector (1).svg';
 import vector2Icon from '../SIDEBARVECTORS/Vector (2).svg';
 import group3Icon from '../SIDEBARVECTORS/Group (3).svg';
 import searchIcon from '../SIDEBARVECTORS/search.svg';
+// Submenu icons
+import calculatorIcon from '../SIDEBARVECTORS/calculator.svg';
+import packageIcon from '../SIDEBARVECTORS/package.svg';
+import scaleIcon from '../SIDEBARVECTORS/scale.svg';
+import invoiceIcon from '../SIDEBARVECTORS/invoice.svg';
+import profileIcon from '../SIDEBARVECTORS/profile.svg';
+import labelIcon from '../SIDEBARVECTORS/label.svg';
+import toolsWrenchIcon from '../SIDEBARVECTORS/tools-wrench.svg';
+import billingWalletIcon from '../SIDEBARVECTORS/billing-wallet.svg';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -436,10 +445,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: 'Tools',
       svgIcon: vectorIcon,
       children: [
-        { path: '/tools', icon: '🔧', label: 'Tools', svgIcon: null },
-        { path: '/rate-calculator', icon: '🧮', label: 'Rate Calculator', svgIcon: null },
-        { path: '/packages', icon: '📦', label: 'Packages', svgIcon: null },
-        { path: '/weight-discrepancies', icon: '⚖️', label: 'Weight Discrepancies', svgIcon: null },
+        { path: '/tools', icon: '🔧', label: 'Tools', svgIcon: toolsWrenchIcon },
+        { path: '/rate-calculator', icon: '🧮', label: 'Rate Calculator', svgIcon: calculatorIcon },
+        { path: '/packages', icon: '📦', label: 'Packages', svgIcon: packageIcon },
+        { path: '/weight-discrepancies', icon: '⚖️', label: 'Weight Discrepancies', svgIcon: scaleIcon },
       ]
     },
     {
@@ -448,8 +457,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: 'Billing',
       svgIcon: group1BillingIcon,
       children: [
-        { path: '/billing', icon: '💳', label: 'Billing', svgIcon: null },
-        { path: '/invoices', icon: '📄', label: 'Invoices', svgIcon: null },
+        { path: '/billing', icon: '💳', label: 'Billing', svgIcon: billingWalletIcon },
+        { path: '/invoices', icon: '📄', label: 'Invoices', svgIcon: invoiceIcon },
         { path: '/remittances', icon: '', label: 'Remittance', svgIcon: '/money.svg' },
       ]
     },
@@ -462,8 +471,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: 'Setting',
       svgIcon: group3Icon,
       children: [
-        { path: '/settings', icon: '👤', label: 'Profile', svgIcon: null },
-        { path: '/settings/manage-label', icon: '🏷️', label: 'Manage Label', svgIcon: null },
+        { path: '/settings', icon: '👤', label: 'Profile', svgIcon: profileIcon },
+        { path: '/settings/manage-label', icon: '🏷️', label: 'Manage Label', svgIcon: labelIcon },
       ]
     },
   ];
