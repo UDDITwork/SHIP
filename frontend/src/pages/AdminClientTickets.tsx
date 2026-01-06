@@ -4,6 +4,32 @@ import { ArrowLeft, MessageSquare, Phone, Mail, Building, Filter, Search, Send, 
 import { adminService, AdminTicket, AdminClient } from '../services/adminService';
 import './AdminClientTickets.css';
 
+// Format date in DD/MM/YYYY format
+const formatDate = (dateString: string | undefined | null): string => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'N/A';
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
+// Format date with time in DD/MM/YYYY, HH:MM AM/PM format
+const formatDateTime = (dateString: string | undefined | null): string => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'N/A';
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  const hours = date.getHours();
+  const minutes = date.getMinutes().toString().padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12;
+  return `${day}/${month}/${year}, ${hour12}:${minutes} ${ampm}`;
+};
+
 const AdminClientTickets: React.FC = () => {
   const { clientId, ticketId } = useParams<{ clientId: string; ticketId?: string }>();
   const navigate = useNavigate();
@@ -555,7 +581,7 @@ const AdminClientTickets: React.FC = () => {
                     <div className="ticket-subject">{ticket.subject || 'No subject'}</div>
                     <div className="ticket-meta">
                       <span className="ticket-date">
-                        {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : 'Unknown date'}
+                        {formatDate(ticket.created_at)}
                       </span>
                       {ticket.category && (
                         <span className="ticket-category">{ticket.category}</span>
@@ -613,9 +639,9 @@ const AdminClientTickets: React.FC = () => {
                       )}
                     </div>
                     <div className="ticket-detail-dates">
-                      <span>Created: {selectedTicket.created_at ? new Date(selectedTicket.created_at).toLocaleString() : 'Unknown'}</span>
+                      <span>Created: {formatDateTime(selectedTicket.created_at)}</span>
                       {selectedTicket.updated_at && (
-                        <span>Updated: {new Date(selectedTicket.updated_at).toLocaleString()}</span>
+                        <span>Updated: {formatDateTime(selectedTicket.updated_at)}</span>
                       )}
                       {selectedTicket.assignment_info?.assigned_by_staff && (
                         <span className="staff-label">Assigned by: <span className="staff-badge">{selectedTicket.assignment_info.assigned_by_staff}</span></span>
@@ -672,7 +698,7 @@ const AdminClientTickets: React.FC = () => {
                               <span className="staff-badge" title="Staff member">{message.staff_name}</span>
                             )}
                             <span className="message-time">
-                              {message.timestamp ? new Date(message.timestamp).toLocaleString() : 'Unknown time'}
+                              {formatDateTime(message.timestamp)}
                             </span>
                             {message.is_internal && (
                               <span className="internal-badge">Internal</span>

@@ -377,17 +377,17 @@ const Billing: React.FC = () => {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     // Check if today
     if (date.toDateString() === today.toDateString()) {
       return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, Today ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
     }
-    
+
     // Check if yesterday
     if (date.toDateString() === yesterday.toDateString()) {
       return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, Yesterday ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
     }
-    
+
     // Other dates
     return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
   };
@@ -403,7 +403,7 @@ const Billing: React.FC = () => {
     const today = new Date();
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(today.getDate() - 7);
-    
+
     setDateFrom(sevenDaysAgo.toISOString().split('T')[0]);
     setDateTo(today.toISOString().split('T')[0]);
   };
@@ -430,7 +430,7 @@ const Billing: React.FC = () => {
               <div className="summary-card-value green">₹{summary.current_balance.toFixed(2)}</div>
             </div>
           </div>
-          
+
           <div className="summary-card total-credits">
             <div className="summary-card-icon">💵</div>
             <div className="summary-card-content">
@@ -438,7 +438,7 @@ const Billing: React.FC = () => {
               <div className="summary-card-value">₹{summary.total_credits.toFixed(2)}</div>
             </div>
           </div>
-          
+
           <div className="summary-card total-debits">
             <div className="summary-card-icon">💸</div>
             <div className="summary-card-content">
@@ -576,7 +576,7 @@ const Billing: React.FC = () => {
               className="filter-input"
             />
           </div>
-          
+
           <div className="filter-group date-range-group">
             <label>Date Range</label>
             <div className="date-range-inputs">
@@ -596,7 +596,7 @@ const Billing: React.FC = () => {
               />
             </div>
           </div>
-          
+
           <div className="filter-group">
             <label>Transaction Type</label>
             <select
@@ -609,7 +609,7 @@ const Billing: React.FC = () => {
               <option value="debit">Debit</option>
             </select>
           </div>
-          
+
           <div className="filter-group">
             <label>Account Name</label>
             <select className="filter-select">
@@ -708,7 +708,7 @@ const Billing: React.FC = () => {
             <div className="pagination-info">
               Showing {((page - 1) * limit) + 1} - {Math.min(page * limit, totalCount)} of {totalCount}
             </div>
-            
+
             <div className="pagination-per-page">
               <label>Show</label>
               <select
@@ -723,7 +723,7 @@ const Billing: React.FC = () => {
               </select>
               <span>per page</span>
             </div>
-            
+
             <div className="pagination-nav">
               <button
                 className="pagination-btn"
@@ -732,7 +732,7 @@ const Billing: React.FC = () => {
               >
                 ←
               </button>
-              
+
               {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                 let pageNum: number;
                 if (totalPages <= 5) {
@@ -754,7 +754,7 @@ const Billing: React.FC = () => {
                   </button>
                 );
               })}
-              
+
               <button
                 className="pagination-btn"
                 onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}

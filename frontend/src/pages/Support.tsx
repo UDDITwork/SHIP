@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import { ticketService, Ticket, TicketStatusCounts, TicketFilters } from '../services/ticketService';
 import './Support.css';
@@ -45,6 +45,17 @@ const formatStatusLabel = (status: string) => {
     .join(' ');
 };
 
+// Format date in DD/MM/YYYY format
+const formatDate = (dateString: string | undefined) => {
+  if (!dateString) return 'N/A';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return 'N/A';
+  const day = date.getDate().toString().padStart(2, '0');
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const year = date.getFullYear();
+  return `${day}/${month}/${year}`;
+};
+
 const getStatusCount = (counts: ClientStatusCounts, status: TicketStatus) => {
   if (status === 'all') {
     return counts.all;
@@ -59,6 +70,20 @@ const Support: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  // Toast notification state
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
+    show: false,
+    message: '',
+    type: 'success'
+  });
+
+  // Show toast helper
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
+  };
 
   // Form state
   const [selectedCategory, setSelectedCategory] = useState('');
@@ -134,6 +159,9 @@ const Support: React.FC = () => {
   // Check if current category requires AWB
   const requiresAWB = selectedCategory && categoriesRequiringAWB.includes(selectedCategory);
 
+  // Ref for dropdown click-outside detection
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
   // Reset AWB numbers and adjust form when category changes
   useEffect(() => {
     // Clear AWB numbers if switching to a category that doesn't require it
@@ -141,6 +169,23 @@ const Support: React.FC = () => {
       setAwbNumbers('');
     }
   }, [requiresAWB, awbNumbers]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setShowCategoryDropdown(false);
+      }
+    };
+
+    if (showCategoryDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showCategoryDropdown]);
 
   const fetchTickets = useCallback(async () => {
     setLoading(true);
@@ -153,7 +198,9 @@ const Support: React.FC = () => {
       setTickets(response.tickets);
     } catch (error) {
       console.error('Error fetching tickets:', error);
-      alert('Failed to fetch tickets');
+      // Use setToast directly to avoid stale closure
+      setToast({ show: true, message: 'Failed to fetch tickets', type: 'error' });
+      setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 4000);
     } finally {
       setLoading(false);
     }
@@ -214,7 +261,7 @@ const Support: React.FC = () => {
       });
 
       if (invalidFiles.length > 0) {
-        alert('Some files exceed the size limit:\nImage: 2MB, Audio/Video/Document: 5MB');
+        showToast('Some files exceed the size limit: Image: 2MB, Audio/Video/Document: 5MB', 'error');
         return;
       }
 
@@ -230,29 +277,29 @@ const Support: React.FC = () => {
     e.preventDefault();
 
     if (!selectedCategory) {
-      alert('Please select a category');
+      showToast('Please select a category', 'error');
       return;
     }
 
     if (!comment.trim()) {
-      alert('Please enter a detailed description of your query');
+      showToast('Please enter a detailed description of your query', 'error');
       return;
     }
 
     // Only validate AWB if category requires it
     if (requiresAWB) {
       if (!awbNumbers.trim()) {
-        alert('Please enter at least one AWB number for this category');
+        showToast('Please enter at least one AWB number for this category', 'error');
         return;
       }
-      
+
       const awbArray = awbNumbers.split(',').map(s => s.trim()).filter(Boolean);
       if (awbArray.length === 0) {
-        alert('Please enter at least one valid AWB number');
+        showToast('Please enter at least one valid AWB number', 'error');
         return;
       }
       if (awbArray.length > 10) {
-        alert('Maximum 10 AWB numbers allowed');
+        showToast('Maximum 10 AWB numbers allowed', 'error');
         return;
       }
     }
@@ -276,8 +323,8 @@ const Support: React.FC = () => {
       }
       
       await ticketService.createTicket(ticketData);
-      
-      alert('Ticket created successfully!');
+
+      showToast('Ticket created successfully!', 'success');
       setShowCreateModal(false);
       resetForm();
       fetchTickets();
@@ -286,9 +333,9 @@ const Support: React.FC = () => {
     } catch (error: any) {
       console.error('Error creating ticket:', error);
       // Show specific error message if available
-      let errorMessage = error.response?.data?.message || 
+      let errorMessage = error.response?.data?.message ||
                          (Array.isArray(error.response?.data?.errors) && error.response?.data?.errors?.[0]?.msg) ||
-                         error.message || 
+                         error.message ||
                          'Failed to create ticket. Please try again.';
 
       if (error.code === 'ECONNABORTED') {
@@ -297,7 +344,7 @@ const Support: React.FC = () => {
         errorMessage = 'Unable to reach the server. Check your internet connection and try again.';
       }
 
-      alert(errorMessage);
+      showToast(errorMessage, 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -308,10 +355,20 @@ const Support: React.FC = () => {
     setAwbNumbers('');
     setComment('');
     setSelectedFiles([]);
+    setShowCategoryDropdown(false);
   };
 
   return (
     <Layout>
+      {/* Toast Notification */}
+      {toast.show && (
+        <div className={`toast-notification ${toast.type}`}>
+          <span className="toast-icon">{toast.type === 'success' ? '✓' : '✕'}</span>
+          <span className="toast-message">{toast.message}</span>
+          <button className="toast-close" onClick={() => setToast({ ...toast, show: false })}>×</button>
+        </div>
+      )}
+
       <div className="support-container">
         {/* Support Header */}
         <div className="support-header">
@@ -411,8 +468,8 @@ const Support: React.FC = () => {
                             {formatStatusLabel(ticket.status)}
                           </span>
                         </td>
-                        <td>{(ticket.createdAt || ticket.created_at) ? new Date(ticket.createdAt || ticket.created_at || '').toLocaleDateString() : 'N/A'}</td>
-                        <td>{(ticket.updatedAt || ticket.updated_at) ? new Date(ticket.updatedAt || ticket.updated_at || '').toLocaleDateString() : 'N/A'}</td>
+                        <td>{formatDate(ticket.createdAt || ticket.created_at)}</td>
+                        <td>{formatDate(ticket.updatedAt || ticket.updated_at)}</td>
                         <td>
                           <button 
                             className="action-btn" 
@@ -439,46 +496,58 @@ const Support: React.FC = () => {
 
         {/* Create Ticket Modal */}
         {showCreateModal && (
-          <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
+          <div className="modal-overlay" onClick={() => { setShowCreateModal(false); setShowCategoryDropdown(false); }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Raise Ticket</h2>
-                <button className="close-btn" onClick={() => setShowCreateModal(false)}>×</button>
+                <button className="close-btn" onClick={() => { setShowCreateModal(false); setShowCategoryDropdown(false); }}>×</button>
               </div>
 
               <form className="ticket-form" onSubmit={handleSubmit}>
-                {/* Category Selection */}
+                {/* Category Selection - Custom Dropdown with Descriptions */}
                 <div className="form-group">
                   <label>
                     Select Category <span style={{ color: '#FF0000' }}>*</span>
                   </label>
-                  <select
-                    value={selectedCategory}
-                    onChange={(e) => {
-                      setSelectedCategory(e.target.value);
-                      // Reset AWB numbers when category changes to one that doesn't require it
-                      const newRequiresAWB = e.target.value && categoriesRequiringAWB.includes(e.target.value);
-                      if (!newRequiresAWB) {
-                        setAwbNumbers(''); // Clear AWB if category doesn't require it
-                      }
-                    }}
-                    required
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(cat => (
-                      <option key={cat.value} value={cat.value}>
-                        {cat.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Category Description */}
-                {selectedCategory && (
-                  <div className="category-description">
-                    {categories.find(c => c.value === selectedCategory)?.description}
+                  <div className="custom-category-dropdown" ref={dropdownRef}>
+                    <div
+                      className={`category-dropdown-trigger ${showCategoryDropdown ? 'open' : ''}`}
+                      onClick={() => setShowCategoryDropdown(!showCategoryDropdown)}
+                    >
+                      {selectedCategory ? (
+                        <div className="selected-category-display">
+                          <span className="selected-label">{categories.find(c => c.value === selectedCategory)?.label}</span>
+                          <span className="selected-desc">{categories.find(c => c.value === selectedCategory)?.description}</span>
+                        </div>
+                      ) : (
+                        <span className="placeholder-text">Select Category</span>
+                      )}
+                      <span className="dropdown-arrow">{showCategoryDropdown ? '▲' : '▼'}</span>
+                    </div>
+                    {showCategoryDropdown && (
+                      <div className="category-dropdown-menu">
+                        {categories.map(cat => (
+                          <div
+                            key={cat.value}
+                            className={`category-dropdown-item ${selectedCategory === cat.value ? 'selected' : ''}`}
+                            onClick={() => {
+                              setSelectedCategory(cat.value);
+                              setShowCategoryDropdown(false);
+                              // Reset AWB numbers when category changes to one that doesn't require it
+                              const newRequiresAWB = cat.value && categoriesRequiringAWB.includes(cat.value);
+                              if (!newRequiresAWB) {
+                                setAwbNumbers('');
+                              }
+                            }}
+                          >
+                            <span className="item-label">{cat.label}</span>
+                            <span className="item-description">{cat.description}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
 
                 {/* AWB Numbers - Only show for categories that require it */}
                 {requiresAWB && (

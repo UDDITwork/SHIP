@@ -509,16 +509,16 @@
   .wallet-summary-cards {
     grid-template-columns: 1fr;
   }
-  
+
   .filters-section {
     flex-direction: column;
     align-items: stretch;
   }
-  
+
   .filter-group {
     width: 100%;
   }
-  
+
   .pagination-section {
     flex-direction: column;
     align-items: stretch;

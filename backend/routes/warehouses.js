@@ -612,9 +612,61 @@ router.put('/:id', auth, [
       if (addr?.state) parts.push(addr.state);
       addressString = parts.join(', ');
     }
-    
+
     if (addressString) {
       delhiveryUpdateData.address = addressString;
+    }
+
+    // Return address update - required for Delhivery
+    // Format return address fields for Delhivery API
+    let returnAddressString = '';
+    let returnPincode = '';
+    let returnCity = '';
+    let returnState = '';
+
+    if (req.body.return_address) {
+      const retAddr = req.body.return_address;
+      const parts = [];
+      if (retAddr.full_address) parts.push(retAddr.full_address);
+      if (retAddr.city) {
+        parts.push(retAddr.city);
+        returnCity = retAddr.city;
+      }
+      if (retAddr.state) {
+        parts.push(retAddr.state);
+        returnState = retAddr.state;
+      }
+      returnAddressString = parts.join(', ');
+      if (retAddr.pincode) returnPincode = retAddr.pincode.toString().trim();
+    } else if (warehouse.return_address) {
+      // Use existing return address if not updating
+      const retAddr = warehouse.return_address;
+      const parts = [];
+      if (retAddr?.full_address) parts.push(retAddr.full_address);
+      if (retAddr?.city) {
+        parts.push(retAddr.city);
+        returnCity = retAddr.city;
+      }
+      if (retAddr?.state) {
+        parts.push(retAddr.state);
+        returnState = retAddr.state;
+      }
+      returnAddressString = parts.join(', ');
+      if (retAddr?.pincode) returnPincode = retAddr.pincode.toString().trim();
+    }
+
+    // Add return address fields to Delhivery update payload
+    if (returnAddressString) {
+      delhiveryUpdateData.return_address = returnAddressString;
+    }
+    if (returnPincode) {
+      delhiveryUpdateData.return_pin = returnPincode;
+    }
+    if (returnCity) {
+      delhiveryUpdateData.return_city = returnCity;
+    }
+    if (returnState) {
+      delhiveryUpdateData.return_state = returnState;
     }
 
     logger.info('🚀 Attempting Delhivery warehouse update', {

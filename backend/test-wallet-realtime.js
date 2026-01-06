@@ -18,14 +18,14 @@ async function testWalletRealtimeUpdate() {
     // 1. Connect to WebSocket as client
     console.log('1. Connecting to WebSocket as client...');
     const ws = new WebSocket(WS_URL);
-    
+
     let wsConnected = false;
     let walletUpdateReceived = false;
 
     ws.on('open', () => {
       console.log('✅ WebSocket connected');
       wsConnected = true;
-      
+
       // Authenticate as client
       ws.send(JSON.stringify({
         type: 'authenticate',
@@ -36,7 +36,7 @@ async function testWalletRealtimeUpdate() {
     ws.on('message', (data) => {
       const message = JSON.parse(data.toString());
       console.log('📨 WebSocket message received:', message);
-      
+
       if (message.type === 'authenticated') {
         console.log('✅ Client authenticated successfully');
       } else if (message.type === 'wallet_balance_update') {
@@ -120,8 +120,3 @@ if (require.main === module) {
 }
 
 module.exports = { testWalletRealtimeUpdate };
-
-
-
-
-

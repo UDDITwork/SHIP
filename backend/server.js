@@ -83,10 +83,11 @@ const isLocalhost = process.env.NODE_ENV !== 'production' &&
                      !process.env.ALLOWED_ORIGINS); // Default to localhost in dev
 
 // For localhost development, use very high limits to prevent blocking during development
-// For production, use standard limits
+// For production, use higher limits to avoid blocking normal usage
+// Previous limit of 100 requests/15min was too restrictive for dashboard with multiple API calls
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW || '15') * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || (isLocalhost ? '1000' : isDevelopment ? '500' : '100')),
+  max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || (isLocalhost ? '2000' : isDevelopment ? '1000' : '500')),
   message: {
     error: 'Too many requests, please try again later'
   },

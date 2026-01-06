@@ -1282,6 +1282,23 @@ router.post('/tickets/:id/messages', async (req, res) => {
       });
     }
 
+    // Check for duplicate message (same content within last 10 seconds)
+    const trimmedMessage = message.trim();
+    const now = Date.now();
+    const recentDuplicate = ticket.conversation.find(msg =>
+      msg.message_content === trimmedMessage &&
+      msg.message_type === 'admin' &&
+      msg.timestamp &&
+      (now - new Date(msg.timestamp).getTime()) < 10000
+    );
+
+    if (recentDuplicate) {
+      return res.status(409).json({
+        success: false,
+        message: 'Duplicate message detected. This message was already sent.'
+      });
+    }
+
     // Get sender name (staff name or admin email)
     const senderName = req.staff ? req.staff.name : (req.admin.email || 'Admin');
     const staffName = req.staff ? req.staff.name : null;
@@ -1320,7 +1337,7 @@ router.post('/tickets/:id/messages', async (req, res) => {
         created_at: new Date().toISOString(),
         data: {
           message: message,
-          sender: adminName,
+          sender: senderName,
           timestamp: new Date().toISOString()
         }
       };

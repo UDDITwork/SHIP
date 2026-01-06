@@ -1903,10 +1903,24 @@ class DelhiveryService {
             if (warehouseData.phone) {
                 updatePayload.phone = warehouseData.phone;
             }
-            
-            // Add address if provided (format: "Address, City, State - Pincode")
+
+            // Add address if provided (format: "Address, City, State")
             if (warehouseData.address) {
                 updatePayload.address = warehouseData.address;
+            }
+
+            // Add return address fields if provided
+            if (warehouseData.return_address) {
+                updatePayload.return_address = warehouseData.return_address;
+            }
+            if (warehouseData.return_pin) {
+                updatePayload.return_pin = warehouseData.return_pin;
+            }
+            if (warehouseData.return_city) {
+                updatePayload.return_city = warehouseData.return_city;
+            }
+            if (warehouseData.return_state) {
+                updatePayload.return_state = warehouseData.return_state;
             }
 
             // API Endpoint: https://track.delhivery.com/api/backend/clientwarehouse/edit/

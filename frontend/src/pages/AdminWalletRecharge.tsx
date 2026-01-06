@@ -25,7 +25,6 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false); // Extra protection against double-clicks
 
   // Reset form when client changes
   useEffect(() => {
@@ -34,18 +33,10 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
     setReason('');
     setError(null);
     setSuccess(false);
-    setIsSubmitting(false);
   }, [client._id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    // CRITICAL: Prevent double submission
-    if (isSubmitting || loading) {
-      console.warn('⚠️ Wallet recharge already in progress, ignoring duplicate submit');
-      return;
-    }
-
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
       return;
@@ -62,8 +53,6 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
       return;
     }
 
-    // Set both flags immediately to prevent any race conditions
-    setIsSubmitting(true);
     setLoading(true);
     setError(null);
     setSuccess(false);
@@ -78,16 +67,9 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
       setTimeout(() => {
         onClose();
         setSuccess(false);
-        setIsSubmitting(false);
       }, 2000);
     } catch (err: any) {
-      // Check if it's a duplicate transaction error
-      if (err.message?.includes('Duplicate') || err.message?.includes('duplicate')) {
-        setError('⚠️ This transaction was already processed. Please refresh the page and check the balance.');
-      } else {
-        setError(err.message || 'Failed to update wallet');
-      }
-      setIsSubmitting(false);
+      setError(err.message || 'Failed to update wallet');
     } finally {
       setLoading(false);
     }
@@ -120,7 +102,7 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
           <h3>Wallet Adjustment</h3>
           <button className="close-btn" onClick={handleClose}>×</button>
         </div>
-        
+
         <div className="modal-body">
           <div className="client-info">
             <h4>{client.company_name}</h4>
@@ -163,7 +145,7 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
 
             <div className="form-group">
               <label htmlFor="reason">
-                Reason/Description 
+                Reason/Description
                 <span className="optional-badge">(Optional)</span>
               </label>
               <textarea
@@ -176,7 +158,7 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
                 className="reason-textarea"
               />
               <small className="form-note">
-                This reason will be displayed in the client's wallet transactions and billing history. 
+                This reason will be displayed in the client's wallet transactions and billing history.
                 {reason.length > 0 && <span className="char-count"> ({reason.length}/500 characters)</span>}
               </small>
             </div>
@@ -200,17 +182,12 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
             {success && <div className="success-message">✅ Wallet updated successfully! Balance updated.</div>}
 
             <div className="form-actions">
-              <button type="button" onClick={handleClose} className="cancel-btn" disabled={loading || isSubmitting}>
+              <button type="button" onClick={handleClose} className="cancel-btn">
                 Cancel
               </button>
-              <button
-                type="submit"
-                disabled={loading || isSubmitting}
-                className={`submit-btn ${transactionType === 'debit' ? 'debit-btn' : ''}`}
-              >
-                {loading || isSubmitting
-                  ? (transactionType === 'credit' ? 'Processing...' : 'Processing...')
-                  : (transactionType === 'credit' ? 'Add to Wallet' : 'Deduct from Wallet')}
+              <button type="submit" disabled={loading} className={`submit-btn ${transactionType === 'debit' ? 'debit-btn' : ''}`}>
+                {loading ? (transactionType === 'credit' ? 'Adding...' : 'Deducting...') :
+                 transactionType === 'credit' ? 'Add to Wallet' : 'Deduct from Wallet'}
               </button>
             </div>
           </form>
@@ -256,7 +233,7 @@ const AdminWalletRecharge: React.FC = () => {
         limit,
         ...filters
       });
-      
+
       setClients(response.data.clients);
       setPagination(response.data.pagination);
     } catch (err: any) {
@@ -292,10 +269,10 @@ const AdminWalletRecharge: React.FC = () => {
   const handleRecharge = async (clientId: string, amount: number, type: 'credit' | 'debit', description?: string): Promise<void> => {
     try {
       await adminService.adjustWallet(clientId, amount, type, description);
-      
+
       // Refresh the clients list to show updated balances
       fetchClients();
-      
+
       // Trigger wallet balance update for the client (if they're currently logged in)
       try {
         await walletService.refreshBalance();
@@ -312,11 +289,11 @@ const AdminWalletRecharge: React.FC = () => {
       console.log('🏷️ Updating client label:', { clientId, label });
       const response = await adminService.updateClientLabel(clientId, label);
       console.log('🏷️ Label update response:', response);
-      
+
       // Show success message
       setSuccessMessage(`✅ User category updated to "${label}" successfully!`);
       setTimeout(() => setSuccessMessage(null), 3000);
-      
+
       // Refresh the clients list to show updated labels
       await fetchClients();
       console.log('🏷️ Clients list refreshed after label update');
@@ -435,10 +412,10 @@ const AdminWalletRecharge: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        <span 
+                        <span
                           className="status-badge"
-                          style={{ 
-                            backgroundColor: getStatusColor(client.account_status) 
+                          style={{
+                            backgroundColor: getStatusColor(client.account_status)
                           }}
                         >
                           {client.account_status?.replace('_', ' ') || 'N/A'}
@@ -480,11 +457,11 @@ const AdminWalletRecharge: React.FC = () => {
                 >
                   Previous
                 </button>
-                
+
                 <span className="page-info">
                   Page {pagination.currentPage} of {pagination.totalPages}
                 </span>
-                
+
                 <button
                   onClick={() => handlePageChange(page + 1)}
                   disabled={!pagination.hasNext}

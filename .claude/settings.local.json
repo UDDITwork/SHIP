@@ -1,7 +1,18 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(git -C \"c:\\\\Users\\\\Uddit\\\\Downloads\\\\SHIP\" status)",
+      "Bash(git -C \"c:\\\\Users\\\\Uddit\\\\Downloads\\\\SHIP\" diff --name-only)",
+      "Bash(git -C \"c:\\\\Users\\\\Uddit\\\\Downloads\\\\SHIP\" diff frontend/src/pages/Dashboard.tsx)",
+      "Bash(dir \"c:\\\\Users\\\\Uddit\\\\Downloads\\\\SHIP\\\\backend\\\\keys\")",
+      "Bash(dir /b \"c:\\\\Users\\\\Uddit\\\\Downloads\\\\SHIP\\\\backend-okay\")",
+      "Bash(dir /b \"c:\\\\Users\\\\Uddit\\\\Downloads\\\\SHIP\\\\frontend-okay\")",
+      "Bash(copy:*)",
+      "Bash(git -C \"c:/Users/Uddit/Downloads/SHIP\" status)",
+      "Bash(git -C \"c:/Users/Uddit/Downloads/SHIP\" log -3 --oneline)",
+      "Bash(git -C \"c:/Users/Uddit/Downloads/SHIP\" add -A)",
+      "Bash(git -C \"c:/Users/Uddit/Downloads/SHIP\" commit -m \"$\\(cat <<''EOF''\nchore: Clean up docs, update wallet/billing components\n\n- Remove obsolete documentation and tracking files\n- Update wallet recharge and billing components from frontend-okay\n- Add PaymentConfirmation page\n- Update backend services and routes\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

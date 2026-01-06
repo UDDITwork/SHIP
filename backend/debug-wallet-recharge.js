@@ -23,7 +23,7 @@ async function debugWalletRecharge() {
     // Step 1: Find user by email
     console.log('\n📋 STEP 1: Finding user by email...');
     const user = await User.findOne({ email: userEmail });
-    
+
     if (!user) {
       console.log('❌ User not found!');
       return;
@@ -51,7 +51,7 @@ async function debugWalletRecharge() {
     console.log('\n📋 STEP 3: Simulating recharge process...');
     const currentBalance = user.wallet_balance || 0;
     const newBalance = currentBalance + rechargeAmount;
-    
+
     console.log(`   - Current Balance: ₹${currentBalance}`);
     console.log(`   - Recharge Amount: ₹${rechargeAmount}`);
     console.log(`   - Expected New Balance: ₹${newBalance}`);
@@ -67,14 +67,14 @@ async function debugWalletRecharge() {
     console.log('\n📋 STEP 5: Retrieving live balance from database...');
     const updatedUser = await User.findById(user._id).select('wallet_balance email company_name');
     const liveUpdatedBalance = updatedUser.wallet_balance || 0;
-    
+
     console.log(`   - Live Database Balance: ₹${liveUpdatedBalance}`);
     console.log(`   - Balance Match: ${liveUpdatedBalance === newBalance ? '✅ MATCH' : '❌ MISMATCH'}`);
 
     // Step 6: Create transaction record
     console.log('\n📋 STEP 6: Creating transaction record...');
     const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-    
+
     const transaction = new Transaction({
       transaction_id: transactionId,
       user_id: user._id,

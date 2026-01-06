@@ -33,6 +33,40 @@ export interface PaymentStatusResponse {
   };
 }
 
+export interface TransactionDetailsResponse {
+  success: boolean;
+  message?: string;
+  data: {
+    transaction_id: string;
+    gateway_order_id: string;
+    gateway_transaction_id: string;
+    gateway_session_id: string;
+    gateway_reference_id: string;
+    bank_ref_no: string;
+    amount: number;
+    currency: string;
+    status: string;
+    payment_status: string;
+    payment_method: string;
+    payment_gateway: string;
+    transaction_date: string;
+    payment_date: string;
+    created_at: string;
+    updated_at: string;
+    opening_balance: number;
+    closing_balance: number;
+    transaction_type: string;
+    transaction_category: string;
+    description: string;
+    user_info: {
+      name: string;
+      email: string;
+      phone: string;
+    };
+    notes: string;
+  };
+}
+
 class WalletService {
   private listeners: Array<(balance: WalletBalance) => void> = [];
 
@@ -149,6 +183,14 @@ class WalletService {
   async checkPaymentStatus(orderId: string): Promise<PaymentStatusResponse> {
     const response = await apiService.get<PaymentStatusResponse>(
       `/billing/wallet/payment-status/${orderId}`
+    );
+    return response;
+  }
+
+  // Get complete transaction details for confirmation page
+  async getTransactionDetails(orderId: string): Promise<TransactionDetailsResponse> {
+    const response = await apiService.get<TransactionDetailsResponse>(
+      `/billing/wallet/transaction-details/${orderId}`
     );
     return response;
   }

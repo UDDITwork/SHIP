@@ -1,5 +1,34 @@
 const mongoose = require('mongoose');
 
+// Category to prefix mapping for ticket IDs
+const CATEGORY_PREFIX_MAP = {
+  'pickup_delivery': 'PD',
+  'shipment_ndr_rto': 'NR',
+  'edit_shipment_info': 'ES',
+  'shipment_dispute': 'SD',
+  'finance': 'FA',
+  'billing_taxation': 'BT',
+  'claims': 'CL',
+  'kyc_bank_verification': 'KB',
+  'technical_support': 'TC',
+  'others': 'OT'
+};
+
+// Ticket counter schema for sequential numbering per category
+const ticketCounterSchema = new mongoose.Schema({
+  category: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  sequence: {
+    type: Number,
+    default: 0
+  }
+});
+
+const TicketCounter = mongoose.model('TicketCounter', ticketCounterSchema);
+
 const fileAttachmentSchema = new mongoose.Schema({
   file_name: {
     type: String,
@@ -297,23 +326,34 @@ supportTicketSchema.index({ 'assignment_info.assigned_to': 1 });
 supportTicketSchema.index({ created_at: -1 });
 supportTicketSchema.index({ awb_numbers: 1 });
 
-// Pre-save middleware
+// Pre-save middleware - Generate ticket ID in format: PREFIX-DDMMYY-SEQUENCE
+// Example: PD-231224-00001 (Pickup & Delivery, 23 Dec 2024, sequence 1)
 supportTicketSchema.pre('validate', async function(next) {
   if (!this.ticket_id) {
     try {
-      let ticketId;
-      let isUnique = false;
+      // Get the category prefix
+      const prefix = CATEGORY_PREFIX_MAP[this.category] || 'OT';
 
-      while (!isUnique) {
-        const randomNum = Math.floor(Math.random() * 100000);
-        ticketId = `TKT${Date.now()}${randomNum.toString().padStart(5, '0')}`;
-        const existingTicket = await this.constructor.exists({ ticket_id: ticketId });
-        if (!existingTicket) {
-          isUnique = true;
-        }
-      }
+      // Get current date in DDMMYY format
+      const now = new Date();
+      const day = now.getDate().toString().padStart(2, '0');
+      const month = (now.getMonth() + 1).toString().padStart(2, '0');
+      const year = now.getFullYear().toString().slice(-2);
+      const dateStr = `${day}${month}${year}`;
 
-      this.ticket_id = ticketId;
+      // Atomically increment the counter for this category
+      const counter = await TicketCounter.findOneAndUpdate(
+        { category: this.category },
+        { $inc: { sequence: 1 } },
+        { new: true, upsert: true }
+      );
+
+      // Format sequence with 5 digits (e.g., 00001)
+      const sequenceStr = counter.sequence.toString().padStart(5, '0');
+
+      // Generate ticket ID: PREFIX-DDMMYY-SEQUENCE
+      this.ticket_id = `${prefix}-${dateStr}-${sequenceStr}`;
+
     } catch (error) {
       return next(error);
     }
