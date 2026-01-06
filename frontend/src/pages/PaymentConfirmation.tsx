@@ -143,14 +143,14 @@ const PaymentConfirmation: React.FC = () => {
         };
       case 'pending':
         return {
-          icon: '⏳',
+          icon: '...',
           title: 'Payment Processing',
           message: 'Your payment is being processed. This may take a few minutes.',
           className: 'pending'
         };
       case 'error':
         return {
-          icon: '⚠',
+          icon: '!',
           title: 'Error Occurred',
           message: 'An error occurred while processing your payment. Please contact support.',
           className: 'error'
@@ -385,7 +385,6 @@ const PaymentConfirmation: React.FC = () => {
         {/* Action Buttons - Hidden in Print */}
         <div className="action-buttons no-print">
           <button onClick={handlePrint} className="btn-secondary">
-            <span className="btn-icon">🖨️</span>
             Print Receipt
           </button>
           <button
@@ -393,11 +392,9 @@ const PaymentConfirmation: React.FC = () => {
             className="btn-secondary"
             disabled={downloadingPdf}
           >
-            <span className="btn-icon">📥</span>
             {downloadingPdf ? 'Generating PDF...' : 'Download PDF'}
           </button>
           <button onClick={() => navigate('/billing')} className="btn-primary">
-            <span className="btn-icon">💰</span>
             Go to Billing
           </button>
           {status === 'success' && (
@@ -405,7 +402,6 @@ const PaymentConfirmation: React.FC = () => {
               onClick={() => navigate('/billing')}
               className="btn-outline"
             >
-              <span className="btn-icon">➕</span>
               Recharge Again
             </button>
           )}
@@ -414,7 +410,6 @@ const PaymentConfirmation: React.FC = () => {
               onClick={() => navigate('/billing')}
               className="btn-warning"
             >
-              <span className="btn-icon">🔄</span>
               Try Again
             </button>
           )}
