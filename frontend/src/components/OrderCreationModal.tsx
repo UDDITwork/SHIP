@@ -648,13 +648,27 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
   useEffect(() => {
     // Auto-calculate when all required fields are filled
     const timer = setTimeout(() => {
+      const isMultiPackage = formData.package_info.package_type === 'Multiple Package (B2C)';
+
+      // Check dimensions based on package type
+      let hasDimensions = false;
+      if (isMultiPackage) {
+        // For multi-package, check if box entries have dimensions
+        hasDimensions = boxEntries.length > 0 && boxEntries.every(box =>
+          box.length > 0 && box.width > 0 && box.height > 0
+        );
+      } else {
+        // For single package, check package_info dimensions
+        hasDimensions = formData.package_info.dimensions.length > 0 &&
+          formData.package_info.dimensions.width > 0 &&
+          formData.package_info.dimensions.height > 0;
+      }
+
       if (
         formData.delivery_address.pincode?.length === 6 &&
         formData.pickup_address.pincode?.length === 6 &&
         formData.package_info.weight > 0 &&
-        formData.package_info.dimensions.length > 0 &&
-        formData.package_info.dimensions.width > 0 &&
-        formData.package_info.dimensions.height > 0
+        hasDimensions
       ) {
         calculateFinalShippingCharges();
       }
@@ -667,7 +681,9 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     formData.package_info.weight,
     formData.package_info.dimensions.length,
     formData.package_info.dimensions.width,
-    formData.package_info.dimensions.height
+    formData.package_info.dimensions.height,
+    formData.package_info.package_type,
+    boxEntries
   ]);
 
   // Mandatory shipping charges calculation before final buttons appear
@@ -689,36 +705,69 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
       return;
     }
 
-    // Validate dimensions
-    if (
-      !formData.package_info.dimensions.length || formData.package_info.dimensions.length <= 0 ||
-      !formData.package_info.dimensions.width || formData.package_info.dimensions.width <= 0 ||
-      !formData.package_info.dimensions.height || formData.package_info.dimensions.height <= 0
-    ) {
-      setFinalShippingCalculation({
-        calculating: false,
-        completed: false,
-        error: 'Please fill all required dimensions: Length, Width, and Height',
-        zone: null,
-        walletBalance: null,
-        insufficientBalance: false
-      });
-      return;
+    // Validate dimensions - check box entries for Multiple Package (B2C), otherwise check package_info dimensions
+    const isMultiPackageB2C = formData.package_info.package_type === 'Multiple Package (B2C)';
+
+    if (isMultiPackageB2C) {
+      // For Multiple Package (B2C), validate box entry dimensions
+      const hasValidBoxDimensions = boxEntries.length > 0 && boxEntries.every(box =>
+        box.length > 0 && box.width > 0 && box.height > 0
+      );
+      if (!hasValidBoxDimensions) {
+        setFinalShippingCalculation({
+          calculating: false,
+          completed: false,
+          error: 'Please fill all required dimensions for each box: Length, Width, and Height',
+          zone: null,
+          walletBalance: null,
+          insufficientBalance: false
+        });
+        return;
+      }
+    } else {
+      // For Single Package, validate package_info dimensions
+      if (
+        !formData.package_info.dimensions.length || formData.package_info.dimensions.length <= 0 ||
+        !formData.package_info.dimensions.width || formData.package_info.dimensions.width <= 0 ||
+        !formData.package_info.dimensions.height || formData.package_info.dimensions.height <= 0
+      ) {
+        setFinalShippingCalculation({
+          calculating: false,
+          completed: false,
+          error: 'Please fill all required dimensions: Length, Width, and Height',
+          zone: null,
+          walletBalance: null,
+          insufficientBalance: false
+        });
+        return;
+      }
     }
 
     try {
       setFinalShippingCalculation(prev => ({ ...prev, calculating: true, error: null }));
-      
+
       const weightInGrams = formData.package_info.weight * 1000; // Convert kg to grams
-      
+
+      // Get dimensions - for Multiple Package (B2C), use the largest box dimensions
+      let dimensions = {
+        length: formData.package_info.dimensions.length,
+        breadth: formData.package_info.dimensions.width,
+        height: formData.package_info.dimensions.height
+      };
+
+      if (isMultiPackageB2C && boxEntries.length > 0) {
+        // For multi-package, use the largest dimension values from box entries
+        dimensions = {
+          length: Math.max(...boxEntries.map(box => box.length || 0)),
+          breadth: Math.max(...boxEntries.map(box => box.width || 0)),
+          height: Math.max(...boxEntries.map(box => box.height || 0))
+        };
+      }
+
       // Call backend API with pincodes - backend will get zone from Delhivery API
       const calculationRequest: ShippingCalculationRequest = {
         weight: weightInGrams, // Weight in grams
-        dimensions: {
-          length: formData.package_info.dimensions.length,
-          breadth: formData.package_info.dimensions.width,
-          height: formData.package_info.dimensions.height
-        },
+        dimensions,
         // Don't provide zone - let backend get it from Delhivery API using pincodes
         pickup_pincode: formData.pickup_address.pincode,
         delivery_pincode: formData.delivery_address.pincode,
