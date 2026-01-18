@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminService, AdminClient } from '../services/adminService';
 import { walletService } from '../services/walletService';
 import './AdminWalletRecharge.css';
@@ -198,6 +199,7 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
 };
 
 const AdminWalletRecharge: React.FC = () => {
+  const navigate = useNavigate();
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -224,6 +226,36 @@ const AdminWalletRecharge: React.FC = () => {
 
   const [page, setPage] = useState(1);
   const [limit] = useState(10);
+
+  // Reset all page state when menu item is clicked again
+  const resetPageState = () => {
+    setFilters({
+      search: '',
+      status: '',
+      user_type: '',
+      sortBy: 'created_at',
+      sortOrder: -1
+    });
+    setPage(1);
+    setError(null);
+    setSuccessMessage(null);
+    setSelectedClient(null);
+    setModalOpen(false);
+  };
+
+  // Listen for admin-page-reset event from AdminLayout
+  useEffect(() => {
+    const handlePageReset = (event: CustomEvent) => {
+      if (event.detail?.path === '/admin/wallet-recharge') {
+        resetPageState();
+      }
+    };
+
+    window.addEventListener('admin-page-reset', handlePageReset as EventListener);
+    return () => {
+      window.removeEventListener('admin-page-reset', handlePageReset as EventListener);
+    };
+  }, []);
 
   const fetchClients = useCallback(async () => {
     try {
@@ -399,7 +431,11 @@ const AdminWalletRecharge: React.FC = () => {
                         <span className="client-id">{client.client_id}</span>
                       </td>
                       <td>
-                        <div className="company-info">
+                        <div
+                          className="company-info clickable"
+                          onClick={() => navigate(`/admin/clients/${client._id}/dashboard`)}
+                          title="View client dashboard"
+                        >
                           <strong>{client.company_name}</strong>
                         </div>
                       </td>

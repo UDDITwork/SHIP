@@ -36,6 +36,48 @@
   font-size: 1.1rem;
 }
 
+/* Status Dashboard Cards */
+.status-cards-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.status-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 1px solid #e5e7eb;
+  border-top: 4px solid;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.status-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.status-card.active {
+  background: #f0f9ff;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.status-card-count {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.status-card-label {
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -214,6 +256,16 @@
   font-weight: 600;
   margin-bottom: 4px;
   font-size: 0.875rem;
+}
+
+.company-name-link {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.company-name-link:hover {
+  color: #3b82f6;
+  text-decoration: underline;
 }
 
 .company-info small {

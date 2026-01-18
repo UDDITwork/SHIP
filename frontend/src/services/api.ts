@@ -290,17 +290,26 @@ class ApiService {
   }
 
   async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    // Use deduplicator ONLY for wallet/payment related endpoints to prevent double payments
-    // These endpoints are critical and should not be called twice
+    // Use deduplicator for critical endpoints that should not be called twice
+    // This includes wallet/payment endpoints AND ticket messages to prevent duplicates
     const isPaymentEndpoint = url.includes('/wallet') ||
                               url.includes('/payment') ||
                               url.includes('/recharge') ||
                               url.includes('/initiate-payment') ||
                               url.includes('/handle-payment');
 
-    if (isPaymentEndpoint) {
+    // Also deduplicate ticket message submissions to prevent duplicate messages
+    const isTicketMessageEndpoint = url.includes('/tickets/') && url.includes('/messages');
+
+    if (isPaymentEndpoint || isTicketMessageEndpoint) {
       const key = `POST:${url}:${JSON.stringify(data)}`;
       return requestDeduplicator.get(key, async () => {
+        // For ticket messages, don't retry as the message might already be saved
+        // Backend has duplicate detection, but retries can still cause issues
+        if (isTicketMessageEndpoint) {
+          const response = await this.api.post<T>(url, data, config);
+          return response.data;
+        }
         const response = await this.retryRequest(() => this.api.post<T>(url, data, config));
         return response.data;
       });

@@ -58,6 +58,7 @@ import AdminWeightDiscrepancies from './pages/AdminWeightDiscrepancies';
 import AdminBilling from './pages/AdminBilling';
 import AdminRemittances from './pages/AdminRemittances';
 import AdminOrders from './pages/AdminOrders';
+import AdminClientDashboard from './pages/AdminClientDashboard';
 import AdminNDR from './pages/AdminNDR';
 import AdminLayout from './components/AdminLayout';
 
@@ -324,15 +325,23 @@ function App() {
                 </AdminLayout>
               } 
             />
-            <Route 
-              path="/admin/clients" 
+            <Route
+              path="/admin/clients"
               element={
                 <AdminLayout>
                   <AdminClients />
                 </AdminLayout>
-              } 
+              }
             />
-            <Route 
+            <Route
+              path="/admin/clients/:clientId/dashboard"
+              element={
+                <AdminLayout>
+                  <AdminClientDashboard />
+                </AdminLayout>
+              }
+            />
+            <Route
               path="/admin/tickets" 
               element={
                 <AdminLayout>

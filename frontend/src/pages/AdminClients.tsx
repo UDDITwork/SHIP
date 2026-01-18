@@ -5,19 +5,37 @@ import DocumentViewerModal from '../components/DocumentViewerModal';
 import NotificationBell from '../components/NotificationBell';
 import './AdminClients.css';
 
+// Status card configuration
+interface StatusCard {
+  key: string;
+  label: string;
+  count: number;
+  color: string;
+  filterValue: string;
+}
+
 const AdminClients: React.FC = () => {
   const navigate = useNavigate();
   const [clients, setClients] = useState<AdminClient[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Status counts for dashboard cards
+  const [statusCounts, setStatusCounts] = useState({
+    total: 0,
+    active: 0,
+    pending_verification: 0,
+    suspended: 0,
+    inactive: 0
+  });
+
   // Debug clients state changes
   useEffect(() => {
-    console.log('👥 Clients state updated:', { 
-      clientsCount: clients.length, 
+    console.log('👥 Clients state updated:', {
+      clientsCount: clients.length,
       clients: clients,
       loading,
-      error 
+      error
     });
   }, [clients, loading, error]);
   const [pagination, setPagination] = useState({
@@ -44,6 +62,45 @@ const AdminClients: React.FC = () => {
   // Document viewer modal state
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<AdminClient | null>(null);
+
+  // Fetch status counts for dashboard cards
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      const dashboard = await adminService.getDashboard();
+      setStatusCounts({
+        total: dashboard.overview.totalClients,
+        active: dashboard.overview.activeClients,
+        pending_verification: dashboard.overview.pendingVerification,
+        suspended: dashboard.overview.suspendedClients,
+        inactive: dashboard.overview.totalClients - dashboard.overview.activeClients - dashboard.overview.pendingVerification - dashboard.overview.suspendedClients
+      });
+    } catch (err) {
+      console.error('Error fetching status counts:', err);
+    }
+  }, []);
+
+  // Fetch status counts on mount
+  useEffect(() => {
+    const isAuthenticated = localStorage.getItem('admin_authenticated');
+    if (isAuthenticated) {
+      fetchStatusCounts();
+    }
+  }, [fetchStatusCounts]);
+
+  // Status cards configuration
+  const statusCards: StatusCard[] = [
+    { key: 'total', label: 'Total Clients', count: statusCounts.total, color: '#6366f1', filterValue: '' },
+    { key: 'active', label: 'Active', count: statusCounts.active, color: '#22c55e', filterValue: 'active' },
+    { key: 'pending', label: 'Pending Verification', count: statusCounts.pending_verification, color: '#f59e0b', filterValue: 'pending_verification' },
+    { key: 'suspended', label: 'Suspended', count: statusCounts.suspended, color: '#ef4444', filterValue: 'suspended' },
+    { key: 'inactive', label: 'Inactive', count: statusCounts.inactive, color: '#6b7280', filterValue: 'inactive' }
+  ];
+
+  // Handle status card click to filter
+  const handleStatusCardClick = (filterValue: string) => {
+    setFilters(prev => ({ ...prev, status: filterValue }));
+    setPage(1);
+  };
 
   const fetchClients = useCallback(async () => {
     try {
@@ -203,6 +260,23 @@ const AdminClients: React.FC = () => {
         </div>
       </div>
 
+      {/* Status Dashboard Cards */}
+      <div className="status-cards-container">
+        {statusCards.map((card) => (
+          <div
+            key={card.key}
+            className={`status-card ${filters.status === card.filterValue ? 'active' : ''}`}
+            onClick={() => handleStatusCardClick(card.filterValue)}
+            style={{ borderTopColor: card.color }}
+          >
+            <div className="status-card-count" style={{ color: card.color }}>
+              {card.count}
+            </div>
+            <div className="status-card-label">{card.label}</div>
+          </div>
+        ))}
+      </div>
+
       {error && (
         <div className="error-banner">
           <p>{error}</p>
@@ -299,10 +373,10 @@ const AdminClients: React.FC = () => {
                   </td>
                   <td>
                     <div className="company-info">
-                      <strong 
-                        className="cursor-pointer hover:text-blue-600 hover:underline"
-                        onClick={() => handleViewTickets(client)}
-                        title="Click to view tickets"
+                      <strong
+                        className="company-name-link"
+                        onClick={() => navigate(`/admin/clients/${client._id}/dashboard`)}
+                        title="Click to view client dashboard"
                       >
                         {client.company_name}
                       </strong>

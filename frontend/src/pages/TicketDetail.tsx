@@ -197,9 +197,19 @@ const TicketDetail: React.FC = () => {
     }
   };
 
+  // Format date with time in DD/MM/YYYY, HH:MM AM/PM format
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleString();
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return 'N/A';
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hour12 = hours % 12 || 12;
+    return `${day}/${month}/${year}, ${hour12}:${minutes} ${ampm}`;
   };
 
   if (loading) {

@@ -307,9 +307,9 @@ const AdminWeightDiscrepancies: React.FC = () => {
                   <th>Order ID</th>
                   <th>Date</th>
                   <th>AWB Status</th>
-                  <th>Declared</th>
-                  <th>Actual</th>
-                  <th>Difference</th>
+                  <th>Declared (kg)</th>
+                  <th>Actual (kg)</th>
+                  <th>Difference (kg)</th>
                   <th>Deduction</th>
                   <th>STATUS</th>
                   <th>ACTION</th>
@@ -340,9 +340,9 @@ const AdminWeightDiscrepancies: React.FC = () => {
                             {awbStatus}
                           </span>
                         </td>
-                        <td>{(disc.client_declared_weight || 0).toFixed(2)} g</td>
-                        <td>{(disc.delhivery_updated_weight || 0).toFixed(2)} g</td>
-                        <td className="diff-cell">{(disc.weight_discrepancy || 0).toFixed(2)} g</td>
+                        <td>{((disc.client_declared_weight || 0) / 1000).toFixed(2)} kg</td>
+                        <td>{((disc.delhivery_updated_weight || 0) / 1000).toFixed(2)} kg</td>
+                        <td className="diff-cell">{((disc.weight_discrepancy || 0) / 1000).toFixed(2)} kg</td>
                         <td className="deduction-cell">-₹{(disc.deduction_amount || 0).toFixed(2)}</td>
                         <td>
                           <span className={`dispute-status-badge ${disputeStatus.toLowerCase().replace(' ', '-')}`}>

@@ -73,6 +73,7 @@ const AdminClientTickets: React.FC = () => {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [updatingPriority, setUpdatingPriority] = useState(false);
   const [downloadingAttachmentId, setDownloadingAttachmentId] = useState<string | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
   // Fetch selected ticket details when ticketId changes
   useEffect(() => {
@@ -178,13 +179,14 @@ const AdminClientTickets: React.FC = () => {
   };
 
   const sendMessage = async (ticketIdParam: string) => {
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() && selectedFiles.length === 0) return;
 
     try {
       setSendingMessage(true);
-      
-      await adminService.sendTicketMessage(ticketIdParam, newMessage, false);
+
+      await adminService.sendTicketMessage(ticketIdParam, newMessage, false, selectedFiles.length > 0 ? selectedFiles : undefined);
       setNewMessage('');
+      setSelectedFiles([]);
       // Refresh ticket details
       await fetchTicketDetails(ticketIdParam);
       // Refresh tickets list
@@ -195,6 +197,31 @@ const AdminClientTickets: React.FC = () => {
     } finally {
       setSendingMessage(false);
     }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const invalidFiles = files.filter(file => {
+        if (file.type.startsWith('image/') && file.size > 2 * 1024 * 1024) return true;
+        if (file.type.startsWith('audio/') && file.size > 5 * 1024 * 1024) return true;
+        if (file.type.startsWith('video/') && file.size > 5 * 1024 * 1024) return true;
+        if (file.type.startsWith('application/') && file.size > 5 * 1024 * 1024) return true;
+        return false;
+      });
+
+      if (invalidFiles.length > 0) {
+        setError('Some files exceed the size limit:\nImage: 2MB, Audio/Video/Document: 5MB');
+        setTimeout(() => setError(null), 5000);
+        return;
+      }
+
+      setSelectedFiles(prev => [...prev, ...files].slice(0, 5));
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   // Fetch client details
@@ -810,9 +837,32 @@ const AdminClientTickets: React.FC = () => {
                       className="message-textarea"
                       rows={3}
                     />
+                    <div className="file-upload-section">
+                      <input
+                        type="file"
+                        id="admin-file-upload"
+                        multiple
+                        accept="image/*,audio/*,video/*,.pdf,.doc,.docx"
+                        onChange={handleFileSelect}
+                        style={{ display: 'none' }}
+                      />
+                      <label htmlFor="admin-file-upload" className="file-upload-btn">
+                        <Paperclip className="w-4 h-4" /> Attach Files
+                      </label>
+                      {selectedFiles.length > 0 && (
+                        <div className="selected-files">
+                          {selectedFiles.map((file, index) => (
+                            <div key={index} className="file-item">
+                              <span>{file.name}</span>
+                              <button onClick={() => removeFile(index)} type="button">×</button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                     <button
                       onClick={() => sendMessage(selectedTicket._id)}
-                      disabled={!newMessage.trim() || sendingMessage}
+                      disabled={(!newMessage.trim() && selectedFiles.length === 0) || sendingMessage}
                       className="send-button"
                     >
                       {sendingMessage ? (

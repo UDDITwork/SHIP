@@ -654,8 +654,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         formData.package_info.weight > 0 &&
         formData.package_info.dimensions.length > 0 &&
         formData.package_info.dimensions.width > 0 &&
-        formData.package_info.dimensions.height > 0 &&
-        (!finalShippingCalculation.completed || formData.payment_info.shipping_charges === 0)
+        formData.package_info.dimensions.height > 0
       ) {
         calculateFinalShippingCharges();
       }
@@ -1758,7 +1757,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     <div className="weight-input">
                       <input
                         type="number"
-                        value={formData.package_info.weight.toFixed(2)}
+                        value={formData.package_info.weight || ''}
                         onChange={(e) => handleNestedInputChange('package_info', 'weight', parseFloat(e.target.value) || 0)}
                         placeholder="Enter your weight"
                         min="0.1"

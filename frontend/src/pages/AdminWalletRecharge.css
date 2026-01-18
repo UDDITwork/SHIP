@@ -150,6 +150,16 @@
   font-weight: 600;
 }
 
+.company-info.clickable {
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.company-info.clickable:hover strong {
+  color: #3b82f6;
+  text-decoration: underline;
+}
+
 .wallet-balance {
   font-weight: 600;
   color: #059669;

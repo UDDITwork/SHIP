@@ -193,6 +193,225 @@
   margin: 0;
 }
 
+.header-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  max-width: 500px;
+  margin: 0 24px;
+  position: relative;
+}
+
+.global-search-container {
+  width: 100%;
+  position: relative;
+}
+
+.global-search-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #f3f4f6;
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  transition: all 0.2s;
+}
+
+.global-search-input-wrapper:focus-within {
+  background: white;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-icon {
+  font-size: 0.875rem;
+  margin-right: 8px;
+  opacity: 0.6;
+}
+
+.global-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 0.875rem;
+  color: #1f2937;
+  outline: none;
+  min-width: 200px;
+}
+
+.global-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-spinner {
+  font-size: 0.875rem;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.search-clear {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.search-clear:hover {
+  color: #ef4444;
+  background: #fef2f2;
+}
+
+.global-search-results {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  max-height: 400px;
+  overflow-y: auto;
+  z-index: 1100;
+  border: 1px solid #e5e7eb;
+}
+
+.search-no-results {
+  padding: 24px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.search-section {
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.search-section:last-child {
+  border-bottom: none;
+}
+
+.search-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #f9fafb;
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.section-icon {
+  font-size: 0.875rem;
+}
+
+.search-result-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+.search-result-item:hover {
+  background-color: #f0f9ff;
+}
+
+.result-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.result-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.result-value {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.result-separator {
+  color: #d1d5db;
+  margin: 0 2px;
+}
+
+.result-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: #6b7280;
+}
+
+.result-client {
+  color: #6b7280;
+}
+
+.result-phone {
+  color: #3b82f6;
+}
+
+.result-product {
+  color: #6b7280;
+  font-style: italic;
+}
+
+.result-status {
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.result-status.status-delivered,
+.result-status.status-active {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.result-status.status-in-transit,
+.result-status.status-pending_verification {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.result-status.status-new,
+.result-status.status-ready_to_ship {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.result-status.status-rto,
+.result-status.status-suspended {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.result-status.status-inactive {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
 .header-right {
   display: flex;
   align-items: center;
@@ -255,16 +474,32 @@
   .mobile-menu-toggle {
     display: block;
   }
-  
+
   .sidebar-overlay {
     display: block;
   }
-  
+
   .admin-header h1 {
     font-size: 1.25rem;
   }
-  
+
   .admin-email {
     display: none;
+  }
+
+  .header-center {
+    display: none;
+  }
+}
+
+/* Tablet styles - show search but smaller */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .header-center {
+    max-width: 300px;
+    margin: 0 12px;
+  }
+
+  .global-search-input {
+    min-width: 150px;
   }
 }

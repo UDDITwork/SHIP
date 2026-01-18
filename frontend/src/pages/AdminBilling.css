@@ -362,3 +362,46 @@
   }
 }
 
+/* Performed By Column Styles */
+.performed-by-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.performer-name {
+  font-weight: 500;
+  color: #111827;
+  font-size: 13px;
+}
+
+.performer-role {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.performer-role.role-admin {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.performer-role.role-staff {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.performer-role.role-system {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.system-performer {
+  color: #9ca3af;
+  font-size: 12px;
+  font-style: italic;
+}
+

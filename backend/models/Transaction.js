@@ -179,7 +179,17 @@ const transactionSchema = new mongoose.Schema({
   },
   approved_by: String,
   reversal_reason: String,
-  notes: String
+  notes: String,
+
+  // Admin/Staff who performed the transaction (for manual adjustments)
+  performed_by: {
+    name: String,
+    email: String,
+    role: {
+      type: String,
+      enum: ['admin', 'staff', 'system']
+    }
+  }
 });
 
 // Indexes

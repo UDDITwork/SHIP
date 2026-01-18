@@ -53,6 +53,13 @@ interface WalletTransaction {
   weight: number | null;
   zone: string;
   closing_balance: number;
+  // Staff/Admin who performed the transaction (for manual adjustments)
+  performed_by?: {
+    name: string;
+    email: string;
+    role: 'admin' | 'staff' | 'system';
+  } | null;
+  created_by?: string;
 }
 
 interface WalletTransactionSummary {
@@ -129,6 +136,41 @@ const AdminBilling: React.FC = () => {
     setTransactionSearchAWB('');
     setTransactionsPage(1);
   };
+
+  // Reset all page state when menu item is clicked again
+  const resetPageState = () => {
+    // Reset list view state
+    setListSearch('');
+    setListPage(1);
+    setListError(null);
+    // Reset transaction filters
+    resetTransactionFilters();
+    // Reset detail view state
+    setClientDetails(null);
+    setWalletSummary(null);
+    setTransactions([]);
+    setDetailsError(null);
+    setTransactionsError(null);
+    // Navigate to base billing page if on a client detail page
+    if (clientId) {
+      navigate('/admin/billing');
+    }
+  };
+
+  // Listen for admin-page-reset event from AdminLayout
+  useEffect(() => {
+    const handlePageReset = (event: CustomEvent) => {
+      if (event.detail?.path === '/admin/billing') {
+        resetPageState();
+      }
+    };
+
+    window.addEventListener('admin-page-reset', handlePageReset as EventListener);
+    return () => {
+      window.removeEventListener('admin-page-reset', handlePageReset as EventListener);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
 
   // Fetch billing clients list (list view)
   useEffect(() => {
@@ -533,6 +575,7 @@ const AdminBilling: React.FC = () => {
                 <th>Description</th>
                 <th>AWB / Order</th>
                 <th>Status</th>
+                <th>Performed By</th>
                 <th>Amount</th>
                 <th>Closing Balance</th>
               </tr>
@@ -540,11 +583,11 @@ const AdminBilling: React.FC = () => {
             <tbody>
               {transactionsLoading && transactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="table-empty">Loading transactions…</td>
+                  <td colSpan={8} className="table-empty">Loading transactions…</td>
                 </tr>
               ) : filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="table-empty">No transactions found with the current filters.</td>
+                  <td colSpan={8} className="table-empty">No transactions found with the current filters.</td>
                 </tr>
               ) : (
                 filteredTransactions.map((txn) => (
@@ -568,6 +611,18 @@ const AdminBilling: React.FC = () => {
                       </div>
                     </td>
                     <td>{txn.status || 'Pending'}</td>
+                    <td>
+                      {txn.performed_by ? (
+                        <div className="performed-by-cell">
+                          <span className="performer-name">{txn.performed_by.name}</span>
+                          <small className={`performer-role role-${txn.performed_by.role}`}>
+                            {txn.performed_by.role === 'staff' ? 'Staff' : txn.performed_by.role === 'admin' ? 'Admin' : 'System'}
+                          </small>
+                        </div>
+                      ) : (
+                        <span className="system-performer">System</span>
+                      )}
+                    </td>
                     <td className={txn.transaction_type === 'credit' ? 'numeric success' : 'numeric danger'}>
                       {txn.transaction_type === 'credit' ? '+' : '-'}₹{txn.amount.toFixed(2)}
                     </td>

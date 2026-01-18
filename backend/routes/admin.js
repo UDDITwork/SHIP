@@ -20,6 +20,7 @@ const RateCard = require('../models/RateCard');
 const RateCardService = require('../services/rateCardService');
 const logger = require('../utils/logger');
 const websocketService = require('../services/websocketService');
+const cloudinaryService = require('../services/cloudinaryService');
 
 const STATUS_KEYS = ['open', 'in_progress', 'waiting_customer', 'resolved', 'closed', 'escalated'];
 const PRIORITY_KEYS = ['urgent', 'high', 'medium', 'low'];
@@ -584,6 +585,130 @@ router.patch('/clients/:id/kyc', async (req, res) => {
   }
 });
 
+// Global search endpoint - search by AWB, Order ID, or Contact Number
+router.get('/global-search', async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    if (!query || query.length < 2) {
+      return res.json({
+        success: true,
+        data: {
+          orders: [],
+          packages: [],
+          customers: [],
+          clients: []
+        }
+      });
+    }
+
+    const searchQuery = query.trim();
+    const isPhoneNumber = /^[6-9]\d{9}$/.test(searchQuery);
+    const isPartialPhone = /^\d+$/.test(searchQuery) && searchQuery.length >= 3;
+
+    // Search orders by order_id or AWB
+    const orderQuery = {
+      $or: [
+        { order_id: { $regex: searchQuery, $options: 'i' } },
+        { awb_number: { $regex: searchQuery, $options: 'i' } }
+      ]
+    };
+
+    // Search packages by AWB
+    const packageQuery = {
+      awb_number: { $regex: searchQuery, $options: 'i' }
+    };
+
+    // Search customers by phone number
+    const customerQuery = isPhoneNumber || isPartialPhone
+      ? { phone: { $regex: searchQuery, $options: 'i' } }
+      : { _id: null }; // No results if not a phone number pattern
+
+    // Search clients by phone number, company name, or client_id
+    const clientQuery = {
+      $or: [
+        ...(isPhoneNumber || isPartialPhone ? [{ phone_number: { $regex: searchQuery, $options: 'i' } }] : []),
+        { company_name: { $regex: searchQuery, $options: 'i' } },
+        { client_id: { $regex: searchQuery, $options: 'i' } }
+      ]
+    };
+
+    const [orders, packages, customers, clients] = await Promise.all([
+      Order.find(orderQuery)
+        .select('order_id awb_number status created_at user_id consignee')
+        .populate('user_id', 'company_name client_id')
+        .sort({ created_at: -1 })
+        .limit(10)
+        .lean(),
+      Package.find(packageQuery)
+        .select('awb_number status created_at user_id product_name')
+        .populate('user_id', 'company_name client_id')
+        .sort({ created_at: -1 })
+        .limit(10)
+        .lean(),
+      Customer.find(customerQuery)
+        .select('name phone email user_id')
+        .populate('user_id', 'company_name client_id')
+        .limit(10)
+        .lean(),
+      User.find(clientQuery)
+        .select('company_name client_id phone_number email account_status')
+        .limit(10)
+        .lean()
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        orders: orders.map(o => ({
+          _id: o._id,
+          order_id: o.order_id,
+          awb_number: o.awb_number,
+          status: o.status,
+          created_at: o.created_at,
+          client_name: o.user_id?.company_name || 'N/A',
+          client_id: o.user_id?.client_id || 'N/A',
+          consignee_name: o.consignee?.name || 'N/A'
+        })),
+        packages: packages.map(p => ({
+          _id: p._id,
+          awb_number: p.awb_number,
+          status: p.status,
+          created_at: p.created_at,
+          product_name: p.product_name,
+          client_name: p.user_id?.company_name || 'N/A',
+          client_id: p.user_id?.client_id || 'N/A'
+        })),
+        customers: customers.map(c => ({
+          _id: c._id,
+          name: c.name,
+          phone: c.phone,
+          email: c.email,
+          client_name: c.user_id?.company_name || 'N/A',
+          client_id: c.user_id?.client_id || 'N/A',
+          user_id: c.user_id?._id
+        })),
+        clients: clients.map(c => ({
+          _id: c._id,
+          company_name: c.company_name,
+          client_id: c.client_id,
+          phone_number: c.phone_number,
+          email: c.email,
+          account_status: c.account_status
+        }))
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error in global search:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error performing search',
+      error: error.message
+    });
+  }
+});
+
 // Get dashboard statistics
 router.get('/dashboard', async (req, res) => {
   try {
@@ -658,6 +783,232 @@ router.get('/dashboard', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching dashboard data',
+      error: error.message
+    });
+  }
+});
+
+// Get individual client dashboard with comprehensive stats
+router.get('/clients/:id/dashboard', async (req, res) => {
+  try {
+    const clientId = req.params.id;
+
+    // Fetch client basic info
+    const client = await User.findById(clientId)
+      .select('company_name your_name email phone_number client_id account_status kyc_status wallet_balance user_type user_category created_at');
+
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Fetch ticket statistics
+    const ticketStats = await SupportTicket.aggregate([
+      { $match: { user_id: new mongoose.Types.ObjectId(clientId) } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const ticketCounts = {
+      open: 0,
+      in_progress: 0,
+      waiting_customer: 0,
+      escalated: 0,
+      resolved: 0,
+      closed: 0,
+      total: 0
+    };
+
+    ticketStats.forEach(stat => {
+      if (stat._id && ticketCounts.hasOwnProperty(stat._id)) {
+        ticketCounts[stat._id] = stat.count;
+        ticketCounts.total += stat.count;
+      }
+    });
+
+    // Fetch order statistics by status
+    const orderStats = await Order.aggregate([
+      { $match: { user_id: new mongoose.Types.ObjectId(clientId) } },
+      {
+        $group: {
+          _id: '$status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const orderCounts = {
+      new: 0,
+      ready_to_ship: 0,
+      pickup_scheduled: 0,
+      in_transit: 0,
+      out_for_delivery: 0,
+      delivered: 0,
+      ndr: 0,
+      rto_in_transit: 0,
+      rto_delivered: 0,
+      cancelled: 0,
+      lost: 0,
+      total: 0
+    };
+
+    orderStats.forEach(stat => {
+      const status = stat._id?.toLowerCase().replace(/\s+/g, '_');
+      if (status) {
+        if (orderCounts.hasOwnProperty(status)) {
+          orderCounts[status] = stat.count;
+        }
+        orderCounts.total += stat.count;
+      }
+    });
+
+    // Fetch NDR statistics
+    const ndrStats = await Order.aggregate([
+      {
+        $match: {
+          user_id: new mongoose.Types.ObjectId(clientId),
+          status: { $in: ['ndr', 'NDR', 'Ndr'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$ndr_status',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const ndrCounts = {
+      pending: 0,
+      reattempt_requested: 0,
+      rto_requested: 0,
+      resolved: 0,
+      total: 0
+    };
+
+    ndrStats.forEach(stat => {
+      const status = stat._id?.toLowerCase().replace(/\s+/g, '_');
+      if (status && ndrCounts.hasOwnProperty(status)) {
+        ndrCounts[status] = stat.count;
+      }
+      ndrCounts.total += stat.count;
+    });
+
+    // Fetch COD statistics
+    const codStats = await Order.aggregate([
+      {
+        $match: {
+          user_id: new mongoose.Types.ObjectId(clientId),
+          payment_mode: { $in: ['cod', 'COD', 'Cash on Delivery'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$status',
+          total_amount: { $sum: '$cod_amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const codSummary = {
+      total_cod_orders: 0,
+      total_cod_amount: 0,
+      delivered_cod: 0,
+      pending_cod: 0,
+      rto_cod: 0
+    };
+
+    codStats.forEach(stat => {
+      codSummary.total_cod_orders += stat.count;
+      codSummary.total_cod_amount += stat.total_amount || 0;
+      const status = stat._id?.toLowerCase();
+      if (status === 'delivered') {
+        codSummary.delivered_cod += stat.total_amount || 0;
+      } else if (['rto', 'rto_in_transit', 'rto_delivered'].includes(status)) {
+        codSummary.rto_cod += stat.total_amount || 0;
+      } else {
+        codSummary.pending_cod += stat.total_amount || 0;
+      }
+    });
+
+    // Fetch remittance summary
+    const remittanceStats = await Remittance.aggregate([
+      { $match: { client_id: new mongoose.Types.ObjectId(clientId) } },
+      {
+        $group: {
+          _id: '$status',
+          total: { $sum: '$remittance_amount' },
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+
+    const remittanceSummary = {
+      total_remitted: 0,
+      pending_remittance: 0,
+      total_records: 0
+    };
+
+    remittanceStats.forEach(stat => {
+      remittanceSummary.total_records += stat.count;
+      if (stat._id === 'completed' || stat._id === 'remitted') {
+        remittanceSummary.total_remitted += stat.total || 0;
+      } else {
+        remittanceSummary.pending_remittance += stat.total || 0;
+      }
+    });
+
+    // Fetch recent wallet transactions
+    const recentTransactions = await Transaction.find({ user_id: clientId })
+      .sort({ created_at: -1 })
+      .limit(5)
+      .select('type amount description status created_at');
+
+    // Fetch recent orders
+    const recentOrders = await Order.find({ user_id: clientId })
+      .sort({ created_at: -1 })
+      .limit(5)
+      .select('order_id awb_number status consignee.name created_at');
+
+    res.json({
+      success: true,
+      data: {
+        client: {
+          _id: client._id,
+          company_name: client.company_name,
+          your_name: client.your_name,
+          email: client.email,
+          phone_number: client.phone_number,
+          client_id: client.client_id,
+          account_status: client.account_status,
+          kyc_status: client.kyc_status,
+          wallet_balance: client.wallet_balance,
+          user_type: client.user_type,
+          user_category: client.user_category,
+          created_at: client.created_at
+        },
+        tickets: ticketCounts,
+        orders: orderCounts,
+        ndr: ndrCounts,
+        cod: codSummary,
+        remittance: remittanceSummary,
+        recentTransactions,
+        recentOrders
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching client dashboard:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching client dashboard',
       error: error.message
     });
   }
@@ -796,7 +1147,7 @@ router.get('/clients/:id/customers', async (req, res) => {
 router.get('/clients/:id/documents', async (req, res) => {
   try {
     const client = await User.findById(req.params.id)
-      .select('kyc_documents kyc_status company_name your_name email client_id');
+      .select('documents kyc_status company_name your_name email client_id');
 
     if (!client) {
       return res.status(404).json({
@@ -805,19 +1156,19 @@ router.get('/clients/:id/documents', async (req, res) => {
       });
     }
 
-    // Extract document information
+    // Extract document information from the documents array
+    // User model schema: documents is an array with {document_type, document_status, file_url, upload_date, original_filename, mimetype}
     const documents = [];
-    
-    if (client.kyc_documents) {
-      Object.keys(client.kyc_documents).forEach(docType => {
-        const doc = client.kyc_documents[docType];
-        if (doc && doc.url) {
+
+    if (client.documents && Array.isArray(client.documents)) {
+      client.documents.forEach(doc => {
+        if (doc && doc.file_url) {
           documents.push({
-            type: docType,
-            name: doc.name || `${docType}_document`,
-            url: doc.url,
-            uploadedAt: doc.uploaded_at || doc.uploadedAt,
-            status: doc.status || 'uploaded'
+            type: doc.document_type,
+            name: doc.original_filename || `${doc.document_type}_document`,
+            url: doc.file_url,
+            uploadedAt: doc.upload_date,
+            status: doc.document_status || 'uploaded'
           });
         }
       });
@@ -1075,15 +1426,18 @@ router.get('/tickets/summary', async (req, res) => {
 // @access  Admin
 router.get('/tickets', async (req, res) => {
   try {
-    const { 
-      page = 1, 
-      limit = 10, 
-      status = '', 
-      category = '', 
+    const {
+      page = 1,
+      limit = 10,
+      status = '',
+      category = '',
       priority = '',
       assigned_to = '',
       date_from = '',
-      date_to = ''
+      date_to = '',
+      search = '',
+      sort_by = 'created_at',
+      sort_order = '-1'
     } = req.query;
     const skip = (page - 1) * limit;
 
@@ -1118,15 +1472,61 @@ router.get('/tickets', async (req, res) => {
       }
     }
 
-    // Get tickets with pagination and populate user info
-    const tickets = await SupportTicket.find(filterQuery)
-      .populate('user_id', 'company_name your_name email phone_number client_id')
-      .sort({ created_at: -1 })
-      .skip(skip)
-      .limit(parseInt(limit))
-      .lean();
+    // Build sort options
+    const sortOptions = {};
+    sortOptions[sort_by] = parseInt(sort_order);
 
-    const totalTickets = await SupportTicket.countDocuments(filterQuery);
+    // If search is provided, we need to search in populated fields
+    let tickets;
+    let totalTickets;
+
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+
+      // First, find user IDs that match the search in User collection
+      const matchingUsers = await User.find({
+        $or: [
+          { company_name: searchRegex },
+          { your_name: searchRegex },
+          { email: searchRegex },
+          { client_id: searchRegex },
+          { phone_number: searchRegex }
+        ]
+      }).select('_id').lean();
+
+      const userIds = matchingUsers.map(u => u._id);
+
+      // Search in tickets - either in ticket fields or in user references
+      const searchFilter = {
+        ...filterQuery,
+        $or: [
+          { ticket_id: searchRegex },
+          { subject: searchRegex },
+          { category: searchRegex },
+          { awb_numbers: searchRegex },
+          { user_id: { $in: userIds } }
+        ]
+      };
+
+      tickets = await SupportTicket.find(searchFilter)
+        .populate('user_id', 'company_name your_name email phone_number client_id')
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+      totalTickets = await SupportTicket.countDocuments(searchFilter);
+    } else {
+      // Get tickets with pagination and populate user info
+      tickets = await SupportTicket.find(filterQuery)
+        .populate('user_id', 'company_name your_name email phone_number client_id')
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+      totalTickets = await SupportTicket.countDocuments(filterQuery);
+    }
 
     // Get overall statistics
     const stats = await SupportTicket.getTicketStats(null, null, null);
@@ -1254,7 +1654,10 @@ router.get('/tickets/:ticketId/attachments/:attachmentId/download', async (req, 
 // @desc    Admin respond to ticket
 // @route   POST /api/admin/tickets/:id/messages
 // @access  Admin
-router.post('/tickets/:id/messages', async (req, res) => {
+router.post('/tickets/:id/messages', upload.fields([
+  { name: 'attachments', maxCount: 5 },
+  { name: 'files', maxCount: 5 }
+]), async (req, res) => {
   try {
     // Validate ObjectId
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
@@ -1266,10 +1669,17 @@ router.post('/tickets/:id/messages', async (req, res) => {
 
     const { message, is_internal = false } = req.body;
 
-    if (!message || !message.trim()) {
+    // Normalize Multer files (support both attachments and files fields)
+    const uploadedFileGroups = req.files || {};
+    const normalizedFiles = Array.isArray(uploadedFileGroups)
+      ? uploadedFileGroups
+      : Object.values(uploadedFileGroups).flat();
+
+    // Require either a message or files
+    if ((!message || !message.trim()) && normalizedFiles.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Message is required'
+        message: 'Message or attachment is required'
       });
     }
 
@@ -1282,29 +1692,99 @@ router.post('/tickets/:id/messages', async (req, res) => {
       });
     }
 
-    // Check for duplicate message (same content within last 10 seconds)
-    const trimmedMessage = message.trim();
-    const now = Date.now();
-    const recentDuplicate = ticket.conversation.find(msg =>
-      msg.message_content === trimmedMessage &&
-      msg.message_type === 'admin' &&
-      msg.timestamp &&
-      (now - new Date(msg.timestamp).getTime()) < 10000
-    );
+    // Check for duplicate message (same content within last 10 seconds) - only if message provided
+    const trimmedMessage = (message || '').trim();
+    if (trimmedMessage) {
+      const now = Date.now();
+      const recentDuplicate = ticket.conversation.find(msg =>
+        msg.message_content === trimmedMessage &&
+        msg.message_type === 'admin' &&
+        msg.timestamp &&
+        (now - new Date(msg.timestamp).getTime()) < 10000
+      );
 
-    if (recentDuplicate) {
-      return res.status(409).json({
-        success: false,
-        message: 'Duplicate message detected. This message was already sent.'
-      });
+      if (recentDuplicate) {
+        return res.status(409).json({
+          success: false,
+          message: 'Duplicate message detected. This message was already sent.'
+        });
+      }
+    }
+
+    // Process file attachments (upload to Cloudinary)
+    const attachments = [];
+    if (normalizedFiles.length > 0) {
+      for (const file of normalizedFiles) {
+        const validation = cloudinaryService.validateFile(file);
+        if (!validation.valid) {
+          return res.status(400).json({
+            success: false,
+            message: validation.error
+          });
+        }
+
+        logger.info('[Admin Message Upload] Processing file', {
+          name: file.originalname,
+          mimetype: file.mimetype,
+          size: file.size
+        });
+
+        let uploadResult;
+        try {
+          uploadResult = await cloudinaryService.uploadFile(file.buffer, {
+            folder: 'shipsarthi/support/admin-messages',
+            mimetype: file.mimetype
+          });
+        } catch (uploadError) {
+          logger.error('[Admin Message Upload] Failed to upload file', {
+            name: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+            error: uploadError
+          });
+
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to upload attachment to cloud storage'
+          });
+        }
+
+        if (!uploadResult || !uploadResult.success) {
+          logger.error('[Admin Message Upload] Unexpected upload response', {
+            name: file.originalname,
+            uploadResult
+          });
+
+          return res.status(500).json({
+            success: false,
+            message: 'Failed to upload attachment to cloud storage'
+          });
+        }
+
+        logger.info('[Admin Message Upload] Upload successful', {
+          name: file.originalname,
+          public_id: uploadResult.public_id,
+          resource_type: uploadResult.resource_type
+        });
+
+        const fileType = cloudinaryService.getFileType(file.mimetype);
+
+        attachments.push({
+          file_name: file.originalname,
+          mimetype: file.mimetype,
+          file_url: uploadResult.url,
+          file_type: fileType,
+          file_size: file.size
+        });
+      }
     }
 
     // Get sender name (staff name or admin email)
-    const senderName = req.staff ? req.staff.name : (req.admin.email || 'Admin');
+    const senderName = req.staff ? req.staff.name : (req.admin?.email || 'Admin');
     const staffName = req.staff ? req.staff.name : null;
 
-    // Add message to conversation with staff tracking
-    await ticket.addMessage('admin', senderName, message, [], is_internal, staffName);
+    // Add message to conversation with staff tracking and attachments
+    await ticket.addMessage('admin', senderName, trimmedMessage || '[Attachment]', attachments, is_internal, staffName);
 
     // Update ticket status if it was waiting for admin response
     if (ticket.status === 'waiting_customer') {
@@ -1312,7 +1792,7 @@ router.post('/tickets/:id/messages', async (req, res) => {
       await ticket.save();
     }
 
-    // Reload ticket to get populated user_id  
+    // Reload ticket to get populated user_id
     await ticket.populate('user_id', '_id your_name');
 
     // Send WebSocket notification to admins
@@ -1321,9 +1801,10 @@ router.post('/tickets/:id/messages', async (req, res) => {
       _id: ticket._id,
       client_name: ticket.user_id?.your_name || 'Unknown Client'
     }, {
-      message: message,
+      message: trimmedMessage || '[Attachment]',
       sender: senderName,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      has_attachments: attachments.length > 0
     });
 
     // Send WebSocket notification to the client (only if not internal)
@@ -1336,9 +1817,10 @@ router.post('/tickets/:id/messages', async (req, res) => {
         ticket_id_mongo: ticket._id.toString(),
         created_at: new Date().toISOString(),
         data: {
-          message: message,
+          message: trimmedMessage || '[Attachment]',
           sender: senderName,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          has_attachments: attachments.length > 0
         }
       };
       websocketService.sendNotificationToClient(ticket.user_id._id, clientNotification);
@@ -1929,7 +2411,14 @@ router.post('/wallet-recharge', async (req, res) => {
 
     // Create transaction record
     const transactionId = `TXN${Date.now()}${Math.random().toString(36).substr(2, 6).toUpperCase()}`;
-    
+
+    // Track who performed the transaction (staff or admin)
+    const performedBy = {
+      name: req.staff ? req.staff.name : (req.admin?.email || 'Admin'),
+      email: req.staff ? req.staff.email : (req.admin?.email || ''),
+      role: req.staff ? 'staff' : 'admin'
+    };
+
     const transaction = new Transaction({
       transaction_id: transactionId,
       user_id: client_id,
@@ -1943,7 +2432,9 @@ router.post('/wallet-recharge', async (req, res) => {
       balance_info: {
         opening_balance: currentBalance,
         closing_balance: newBalance
-      }
+      },
+      performed_by: performedBy,
+      created_by: performedBy.name
     });
 
     // Update client wallet balance
@@ -3578,7 +4069,11 @@ router.get('/billing/clients/:clientId/wallet-transactions', async (req, res) =>
       awb_number: txn.order_info?.awb_number || txn.related_order_id?.delhivery_data?.waybill || '',
       weight: txn.order_info?.weight || (txn.related_order_id?.package_info?.weight ? txn.related_order_id.package_info.weight * 1000 : null),
       zone: txn.order_info?.zone || '',
-      closing_balance: txn.balance_info?.closing_balance || 0
+      closing_balance: txn.balance_info?.closing_balance || 0,
+      // Include who performed the transaction (for manual adjustments)
+      performed_by: txn.performed_by || null,
+      created_by: txn.created_by || 'system',
+      transaction_category: txn.transaction_category || ''
     }));
     
     res.json({
