@@ -273,18 +273,18 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
       if (response.ok) {
         const data = await response.json();
         const warehousesList = data.data?.warehouses || data.warehouses || [];
-        console.log('📦 Fetched warehouses:', warehousesList.length, warehousesList);
+        console.log('Fetched warehouses:', warehousesList.length, warehousesList);
         setWarehouses(warehousesList);
         // Initialize filtered warehouses
         setFilteredWarehouses(warehousesList);
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error('❌ Failed to fetch warehouses:', response.status, errorData);
+        console.error('[Error] Failed to fetch warehouses:', response.status, errorData);
         setWarehouses([]);
         setFilteredWarehouses([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching warehouses:', error);
+      console.error('[Error] Error fetching warehouses:', error);
       setWarehouses([]);
       setFilteredWarehouses([]);
     }
@@ -371,66 +371,120 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
       
       try {
         const locationInfo = await validatePincode(pincode);
-        if (locationInfo && locationInfo.city && locationInfo.state && 
+        if (locationInfo && locationInfo.city && locationInfo.state &&
             locationInfo.city !== 'Unknown' && locationInfo.state !== 'Unknown' &&
             locationInfo.city !== 'Not Serviceable' && locationInfo.state !== 'Not Serviceable') {
-          // Auto-fill city and state
-          handleNestedInputChange('delivery_address', 'city', locationInfo.city);
-          handleNestedInputChange('delivery_address', 'state', locationInfo.state);
+          // Auto-fill city and state in single update to preserve other fields
+          setFormData(prev => ({
+            ...prev,
+            delivery_address: {
+              ...prev.delivery_address,
+              city: locationInfo.city,
+              state: locationInfo.state
+            }
+          }));
         } else {
-          // Invalid pincode - clear fields
-          handleNestedInputChange('delivery_address', 'city', '');
-          handleNestedInputChange('delivery_address', 'state', '');
+          // Invalid pincode - clear city/state but preserve other fields
+          setFormData(prev => ({
+            ...prev,
+            delivery_address: {
+              ...prev.delivery_address,
+              city: '',
+              state: ''
+            }
+          }));
         }
       } catch (error) {
         console.error('Pincode validation error:', error);
-        // On error, clear fields
-        handleNestedInputChange('delivery_address', 'city', '');
-        handleNestedInputChange('delivery_address', 'state', '');
+        // On error, clear city/state but preserve other fields
+        setFormData(prev => ({
+          ...prev,
+          delivery_address: {
+            ...prev.delivery_address,
+            city: '',
+            state: ''
+          }
+        }));
       } finally {
         setValidatingDeliveryPincode(false);
       }
     } else {
-      // Clear city and state if pincode is incomplete
-      handleNestedInputChange('delivery_address', 'city', '');
-      handleNestedInputChange('delivery_address', 'state', '');
+      // Clear city and state if pincode is incomplete but preserve other fields
+      setFormData(prev => ({
+        ...prev,
+        delivery_address: {
+          ...prev.delivery_address,
+          city: '',
+          state: ''
+        }
+      }));
     }
   };
 
   // Handle pickup pincode change (for manual warehouse entry)
   const handlePickupPincodeChange = async (pincode: string) => {
-    // Update pincode in form data
-    handleNestedInputChange('pickup_address', 'pincode', pincode);
-    
+    // Update pincode in form data - single update preserves other fields
+    setFormData(prev => ({
+      ...prev,
+      pickup_address: {
+        ...prev.pickup_address,
+        pincode
+      }
+    }));
+
     // If pincode is 6 digits, validate it
     if (pincode.length === 6) {
       setValidatingPickupPincode(true);
-      
+
       try {
         const locationInfo = await validatePincode(pincode);
-        if (locationInfo && locationInfo.city && locationInfo.state && 
+        if (locationInfo && locationInfo.city && locationInfo.state &&
             locationInfo.city !== 'Unknown' && locationInfo.state !== 'Unknown' &&
             locationInfo.city !== 'Not Serviceable' && locationInfo.state !== 'Not Serviceable') {
-          // Auto-fill city and state
-          handleNestedInputChange('pickup_address', 'city', locationInfo.city);
-          handleNestedInputChange('pickup_address', 'state', locationInfo.state);
+          // Auto-fill city and state in single update to preserve other fields
+          setFormData(prev => ({
+            ...prev,
+            pickup_address: {
+              ...prev.pickup_address,
+              city: locationInfo.city,
+              state: locationInfo.state
+            }
+          }));
         } else {
-          // Invalid pincode - clear fields
-          handleNestedInputChange('pickup_address', 'city', '');
-          handleNestedInputChange('pickup_address', 'state', '');
+          // Invalid pincode - clear city/state but preserve other fields
+          setFormData(prev => ({
+            ...prev,
+            pickup_address: {
+              ...prev.pickup_address,
+              city: '',
+              state: ''
+            }
+          }));
         }
       } catch (error) {
         console.error('Pincode validation error:', error);
-        // On error, clear fields
-        handleNestedInputChange('pickup_address', 'city', '');
-        handleNestedInputChange('pickup_address', 'state', '');
+        // On error, clear city/state but preserve other fields
+        setFormData(prev => ({
+          ...prev,
+          pickup_address: {
+            ...prev.pickup_address,
+            city: '',
+            state: ''
+          }
+        }));
       } finally {
         setValidatingPickupPincode(false);
       }
     } else {
-      // Clear city and state if pincode is incomplete
-      handleNestedInputChange('pickup_address', 'city', '');
-      handleNestedInputChange('pickup_address', 'state', '');
+      // Clear city and state if pincode is incomplete but preserve other fields
+      setFormData(prev => ({
+        ...prev,
+        pickup_address: {
+          ...prev.pickup_address,
+          city: '',
+          state: ''
+        }
+      }));
     }
   };
 
@@ -598,25 +652,31 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
   // Auto-calculate total weight when box entries change (Multi-Package B2C)
   useEffect(() => {
     if (formData.package_info.package_type === 'Multiple Package (B2C)' && boxEntries.length > 0) {
-      // Calculate total weight: sum of (quantity × weight_per_box) for all entries
+      // Calculate total weight: sum of (quantity x weight_per_box) for all entries
       const totalWeight = boxEntries.reduce(
         (sum, box) => sum + (box.quantity * box.weight_per_box),
         0
       );
 
-      // Only update if weight actually changed to avoid infinite loop
-      if (formData.package_info.weight !== totalWeight) {
-        setFormData(prev => ({
-          ...prev,
-          package_info: {
-            ...prev.package_info,
-            weight: totalWeight
-          }
-        }));
-      }
+      // Update weight using functional update to avoid stale closure issues
+      setFormData(prev => {
+        // Only update if weight actually changed to avoid infinite loop
+        if (prev.package_info.weight !== totalWeight) {
+          return {
+            ...prev,
+            package_info: {
+              ...prev.package_info,
+              weight: totalWeight
+            }
+          };
+        }
+        return prev;
+      });
     }
-  }, [boxEntries, formData.package_info.package_type, formData.package_info.weight]);
+    // Only depend on boxEntries and package_type - weight is derived, not a dependency
+  }, [boxEntries, formData.package_info.package_type]);
 
+  // Calculate order value and grand total when products or shipping charges change
   useEffect(() => {
     const orderValue = formData.products.reduce(
       (sum, product) => sum + product.unit_price * product.quantity,
@@ -625,24 +685,28 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     const shippingCharges = formData.payment_info.shipping_charges || 0;
     const grandTotal = orderValue + shippingCharges;
 
-    if (
-      formData.payment_info.order_value === orderValue &&
-      formData.payment_info.total_amount === orderValue &&
-      formData.payment_info.grand_total === grandTotal
-    ) {
-      return;
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      payment_info: {
-        ...prev.payment_info,
-        order_value: orderValue,
-        total_amount: orderValue,
-        grand_total: grandTotal
+    // Use functional update to avoid stale closure issues and check inside
+    setFormData(prev => {
+      // Only update if values actually changed to avoid infinite loop
+      if (
+        prev.payment_info.order_value === orderValue &&
+        prev.payment_info.total_amount === orderValue &&
+        prev.payment_info.grand_total === grandTotal
+      ) {
+        return prev;
       }
-    }));
-  }, [formData.products, formData.payment_info.shipping_charges, formData.payment_info.grand_total, formData.payment_info.order_value, formData.payment_info.total_amount]);
+      return {
+        ...prev,
+        payment_info: {
+          ...prev.payment_info,
+          order_value: orderValue,
+          total_amount: orderValue,
+          grand_total: grandTotal
+        }
+      };
+    });
+    // Only depend on inputs (products, shipping_charges) - outputs are derived
+  }, [formData.products, formData.payment_info.shipping_charges]);
 
   // MANDATORY: Calculate shipping charges when form is ready (all required fields filled)
   useEffect(() => {
@@ -789,7 +853,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         // Check if wallet balance is sufficient
         if (walletBalance < response.totalCharges) {
           insufficientBalance = true;
-          console.warn('⚠️ Insufficient wallet balance:', {
+          console.warn('[Warning] Insufficient wallet balance:', {
             walletBalance,
             shippingCharges: response.totalCharges,
             shortfall: response.totalCharges - walletBalance
@@ -811,7 +875,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         }
       }));
       
-      console.log('✅ Final shipping charges calculated (mandatory before buttons):', {
+      console.log('[Success] Final shipping charges calculated (mandatory before buttons):', {
         userCategory,
         zone: response.zone || 'unknown',
         pickup_pincode: formData.pickup_address.pincode,
@@ -832,7 +896,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
       });
       
     } catch (error: any) {
-      console.error('❌ Final shipping charges calculation failed:', error);
+      console.error('[Error] Final shipping charges calculation failed:', error);
       setFinalShippingCalculation({
         calculating: false,
         completed: false,
@@ -855,7 +919,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     }
     // Check wallet balance before proceeding
     if (finalShippingCalculation.insufficientBalance) {
-      alert(`⚠️ Insufficient Wallet Balance!\n\nYour wallet balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than the shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}).\n\nPlease ask admin to recharge your wallet before creating this order.`);
+      alert(`[Warning] Insufficient Wallet Balance!\n\nYour wallet balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than the shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}).\n\nPlease ask admin to recharge your wallet before creating this order.`);
       return;
     }
     await handleOrderSubmission(false); // generate_awb = false
@@ -872,7 +936,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     }
     // Check wallet balance before proceeding
     if (finalShippingCalculation.insufficientBalance) {
-      alert(`⚠️ Insufficient Wallet Balance!\n\nYour wallet balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than the shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}).\n\nPlease ask admin to recharge your wallet before creating this order.`);
+      alert(`[Warning] Insufficient Wallet Balance!\n\nYour wallet balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than the shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}).\n\nPlease ask admin to recharge your wallet before creating this order.`);
       return;
     }
     await handleOrderSubmission(true); // generate_awb = true
@@ -1007,13 +1071,13 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
       return;
     }
 
-    console.log('🚀 FRONTEND: Order creation started', {
+    console.log('FRONTEND: Order creation started', {
       formData,
       timestamp: new Date().toISOString()
     });
 
     try {
-      console.log('🌐 FRONTEND: Sending request to backend', {
+      console.log(' FRONTEND: Sending request to backend', {
         url: '/api/orders',
         method: 'POST',
         timestamp: new Date().toISOString()
@@ -1114,7 +1178,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         generate_awb: generateAWB
       };
 
-      console.log('🚀 FRONTEND: Sending order with generate_awb flag', {
+      console.log('FRONTEND: Sending order with generate_awb flag', {
         generate_awb: generateAWB,
         generate_awb_type: typeof generateAWB,
         will_call_delhivery: generateAWB,
@@ -1131,7 +1195,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         body: JSON.stringify(requestData)
       });
 
-      console.log('📡 FRONTEND: Response received', {
+      console.log('FRONTEND: Response received', {
         status: response.status,
         ok: response.ok,
         timestamp: new Date().toISOString()
@@ -1145,13 +1209,13 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         if (errorData?.error_code === 'PINCODE_NOT_SERVICEABLE' || msg.includes('not serviceable')) {
           errorMessage = 'PINCODE IS NOT SERVICEABLE';
         }
-        console.error('❌ FRONTEND: Order creation failed', {
+        console.error('[Error] FRONTEND: Order creation failed', {
           status: response.status,
           error: errorMessage,
           errorData: errorData,
           timestamp: new Date().toISOString()
         });
-        alert(`❌ Order creation failed:\n\n${errorMessage}\n\nPlease check the form and try again.`);
+        alert(`[Error] Order creation failed:\n\n${errorMessage}\n\nPlease check the form and try again.`);
         setLoading(false);
         return;
       }
@@ -1162,7 +1226,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         // Clear any previous validation errors
         setValidationErrors([]);
 
-        console.log('✅ FRONTEND: Order created successfully', {
+        console.log('[Success] FRONTEND: Order created successfully', {
           order: data.data.order,
           awb: data.data.awb_number,
           shipment_info: data.data.shipment_info,
@@ -1175,11 +1239,11 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         const orderStatus = data.data.order?.status || 'new';
         
         if (generateAWB && data.data.awb_number) {
-          successMessage = `Order created and AWB assigned successfully!\n\n📦 Order ID: ${data.data.order.order_id}\n✅ AWB Number: ${data.data.awb_number}\n📊 Status: ${orderStatus}\n\nOrder appears in "Ready to Ship" tab. You can request pickup from there.`;
+          successMessage = `Order created and AWB assigned successfully!\n\nOrder ID: ${data.data.order.order_id}\nAWB Number: ${data.data.awb_number}\nStatus: ${orderStatus}\n\nOrder appears in "Ready to Ship" tab. You can request pickup from there.`;
         } else if (generateAWB) {
-          successMessage = `Order created and AWB generation initiated!\n\n📦 Order ID: ${data.data.order.order_id}\n⚠️ AWB: Processing...\n📊 Status: ${orderStatus}\n\nOrder appears in "Ready to Ship" tab.`;
+          successMessage = `Order created and AWB generation initiated!\n\nOrder ID: ${data.data.order.order_id}\nAWB: Processing...\nStatus: ${orderStatus}\n\nOrder appears in "Ready to Ship" tab.`;
         } else {
-          successMessage = `Order saved successfully!\n\n📦 Order ID: ${data.data.order.order_id}\n📊 Status: ${orderStatus}\n\nOrder appears in "NEW" tab. You can generate AWB later.`;
+          successMessage = `Order saved successfully!\n\nOrder ID: ${data.data.order.order_id}\nStatus: ${orderStatus}\n\nOrder appears in "NEW" tab. You can generate AWB later.`;
         }
         
         alert(successMessage);
@@ -1272,7 +1336,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
       } else {
         try {
           const error = await response.json();
-          console.log('❌ FRONTEND: Order creation failed', {
+          console.log('[Error] FRONTEND: Order creation failed', {
             error: error.message,
             errors: error.errors,
             status: response.status,
@@ -1298,7 +1362,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         }
       }
     } catch (error) {
-      console.log('💥 FRONTEND: Network error', {
+      console.log(' FRONTEND: Network error', {
         error: error instanceof Error ? error.message : String(error),
         timestamp: new Date().toISOString()
       });
@@ -1323,7 +1387,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         {validationErrors.length > 0 && (
           <div className="validation-errors-container">
             <div className="validation-errors-header">
-              <strong>❌ Order Creation Failed</strong>
+              <strong>[Error] Order Creation Failed</strong>
               <button
                 className="close-errors-btn"
                 onClick={() => setValidationErrors([])}
@@ -1347,7 +1411,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
             {/* Buyer Information Section */}
             <div className="form-section buyer-section">
                 <div className="section-header">
-                  <h3>👤 Buyer/Receiver Details</h3>
+                  <h3> Buyer/Receiver Details</h3>
                 </div>
                 
                 <div className="form-row">
@@ -1510,7 +1574,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     <div className="order-id-display">
                       <span className="order-id-prefix">ORD</span>
                       <span className="order-id-number">{orderId.replace('ORD', '')}</span>
-                      <button type="button" className="refresh-btn" onClick={handleRefreshOrderId}>🔄</button>
+                      <button type="button" className="refresh-btn" onClick={handleRefreshOrderId}>Refresh</button>
                     </div>
                   </div>
                   <div className="form-group">
@@ -1559,7 +1623,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                           onClick={() => handleRemoveProduct(index)}
                           className="remove-product-btn"
                         >
-                          🗑️
+                          Remove
                         </button>
                       )}
                     </div>
@@ -1618,8 +1682,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
 
                     <div className="expandable-section">
                       <button type="button" className="expand-btn">
-                        + Add Category, SKU, Discount and Tax (optional) ⬆️
-                      </button>
+                        + Add Category, SKU, Discount and Tax (optional)                       </button>
                       
                       <div className="expanded-fields">
                         <div className="form-row">
@@ -1680,7 +1743,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
 
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <button type="button" onClick={handleAddProduct} className="add-product-btn">
-                    ➕ Add Product
+                    + Add Product
                   </button>
                 </div>
             </div>
@@ -1784,7 +1847,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
             <div className="form-section package-section">
 
                 <div className="tip-box">
-                  <span className="tip-icon">💡</span>
+                  <span className="tip-icon">Tip:</span>
                   <span>Tip: Add correct values to avoid weight discrepancy.</span>
                 </div>
 
@@ -1842,7 +1905,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                               onClick={() => handleRemoveBoxEntry(box.id)}
                               title="Remove this box"
                             >
-                              🗑️
+                              X
                             </button>
                           )}
                         </div>
@@ -2037,7 +2100,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
             {/* Warehouse Address Section */}
             <div className="form-section warehouse-section">
               <div className="section-header">
-                <h3>🏢 Warehouse Address</h3>
+                <h3> Warehouse Address</h3>
               </div>
               
               {!showManualAddress ? (
@@ -2239,13 +2302,13 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
               {formData.pickup_address.pincode && formData.delivery_address.pincode && formData.package_info.weight > 0 && (
                 <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
                   <div className="section-header" style={{ marginBottom: '12px' }}>
-                    <h4>💰 Shipping Charges Calculation</h4>
+                    <h4> Shipping Charges Calculation</h4>
                   </div>
                   
                   {finalShippingCalculation.calculating ? (
                     <div style={{ textAlign: 'center', padding: '20px' }}>
                       <div style={{ fontSize: '16px', color: '#666', marginBottom: '10px' }}>
-                        🔄 Calculating shipping charges...
+                        Refresh Calculating shipping charges...
                       </div>
                       <div style={{ fontSize: '14px', color: '#999' }}>
                         Fetching zone from Delhivery API and calculating {orderType === 'reverse' ? 'RTO' : 'forward'} charges based on your rate card...
@@ -2255,7 +2318,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     <div style={{ padding: '15px', backgroundColor: '#d4edda', borderRadius: '6px', border: '1px solid #c3e6cb' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                         <div>
-                          <strong style={{ color: '#155724', fontSize: '16px' }}>✅ Shipping Charges Calculated</strong>
+                          <strong style={{ color: '#155724', fontSize: '16px' }}>[Success] Shipping Charges Calculated</strong>
                         </div>
                         <button
                           type="button"
@@ -2270,7 +2333,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                             cursor: 'pointer'
                           }}
                         >
-                          🔄 Recalculate
+                          Refresh Recalculate
                         </button>
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
@@ -2288,13 +2351,13 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                         </div>
                       </div>
                       <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
-                        <div>📦 Pickup: {formData.pickup_address.pincode} | Delivery: {formData.delivery_address.pincode}</div>
-                        <div>⚖️ Weight: {formData.package_info.weight} kg | User Category: {userCategory}</div>
-                        <div>🔄 Order Type: <strong>{orderType === 'reverse' ? 'Reverse (RTO)' : 'Forward'}</strong> | Charges: <strong>{orderType === 'reverse' ? 'RTO Charges' : 'Forward Charges'}</strong></div>
+                        <div>Pickup: {formData.pickup_address.pincode} | Delivery: {formData.delivery_address.pincode}</div>
+                        <div>Weight: {formData.package_info.weight} kg | User Category: {userCategory}</div>
+                        <div>Order Type: <strong>{orderType === 'reverse' ? 'Reverse (RTO)' : 'Forward'}</strong> | Charges: <strong>{orderType === 'reverse' ? 'RTO Charges' : 'Forward Charges'}</strong></div>
                         {finalShippingCalculation.walletBalance !== null && (
                           <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f8ff', borderRadius: '4px' }}>
-                            💰 Wallet Balance: <strong>₹{finalShippingCalculation.walletBalance.toFixed(2)}</strong> | 
-                            After Deduction: <strong>₹{(finalShippingCalculation.walletBalance - formData.payment_info.shipping_charges).toFixed(2)}</strong>
+                            Wallet Balance: <strong>Rs.{finalShippingCalculation.walletBalance.toFixed(2)}</strong> |
+                            After Deduction: <strong>Rs.{(finalShippingCalculation.walletBalance - formData.payment_info.shipping_charges).toFixed(2)}</strong>
                           </div>
                         )}
                       </div>
@@ -2303,7 +2366,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     <div style={{ padding: '15px', backgroundColor: '#fff3cd', borderRadius: '6px', border: '2px solid #ffc107' }}>
                       <div style={{ color: '#856404', marginBottom: '15px' }}>
                         <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
-                          ⚠️ Insufficient Wallet Balance
+                          [Warning] Insufficient Wallet Balance
                         </div>
                         <div style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '12px' }}>
                           <div><strong>Wallet Balance:</strong> ₹{finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}</div>
@@ -2321,7 +2384,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                           color: '#856404',
                           marginTop: '12px'
                         }}>
-                          <strong>❌ Order cannot proceed.</strong><br/>
+                          <strong>[Error] Order cannot proceed.</strong><br/>
                           Your wallet balance is less than the shipping charges calculated.<br/>
                           <strong>Please ask admin to recharge your wallet</strong> before creating this order.
                         </div>
@@ -2340,7 +2403,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                             cursor: 'pointer'
                           }}
                         >
-                          🔄 Recalculate
+                          Refresh Recalculate
                         </button>
                         <button
                           type="button"
@@ -2360,14 +2423,14 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                             cursor: 'pointer'
                           }}
                         >
-                          🔄 Refresh Balance
+                          Refresh Refresh Balance
                         </button>
                       </div>
                     </div>
                   ) : finalShippingCalculation.error ? (
                     <div style={{ padding: '15px', backgroundColor: '#f8d7da', borderRadius: '6px', border: '1px solid #f5c6cb' }}>
                       <div style={{ color: '#721c24', marginBottom: '10px' }}>
-                        <strong>❌ Calculation Failed</strong>
+                        <strong>[Error] Calculation Failed</strong>
                       </div>
                       <div style={{ color: '#721c24', fontSize: '14px', marginBottom: '15px' }}>
                         {finalShippingCalculation.error}
@@ -2385,7 +2448,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                           cursor: 'pointer'
                         }}
                       >
-                        🔄 Try Again
+                        Refresh Try Again
                       </button>
                     </div>
                   ) : (
@@ -2407,7 +2470,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                           fontWeight: 'bold'
                         }}
                       >
-                        💰 Calculate Shipping Charges
+                         Calculate Shipping Charges
                       </button>
                     </div>
                   )}
@@ -2429,7 +2492,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                   fontSize: '11px',
                   textAlign: 'center'
                 }}>
-                  ⚠️ Please calculate shipping charges above before proceeding
+                  [Warning] Please calculate shipping charges above before proceeding
                 </div>
               )}
               {finalShippingCalculation.insufficientBalance && (
@@ -2443,7 +2506,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                   textAlign: 'center',
                   fontWeight: 'bold'
                 }}>
-                  ⚠️ Insufficient wallet balance detected above. Please recharge your wallet before proceeding.
+                  [Warning] Insufficient wallet balance detected above. Please recharge your wallet before proceeding.
                 </div>
               )}
               <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
