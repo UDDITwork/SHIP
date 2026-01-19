@@ -23,12 +23,12 @@ const STATUS_ORDER: AdminTicket['status'][] = [
 ];
 
 const STATUS_CONFIG: Record<AdminTicket['status'], { label: string; icon: string; className: string }> = {
-  open: { label: 'Open', icon: '📨', className: 'open' },
-  in_progress: { label: 'In Progress', icon: '⏳', className: 'in-progress' },
-  waiting_customer: { label: 'Waiting Customer', icon: '🕒', className: 'waiting' },
-  escalated: { label: 'Escalated', icon: '⚠️', className: 'escalated' },
-  resolved: { label: 'Resolved', icon: '✅', className: 'resolved' },
-  closed: { label: 'Closed', icon: '🔒', className: 'closed' }
+  open: { label: 'Open', icon: 'O', className: 'open' },
+  in_progress: { label: 'In Progress', icon: 'IP', className: 'in-progress' },
+  waiting_customer: { label: 'Waiting Customer', icon: 'WC', className: 'waiting' },
+  escalated: { label: 'Escalated', icon: 'E', className: 'escalated' },
+  resolved: { label: 'Resolved', icon: 'R', className: 'resolved' },
+  closed: { label: 'Closed', icon: 'C', className: 'closed' }
 };
 
 const PRIORITY_ORDER: AdminTicket['priority'][] = [
@@ -39,10 +39,10 @@ const PRIORITY_ORDER: AdminTicket['priority'][] = [
 ];
 
 const PRIORITY_CONFIG: Record<AdminTicket['priority'], { label: string; icon: string; className: string; description: string }> = {
-  urgent: { label: 'Urgent', icon: '🚨', className: 'urgent', description: 'Immediate attention required' },
-  high: { label: 'High', icon: '⚡', className: 'high', description: 'Action needed soon' },
-  medium: { label: 'Medium', icon: '📌', className: 'medium', description: 'Normal attention level' },
-  low: { label: 'Low', icon: '🕘', className: 'low', description: 'Can be scheduled later' }
+  urgent: { label: 'Urgent', icon: 'U', className: 'urgent', description: 'Immediate attention required' },
+  high: { label: 'High', icon: 'H', className: 'high', description: 'Action needed soon' },
+  medium: { label: 'Medium', icon: 'M', className: 'medium', description: 'Normal attention level' },
+  low: { label: 'Low', icon: 'L', className: 'low', description: 'Can be scheduled later' }
 };
 
 const formatNumber = (value: number | undefined | null) => {
@@ -341,7 +341,7 @@ const AdminTicketSummary: React.FC = () => {
           }}
         >
           <div className="status-card-header">
-            <span className="status-icon">📊</span>
+            <span className="status-icon">T</span>
             <span className="status-label">Total Tickets</span>
           </div>
           <p className="status-count">

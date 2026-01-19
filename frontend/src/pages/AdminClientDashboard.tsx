@@ -93,7 +93,7 @@ const AdminClientDashboard: React.FC = () => {
       <div className="dashboard-header">
         <div className="header-left">
           <button className="back-button" onClick={() => navigate('/admin/clients')}>
-            ← Back to Clients
+            Back to Clients
           </button>
           <div className="client-info-header">
             <h1>{client.company_name}</h1>
@@ -123,42 +123,42 @@ const AdminClientDashboard: React.FC = () => {
       {/* Client Info Cards */}
       <div className="client-info-section">
         <div className="info-card">
-          <div className="info-icon">👤</div>
+          <div className="info-icon">CP</div>
           <div className="info-content">
             <span className="info-label">Contact Person</span>
             <span className="info-value">{client.your_name}</span>
           </div>
         </div>
         <div className="info-card">
-          <div className="info-icon">📧</div>
+          <div className="info-icon">EM</div>
           <div className="info-content">
             <span className="info-label">Email</span>
             <span className="info-value">{client.email}</span>
           </div>
         </div>
         <div className="info-card">
-          <div className="info-icon">📱</div>
+          <div className="info-icon">PH</div>
           <div className="info-content">
             <span className="info-label">Phone</span>
             <span className="info-value">{client.phone_number}</span>
           </div>
         </div>
         <div className="info-card">
-          <div className="info-icon">🆔</div>
+          <div className="info-icon">ID</div>
           <div className="info-content">
             <span className="info-label">Client ID</span>
             <span className="info-value">{client.client_id}</span>
           </div>
         </div>
         <div className="info-card wallet">
-          <div className="info-icon">💰</div>
+          <div className="info-icon">WB</div>
           <div className="info-content">
             <span className="info-label">Wallet Balance</span>
             <span className="info-value">{formatCurrency(client.wallet_balance)}</span>
           </div>
         </div>
         <div className="info-card">
-          <div className="info-icon">📅</div>
+          <div className="info-icon">DT</div>
           <div className="info-content">
             <span className="info-label">Member Since</span>
             <span className="info-value">{formatDate(client.created_at)}</span>
@@ -171,7 +171,7 @@ const AdminClientDashboard: React.FC = () => {
         {/* Ticket Lifecycle Section */}
         <div className="stats-section tickets-section">
           <div className="section-header">
-            <h2>🎫 Ticket Lifecycle</h2>
+            <h2>Ticket Lifecycle</h2>
             <span className="section-total">{tickets.total} Total</span>
           </div>
           <div className="stats-cards">
@@ -201,7 +201,7 @@ const AdminClientDashboard: React.FC = () => {
         {/* Shipment Status Section */}
         <div className="stats-section orders-section">
           <div className="section-header">
-            <h2>📦 Shipment Status</h2>
+            <h2>Shipment Status</h2>
             <span className="section-total">{orders.total} Total</span>
           </div>
           <div className="stats-cards">
@@ -243,7 +243,7 @@ const AdminClientDashboard: React.FC = () => {
         {/* NDR Section */}
         <div className="stats-section ndr-section">
           <div className="section-header">
-            <h2>📋 NDR Status</h2>
+            <h2>NDR Status</h2>
             <span className="section-total">{ndr.total} Total</span>
           </div>
           <div className="stats-cards">
@@ -269,7 +269,7 @@ const AdminClientDashboard: React.FC = () => {
         {/* COD Section */}
         <div className="stats-section cod-section">
           <div className="section-header">
-            <h2>💵 COD Summary</h2>
+            <h2>COD Summary</h2>
             <span className="section-total">{cod.total_cod_orders} Orders</span>
           </div>
           <div className="cod-stats">
@@ -295,7 +295,7 @@ const AdminClientDashboard: React.FC = () => {
         {/* Remittance Section */}
         <div className="stats-section remittance-section">
           <div className="section-header">
-            <h2>💸 Remittance Summary</h2>
+            <h2>Remittance Summary</h2>
             <span className="section-total">{remittance.total_records} Records</span>
           </div>
           <div className="remittance-stats">
@@ -316,7 +316,7 @@ const AdminClientDashboard: React.FC = () => {
         {/* Recent Orders */}
         <div className="activity-section">
           <div className="section-header">
-            <h2>📦 Recent Orders</h2>
+            <h2>Recent Orders</h2>
             <button className="btn-link" onClick={() => navigate(`/admin/orders/clients/${clientId}/orders`)}>
               View All
             </button>
@@ -348,7 +348,7 @@ const AdminClientDashboard: React.FC = () => {
         {/* Recent Transactions */}
         <div className="activity-section">
           <div className="section-header">
-            <h2>💰 Recent Transactions</h2>
+            <h2>Recent Transactions</h2>
             <button className="btn-link" onClick={() => navigate(`/admin/billing/${clientId}`)}>
               View All
             </button>

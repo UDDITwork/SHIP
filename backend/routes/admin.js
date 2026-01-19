@@ -17,6 +17,7 @@ const Remittance = require('../models/Remittance');
 const ShipmentTrackingEvent = require('../models/ShipmentTrackingEvent');
 const Staff = require('../models/Staff');
 const RateCard = require('../models/RateCard');
+const Carrier = require('../models/Carrier');
 const RateCardService = require('../services/rateCardService');
 const logger = require('../utils/logger');
 const websocketService = require('../services/websocketService');
@@ -4103,6 +4104,105 @@ router.get('/billing/clients/:clientId/wallet-transactions', async (req, res) =>
   }
 });
 
+// @desc    Generate monthly billing for all clients
+// @route   POST /api/admin/billing/generate-monthly
+// @access  Admin
+router.post('/billing/generate-monthly', async (req, res) => {
+  try {
+    const { month, year } = req.body;
+
+    if (!month || !year) {
+      return res.status(400).json({
+        success: false,
+        message: 'Month and year are required'
+      });
+    }
+
+    // Get the start and end dates for the month
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59, 999);
+
+    // Check if staff has permission (if not admin)
+    if (req.staff && !req.staff.permissions?.can_generate_monthly_billing) {
+      return res.status(403).json({
+        success: false,
+        message: 'You do not have permission to generate monthly billing'
+      });
+    }
+
+    // Get all active clients
+    const clients = await User.find({ account_status: 'active' }).select('_id client_id company_name');
+
+    let processed = 0;
+    let totalAmount = 0;
+
+    // For each client, calculate billing for the month
+    for (const client of clients) {
+      try {
+        // Get all completed orders for this client in the specified month
+        const orders = await Order.find({
+          user_id: client._id,
+          status: 'delivered',
+          delivered_date: { $gte: startDate, $lte: endDate }
+        });
+
+        if (orders.length === 0) continue;
+
+        // Calculate total shipping charges for the month
+        let monthlyTotal = 0;
+        for (const order of orders) {
+          const shippingCharges = order.payment_info?.shipping_charges || 0;
+          monthlyTotal += shippingCharges;
+        }
+
+        if (monthlyTotal > 0) {
+          processed++;
+          totalAmount += monthlyTotal;
+        }
+      } catch (clientError) {
+        logger.error('Error processing client billing', {
+          clientId: client._id,
+          error: clientError.message
+        });
+      }
+    }
+
+    const performerInfo = req.staff
+      ? { name: req.staff.name, email: req.staff.email, role: 'staff' }
+      : { name: req.admin?.email || 'Admin', email: req.admin?.email || '', role: 'admin' };
+
+    logger.info('Monthly billing generated', {
+      month,
+      year,
+      processed,
+      totalAmount,
+      performedBy: performerInfo
+    });
+
+    res.json({
+      success: true,
+      message: `Monthly billing generated for ${getMonthName(month)} ${year}`,
+      data: {
+        processed,
+        totalAmount
+      }
+    });
+  } catch (error) {
+    logger.error('Generate monthly billing error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating monthly billing',
+      error: error.message
+    });
+  }
+});
+
+function getMonthName(monthNum) {
+  const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                  'July', 'August', 'September', 'October', 'November', 'December'];
+  return months[monthNum - 1] || '';
+}
+
 // ============================================================================
 // ADMIN ORDERS ROUTES
 // ============================================================================
@@ -4886,7 +4986,7 @@ router.get('/staff', adminOnly, async (req, res) => {
 router.patch('/staff/:id', adminOnly, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, password, is_active } = req.body;
+    const { name, email, password, is_active, permissions } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({
@@ -4907,7 +5007,7 @@ router.patch('/staff/:id', adminOnly, async (req, res) => {
     if (name) staff.name = name.trim();
     if (email) {
       // Check if email is already taken by another staff
-      const existingStaff = await Staff.findOne({ 
+      const existingStaff = await Staff.findOne({
         email: email.toLowerCase().trim(),
         _id: { $ne: id }
       });
@@ -4932,6 +5032,31 @@ router.patch('/staff/:id', adminOnly, async (req, res) => {
       staff.is_active = is_active;
     }
 
+    // Update permissions if provided
+    if (permissions && typeof permissions === 'object') {
+      // Initialize permissions object if not exists
+      if (!staff.permissions) {
+        staff.permissions = {};
+      }
+
+      // Update each permission
+      const validPermissions = [
+        'dashboard', 'clients', 'orders', 'tickets', 'billing',
+        'remittances', 'ndr', 'weight_discrepancies', 'wallet_recharge',
+        'rate_cards', 'carriers', 'staff_management',
+        'can_recharge_wallet', 'can_change_client_category', 'can_generate_monthly_billing'
+      ];
+
+      validPermissions.forEach(key => {
+        if (typeof permissions[key] === 'boolean') {
+          staff.permissions[key] = permissions[key];
+        }
+      });
+
+      // Mark permissions as modified for mongoose to detect changes
+      staff.markModified('permissions');
+    }
+
     await staff.save();
 
     const staffData = staff.toObject();
@@ -4939,7 +5064,8 @@ router.patch('/staff/:id', adminOnly, async (req, res) => {
 
     logger.info('Staff account updated', {
       staffId: id,
-      updatedBy: req.admin.email
+      updatedBy: req.admin.email,
+      permissionsUpdated: !!permissions
     });
 
     res.json({
@@ -5255,6 +5381,733 @@ router.patch('/ratecard/:userCategory', adminOnly, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating ratecard',
+      error: error.message
+    });
+  }
+});
+
+// ==================== CARRIER MANAGEMENT ROUTES ====================
+
+// @desc    Get all carriers (with filter/sort options)
+// @route   GET /api/admin/carriers
+// @access  Admin only
+router.get('/carriers', adminOnly, async (req, res) => {
+  try {
+    const { sort, filter, active_only } = req.query;
+
+    // Build query
+    let query = {};
+    if (active_only === 'true') {
+      query.is_active = true;
+    }
+    if (filter) {
+      query.$or = [
+        { carrier_code: { $regex: filter, $options: 'i' } },
+        { display_name: { $regex: filter, $options: 'i' } },
+        { carrier_group: { $regex: filter, $options: 'i' } }
+      ];
+    }
+
+    // Build sort
+    let sortOption = { priority_order: 1, display_name: 1 };
+    if (sort === 'a-z') {
+      sortOption = { display_name: 1 };
+    } else if (sort === 'z-a') {
+      sortOption = { display_name: -1 };
+    } else if (sort === 'newest') {
+      sortOption = { createdAt: -1 };
+    } else if (sort === 'oldest') {
+      sortOption = { createdAt: 1 };
+    }
+
+    const carriers = await Carrier.find(query).sort(sortOption).lean();
+
+    // Get rate card counts for each carrier
+    const carrierIds = carriers.map(c => c._id);
+    const rateCounts = await RateCard.aggregate([
+      { $match: { carrier_id: { $in: carrierIds }, is_current: true } },
+      { $group: { _id: '$carrier_id', count: { $sum: 1 } } }
+    ]);
+
+    const rateCountMap = {};
+    rateCounts.forEach(rc => {
+      rateCountMap[rc._id.toString()] = rc.count;
+    });
+
+    const carriersWithCounts = carriers.map(c => ({
+      ...c,
+      rate_card_count: rateCountMap[c._id.toString()] || 0
+    }));
+
+    res.json({
+      success: true,
+      data: carriersWithCounts,
+      total: carriersWithCounts.length
+    });
+  } catch (error) {
+    logger.error('Error fetching carriers:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching carriers',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get single carrier by ID
+// @route   GET /api/admin/carriers/:id
+// @access  Admin only
+router.get('/carriers/:id', adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id).lean();
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    // Get current rate cards for this carrier
+    const rateCards = await RateCard.find({
+      carrier_id: id,
+      is_current: true
+    }).lean();
+
+    res.json({
+      success: true,
+      data: {
+        ...carrier,
+        rate_cards: rateCards
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching carrier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching carrier',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Create new carrier
+// @route   POST /api/admin/carriers
+// @access  Admin only
+router.post('/carriers', adminOnly, async (req, res) => {
+  try {
+    const {
+      carrier_code,
+      display_name,
+      carrier_group,
+      service_type,
+      zone_type,
+      weight_slab_type,
+      description,
+      priority_order,
+      api_config
+    } = req.body;
+
+    // Validation
+    if (!carrier_code || !display_name || !carrier_group || !service_type) {
+      return res.status(400).json({
+        success: false,
+        message: 'Carrier code, display name, carrier group, and service type are required'
+      });
+    }
+
+    // Check if carrier code already exists
+    const existingCarrier = await Carrier.findByCode(carrier_code);
+    if (existingCarrier) {
+      return res.status(400).json({
+        success: false,
+        message: 'Carrier with this code already exists'
+      });
+    }
+
+    const carrier = new Carrier({
+      carrier_code: carrier_code.toUpperCase().trim(),
+      display_name: display_name.trim(),
+      carrier_group: carrier_group.toUpperCase().trim(),
+      service_type,
+      zone_type: zone_type || 'standard',
+      weight_slab_type: weight_slab_type || 'option1',
+      description: description || '',
+      priority_order: priority_order || 0,
+      api_config: api_config || {},
+      is_active: true,
+      created_by: req.admin.email
+    });
+
+    await carrier.save();
+
+    logger.info('Carrier created', {
+      carrierCode: carrier.carrier_code,
+      createdBy: req.admin.email
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Carrier created successfully',
+      data: carrier
+    });
+  } catch (error) {
+    logger.error('Error creating carrier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating carrier',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Update carrier
+// @route   PATCH /api/admin/carriers/:id
+// @access  Admin only
+router.patch('/carriers/:id', adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id);
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    // Update allowed fields
+    const allowedUpdates = [
+      'display_name', 'description', 'priority_order',
+      'zone_type', 'weight_slab_type', 'api_config', 'logo_url'
+    ];
+
+    allowedUpdates.forEach(field => {
+      if (updates[field] !== undefined) {
+        carrier[field] = updates[field];
+      }
+    });
+
+    carrier.updated_by = req.admin.email;
+    await carrier.save();
+
+    logger.info('Carrier updated', {
+      carrierCode: carrier.carrier_code,
+      updatedBy: req.admin.email
+    });
+
+    res.json({
+      success: true,
+      message: 'Carrier updated successfully',
+      data: carrier
+    });
+  } catch (error) {
+    logger.error('Error updating carrier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating carrier',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Delete carrier (soft delete)
+// @route   DELETE /api/admin/carriers/:id
+// @access  Admin only
+router.delete('/carriers/:id', adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id);
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    // Soft delete by setting is_active to false
+    carrier.is_active = false;
+    carrier.updated_by = req.admin.email;
+    await carrier.save();
+
+    logger.info('Carrier deleted (deactivated)', {
+      carrierCode: carrier.carrier_code,
+      deletedBy: req.admin.email
+    });
+
+    res.json({
+      success: true,
+      message: 'Carrier deleted successfully'
+    });
+  } catch (error) {
+    logger.error('Error deleting carrier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deleting carrier',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Activate carrier
+// @route   POST /api/admin/carriers/:id/activate
+// @access  Admin only
+router.post('/carriers/:id/activate', adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id);
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    carrier.is_active = true;
+    carrier.updated_by = req.admin.email;
+    await carrier.save();
+
+    logger.info('Carrier activated', {
+      carrierCode: carrier.carrier_code,
+      activatedBy: req.admin.email
+    });
+
+    res.json({
+      success: true,
+      message: 'Carrier activated successfully',
+      data: carrier
+    });
+  } catch (error) {
+    logger.error('Error activating carrier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error activating carrier',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Deactivate carrier
+// @route   POST /api/admin/carriers/:id/deactivate
+// @access  Admin only
+router.post('/carriers/:id/deactivate', adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id);
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    carrier.is_active = false;
+    carrier.updated_by = req.admin.email;
+    await carrier.save();
+
+    logger.info('Carrier deactivated', {
+      carrierCode: carrier.carrier_code,
+      deactivatedBy: req.admin.email
+    });
+
+    res.json({
+      success: true,
+      message: 'Carrier deactivated successfully',
+      data: carrier
+    });
+  } catch (error) {
+    logger.error('Error deactivating carrier:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error deactivating carrier',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get current rates for a carrier (all categories)
+// @route   GET /api/admin/carriers/:id/rates
+// @access  Admin only
+router.get('/carriers/:id/rates', adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id).lean();
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    const rateCards = await RateCard.findCurrentByCarrier(id);
+
+    // Group by user category
+    const ratesByCategory = {};
+    const categories = ['New User', 'Lite User', 'Basic User', 'Advanced'];
+
+    categories.forEach(cat => {
+      const rate = rateCards.find(r => r.userCategory === cat);
+      ratesByCategory[cat] = rate || null;
+    });
+
+    res.json({
+      success: true,
+      data: {
+        carrier,
+        rates: ratesByCategory,
+        categories
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching carrier rates:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching carrier rates',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get rate history for a carrier and category
+// @route   GET /api/admin/carriers/:id/rates/history
+// @access  Admin only
+router.get('/carriers/:id/rates/history', adminOnly, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { category } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id).lean();
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    let query = { carrier_id: id };
+    if (category) {
+      // Normalize category
+      let normalizedCategory = category;
+      if (category.toLowerCase().includes('advanced')) {
+        normalizedCategory = 'Advanced';
+      } else if (category.toLowerCase().includes('new')) {
+        normalizedCategory = 'New User';
+      } else if (category.toLowerCase().includes('lite')) {
+        normalizedCategory = 'Lite User';
+      } else if (category.toLowerCase().includes('basic')) {
+        normalizedCategory = 'Basic User';
+      }
+      query.userCategory = normalizedCategory;
+    }
+
+    const rateHistory = await RateCard.find(query)
+      .sort({ userCategory: 1, version: -1 })
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        carrier,
+        history: rateHistory
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching rate history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching rate history',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Create or update rate card for a carrier category
+// @route   POST /api/admin/carriers/:id/rates/:category
+// @access  Admin only
+router.post('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
+  try {
+    const { id, category } = req.params;
+    const rateData = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id);
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    // Normalize category
+    let normalizedCategory = category;
+    if (category.toLowerCase().includes('advanced')) {
+      normalizedCategory = 'Advanced';
+    } else if (category.toLowerCase().includes('new')) {
+      normalizedCategory = 'New User';
+    } else if (category.toLowerCase().includes('lite')) {
+      normalizedCategory = 'Lite User';
+    } else if (category.toLowerCase().includes('basic')) {
+      normalizedCategory = 'Basic User';
+    }
+
+    // Validate rate data
+    if (!rateData.forwardCharges || !Array.isArray(rateData.forwardCharges) || rateData.forwardCharges.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Forward charges are required and must be a non-empty array'
+      });
+    }
+
+    if (!rateData.rtoCharges || !Array.isArray(rateData.rtoCharges) || rateData.rtoCharges.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'RTO charges are required and must be a non-empty array'
+      });
+    }
+
+    // Check if current rate exists
+    const existingRate = await RateCard.findOne({
+      carrier_id: id,
+      userCategory: normalizedCategory,
+      is_current: true
+    });
+
+    let newRateCard;
+
+    if (existingRate) {
+      // Archive existing and create new version
+      newRateCard = await existingRate.createNewVersion({
+        forwardCharges: rateData.forwardCharges,
+        rtoCharges: rateData.rtoCharges,
+        codCharges: rateData.codCharges || existingRate.codCharges,
+        zoneDefinitions: rateData.zoneDefinitions || existingRate.zoneDefinitions,
+        termsAndConditions: rateData.termsAndConditions || existingRate.termsAndConditions
+      });
+    } else {
+      // Create new rate card
+      newRateCard = new RateCard({
+        userCategory: normalizedCategory,
+        carrier: carrier.carrier_code,
+        carrier_id: carrier._id,
+        forwardCharges: rateData.forwardCharges,
+        rtoCharges: rateData.rtoCharges,
+        codCharges: rateData.codCharges || {
+          percentage: 2,
+          minimumAmount: 30,
+          gstAdditional: true
+        },
+        zoneDefinitions: rateData.zoneDefinitions || [
+          { zone: 'A', definition: 'Local - Within city' },
+          { zone: 'B', definition: 'Regional - Up to 500 km' },
+          { zone: 'C', definition: 'Metro to Metro - 501-2500 km (metro areas only)' },
+          { zone: 'D', definition: 'Rest of India - 501-2500 km' },
+          { zone: 'E', definition: 'Special - NE, J&K, or >2500 km' },
+          { zone: 'F', definition: 'Extended - Remote areas' }
+        ],
+        termsAndConditions: rateData.termsAndConditions || [
+          'Rates are exclusive of GST',
+          'Volumetric weight calculation: L x B x H / 5000'
+        ],
+        version: 1,
+        effective_from: new Date(),
+        effective_to: null,
+        is_current: true
+      });
+
+      await newRateCard.save();
+    }
+
+    // Clear rate card cache
+    RateCardService.clearCache(normalizedCategory);
+
+    logger.info('Rate card created/updated for carrier', {
+      carrierId: id,
+      carrierCode: carrier.carrier_code,
+      category: normalizedCategory,
+      version: newRateCard.version,
+      updatedBy: req.admin.email
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Rate card saved successfully',
+      data: newRateCard
+    });
+  } catch (error) {
+    logger.error('Error saving carrier rate:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error saving carrier rate',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Update existing rate card for a carrier category
+// @route   PATCH /api/admin/carriers/:id/rates/:category
+// @access  Admin only
+router.patch('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
+  try {
+    const { id, category } = req.params;
+    const updates = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid carrier ID'
+      });
+    }
+
+    const carrier = await Carrier.findById(id);
+
+    if (!carrier) {
+      return res.status(404).json({
+        success: false,
+        message: 'Carrier not found'
+      });
+    }
+
+    // Normalize category
+    let normalizedCategory = category;
+    if (category.toLowerCase().includes('advanced')) {
+      normalizedCategory = 'Advanced';
+    } else if (category.toLowerCase().includes('new')) {
+      normalizedCategory = 'New User';
+    } else if (category.toLowerCase().includes('lite')) {
+      normalizedCategory = 'Lite User';
+    } else if (category.toLowerCase().includes('basic')) {
+      normalizedCategory = 'Basic User';
+    }
+
+    const rateCard = await RateCard.findOne({
+      carrier_id: id,
+      userCategory: normalizedCategory,
+      is_current: true
+    });
+
+    if (!rateCard) {
+      return res.status(404).json({
+        success: false,
+        message: 'Rate card not found for this carrier and category'
+      });
+    }
+
+    // Update fields
+    if (updates.forwardCharges) {
+      rateCard.forwardCharges = updates.forwardCharges;
+    }
+    if (updates.rtoCharges) {
+      rateCard.rtoCharges = updates.rtoCharges;
+    }
+    if (updates.codCharges) {
+      if (updates.codCharges.percentage !== undefined) {
+        rateCard.codCharges.percentage = updates.codCharges.percentage;
+      }
+      if (updates.codCharges.minimumAmount !== undefined) {
+        rateCard.codCharges.minimumAmount = updates.codCharges.minimumAmount;
+      }
+      if (updates.codCharges.gstAdditional !== undefined) {
+        rateCard.codCharges.gstAdditional = updates.codCharges.gstAdditional;
+      }
+    }
+    if (updates.zoneDefinitions) {
+      rateCard.zoneDefinitions = updates.zoneDefinitions;
+    }
+    if (updates.termsAndConditions) {
+      rateCard.termsAndConditions = updates.termsAndConditions;
+    }
+
+    await rateCard.save();
+
+    // Clear cache
+    RateCardService.clearCache(normalizedCategory);
+
+    logger.info('Rate card updated for carrier', {
+      carrierId: id,
+      carrierCode: carrier.carrier_code,
+      category: normalizedCategory,
+      updatedBy: req.admin.email
+    });
+
+    res.json({
+      success: true,
+      message: 'Rate card updated successfully',
+      data: rateCard
+    });
+  } catch (error) {
+    logger.error('Error updating carrier rate:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating carrier rate',
       error: error.message
     });
   }

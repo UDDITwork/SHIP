@@ -133,19 +133,21 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const isStaff = localStorage.getItem('is_staff') === 'true';
 
   const menuItems = [
-    { path: '/admin/dashboard', label: 'Dashboard', icon: '📊' },
-    { path: '/admin/clients', label: 'Clients', icon: '👥' },
-    { path: '/admin/tickets', label: 'Tickets', icon: '🎫' },
-    { path: '/admin/billing', label: 'Billing', icon: '💰' },
-    { path: '/admin/remittances', label: 'Remittances', icon: '💸' },
-    { path: '/admin/orders', label: 'Orders', icon: '📦' },
-    { path: '/admin/ndr', label: 'NDR', icon: '📋' },
-    { path: '/admin/wallet-recharge', label: 'Wallet Recharge', icon: '💳' },
-    { path: '/admin/weight-discrepancies', label: 'Weight Discrepancies', icon: '⚖️' },
+    { path: '/admin/dashboard', label: 'Dashboard', icon: 'D' },
+    { path: '/admin/clients', label: 'Clients', icon: 'C' },
+    { path: '/admin/tickets', label: 'Tickets', icon: 'T' },
+    { path: '/admin/billing', label: 'Billing', icon: 'B' },
+    { path: '/admin/remittances', label: 'Remittances', icon: 'R' },
+    { path: '/admin/orders', label: 'Orders', icon: 'O' },
+    { path: '/admin/ndr', label: 'NDR', icon: 'N' },
+    { path: '/admin/wallet-recharge', label: 'Wallet Recharge', icon: 'W' },
+    { path: '/admin/weight-discrepancies', label: 'Weight Discrepancies', icon: 'WD' },
+    // Carriers - only visible to admins
+    ...(isStaff ? [] : [{ path: '/admin/carriers', label: 'Carriers', icon: 'CR' }]),
     // Staff Management - only visible to admins
-    ...(isStaff ? [] : [{ path: '/admin/staff-management', label: 'Staff Management', icon: '👤' }]),
+    ...(isStaff ? [] : [{ path: '/admin/staff-management', label: 'Staff Management', icon: 'S' }]),
     // Rate Card Management - only visible to admins
-    ...(isStaff ? [] : [{ path: '/admin/ratecard', label: 'Rate Card Management', icon: '💲' }]),
+    ...(isStaff ? [] : [{ path: '/admin/ratecard', label: 'Rate Card Management', icon: 'RC' }]),
   ];
 
   // Debug: Log menu items to verify they're being added

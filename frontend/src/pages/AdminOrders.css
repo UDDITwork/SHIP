@@ -224,6 +224,19 @@
   margin-bottom: 24px;
 }
 
+.admin-orders__summary--scrollable {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.admin-orders__summary--scrollable .admin-orders__summary-card {
+  flex: 0 0 auto;
+  min-width: 100px;
+  padding: 12px 16px;
+}
+
 .admin-orders__summary-card {
   background-color: white;
   border-radius: 14px;
@@ -356,6 +369,83 @@
 .admin-orders__customer small {
   color: #6b7280;
   font-size: 0.8rem;
+}
+
+.admin-orders__customer-name {
+  font-weight: 500;
+  color: #1f2937;
+}
+
+.admin-orders__customer-phone {
+  color: #6b7280;
+  font-size: 0.85rem;
+}
+
+.admin-orders__status-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.admin-orders__status-badge--new {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.admin-orders__status-badge--ready-to-ship {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.admin-orders__status-badge--pickups-manifests,
+.admin-orders__status-badge--manifested {
+  background-color: #e0e7ff;
+  color: #4338ca;
+}
+
+.admin-orders__status-badge--in-transit {
+  background-color: #cffafe;
+  color: #0e7490;
+}
+
+.admin-orders__status-badge--out-for-delivery {
+  background-color: #fce7f3;
+  color: #9d174d;
+}
+
+.admin-orders__status-badge--delivered {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.admin-orders__status-badge--ndr,
+.admin-orders__status-badge--pending {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+.admin-orders__status-badge--rto-in-transit {
+  background-color: #ffedd5;
+  color: #9a3412;
+}
+
+.admin-orders__status-badge--rto-delivered,
+.admin-orders__status-badge--rto {
+  background-color: #fef2f2;
+  color: #b91c1c;
+}
+
+.admin-orders__status-badge--lost {
+  background-color: #1f2937;
+  color: #f9fafb;
+}
+
+.admin-orders__status-badge--cancelled {
+  background-color: #f3f4f6;
+  color: #6b7280;
 }
 
 .admin-orders__loader {

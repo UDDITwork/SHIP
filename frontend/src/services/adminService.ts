@@ -81,6 +81,26 @@ export interface AdminImpersonationResponse {
   };
 }
 
+export interface StaffPermissions {
+  // Menu access
+  dashboard: boolean;
+  clients: boolean;
+  orders: boolean;
+  tickets: boolean;
+  billing: boolean;
+  remittances: boolean;
+  ndr: boolean;
+  weight_discrepancies: boolean;
+  wallet_recharge: boolean;
+  rate_cards: boolean;
+  carriers: boolean;
+  staff_management: boolean;
+  // Action permissions
+  can_recharge_wallet: boolean;
+  can_change_client_category: boolean;
+  can_generate_monthly_billing: boolean;
+}
+
 export interface Staff {
   _id: string;
   name: string;
@@ -88,6 +108,7 @@ export interface Staff {
   role: 'admin' | 'staff';
   created_by: string;
   is_active: boolean;
+  permissions?: StaffPermissions;
   createdAt: string;
   updatedAt: string;
 }
@@ -244,6 +265,11 @@ export interface RateCard {
   _id?: string;
   userCategory: string;
   carrier: string;
+  carrier_id?: string;
+  version?: number;
+  effective_from?: string;
+  effective_to?: string | null;
+  is_current?: boolean;
   forwardCharges: WeightSlab[];
   rtoCharges: WeightSlab[];
   codCharges: {
@@ -264,6 +290,66 @@ export interface RateCardResponse {
   success: boolean;
   data: RateCard | string[];
   message?: string;
+}
+
+// Carrier interfaces
+export interface Carrier {
+  _id: string;
+  carrier_code: string;
+  display_name: string;
+  carrier_group: string;
+  service_type: 'surface' | 'air' | 'premium' | 'express';
+  is_active: boolean;
+  zone_type: 'standard' | 'regional';
+  weight_slab_type: 'option1' | 'option2';
+  api_config?: {
+    base_url?: string;
+    api_key_required?: boolean;
+    tracking_url_template?: string;
+    waybill_prefix?: string;
+  };
+  description?: string;
+  logo_url?: string;
+  priority_order: number;
+  rate_card_count?: number;
+  rate_cards?: RateCard[];
+  created_by?: string;
+  updated_by?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CarrierListResponse {
+  success: boolean;
+  data: Carrier[];
+  total: number;
+}
+
+export interface CarrierDetailResponse {
+  success: boolean;
+  data: Carrier;
+}
+
+export interface CarrierRatesResponse {
+  success: boolean;
+  data: {
+    carrier: Carrier;
+    rates: {
+      'New User': RateCard | null;
+      'Lite User': RateCard | null;
+      'Basic User': RateCard | null;
+      'Advanced': RateCard | null;
+    };
+    categories: string[];
+  };
+}
+
+export interface CarrierRateHistoryResponse {
+  success: boolean;
+  data: {
+    carrier: Carrier;
+    history: RateCard[];
+  };
 }
 
 export interface AdminTicket {
@@ -1200,6 +1286,30 @@ class AdminService {
     return response;
   }
 
+  async generateMonthlyBilling(params: {
+    month: number;
+    year: number;
+  }): Promise<{
+    success: boolean;
+    message?: string;
+    data?: {
+      processed: number;
+      totalAmount: number;
+    };
+  }> {
+    const response = await apiService.post<{
+      success: boolean;
+      message?: string;
+      data?: {
+        processed: number;
+        totalAmount: number;
+      };
+    }>('/admin/billing/generate-monthly', params, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
   // ============================================================================
   // ADMIN ORDERS METHODS
   // ============================================================================
@@ -1686,6 +1796,158 @@ class AdminService {
       }
     );
     return response.data;
+  }
+
+  // ==================== CARRIER MANAGEMENT METHODS ====================
+
+  // Get all carriers with optional filtering and sorting
+  async getCarriers(params: {
+    sort?: 'a-z' | 'z-a' | 'newest' | 'oldest';
+    filter?: string;
+    active_only?: boolean;
+  } = {}): Promise<CarrierListResponse> {
+    const queryParams = new URLSearchParams();
+    if (params.sort) queryParams.append('sort', params.sort);
+    if (params.filter) queryParams.append('filter', params.filter);
+    if (params.active_only !== undefined) queryParams.append('active_only', params.active_only.toString());
+
+    const queryString = queryParams.toString();
+    const response = await apiService.get<CarrierListResponse>(
+      `/admin/carriers${queryString ? `?${queryString}` : ''}`,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Get single carrier by ID
+  async getCarrier(carrierId: string): Promise<Carrier> {
+    const response = await apiService.get<CarrierDetailResponse>(
+      `/admin/carriers/${carrierId}`,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response.data;
+  }
+
+  // Create new carrier
+  async createCarrier(carrierData: {
+    carrier_code: string;
+    display_name: string;
+    carrier_group: string;
+    service_type: 'surface' | 'air' | 'premium' | 'express';
+    zone_type?: 'standard' | 'regional';
+    weight_slab_type?: 'option1' | 'option2';
+    description?: string;
+    priority_order?: number;
+    api_config?: Carrier['api_config'];
+  }): Promise<CarrierDetailResponse> {
+    const response = await apiService.post<CarrierDetailResponse>(
+      '/admin/carriers',
+      carrierData,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Update carrier
+  async updateCarrier(carrierId: string, updates: Partial<Carrier>): Promise<CarrierDetailResponse> {
+    const response = await apiService.patch<CarrierDetailResponse>(
+      `/admin/carriers/${carrierId}`,
+      updates,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Delete carrier (soft delete)
+  async deleteCarrier(carrierId: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiService.delete<{ success: boolean; message: string }>(
+      `/admin/carriers/${carrierId}`,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Activate carrier
+  async activateCarrier(carrierId: string): Promise<CarrierDetailResponse> {
+    const response = await apiService.post<CarrierDetailResponse>(
+      `/admin/carriers/${carrierId}/activate`,
+      {},
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Deactivate carrier
+  async deactivateCarrier(carrierId: string): Promise<CarrierDetailResponse> {
+    const response = await apiService.post<CarrierDetailResponse>(
+      `/admin/carriers/${carrierId}/deactivate`,
+      {},
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Get current rates for a carrier (all categories)
+  async getCarrierRates(carrierId: string): Promise<CarrierRatesResponse> {
+    const response = await apiService.get<CarrierRatesResponse>(
+      `/admin/carriers/${carrierId}/rates`,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Get rate history for a carrier
+  async getCarrierRateHistory(carrierId: string, category?: string): Promise<CarrierRateHistoryResponse> {
+    const queryParams = category ? `?category=${encodeURIComponent(category)}` : '';
+    const response = await apiService.get<CarrierRateHistoryResponse>(
+      `/admin/carriers/${carrierId}/rates/history${queryParams}`,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Create or update rate card for a carrier category
+  async saveCarrierRate(carrierId: string, category: string, rateData: Partial<RateCard>): Promise<RateCardResponse> {
+    const normalizedCategory = category.toLowerCase().replace(/\s+/g, '-');
+    const response = await apiService.post<RateCardResponse>(
+      `/admin/carriers/${carrierId}/rates/${normalizedCategory}`,
+      rateData,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
+  }
+
+  // Update existing rate card for a carrier category
+  async updateCarrierRate(carrierId: string, category: string, updates: Partial<RateCard>): Promise<RateCardResponse> {
+    const normalizedCategory = category.toLowerCase().replace(/\s+/g, '-');
+    const response = await apiService.patch<RateCardResponse>(
+      `/admin/carriers/${carrierId}/rates/${normalizedCategory}`,
+      updates,
+      {
+        headers: this.getAdminHeaders()
+      }
+    );
+    return response;
   }
 }
 

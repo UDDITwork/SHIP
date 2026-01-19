@@ -8,6 +8,14 @@
   margin-bottom: 30px;
 }
 
+.header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
 .header-content h1 {
   font-size: 28px;
   font-weight: 600;
@@ -21,8 +29,320 @@
   margin: 0;
 }
 
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.view-mode-btn {
+  padding: 10px 20px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn:hover {
+  background: #f3f4f6;
+}
+
+.view-mode-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.error-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  color: #b91c1c;
+}
+
+.error-banner button {
+  background: none;
+  border: none;
+  color: #b91c1c;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+}
+
+.filters-section {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: center;
+  margin-bottom: 24px;
+  padding: 16px 20px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+}
+
+.filter-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.filter-group label {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filter-btn:hover {
+  background: #f3f4f6;
+}
+
+.filter-btn.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-label input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+.manage-carriers-btn {
+  padding: 10px 20px;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  margin-left: auto;
+}
+
+.manage-carriers-btn:hover {
+  background: #1d4ed8;
+}
+
+.carriers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.loading-state,
+.empty-state {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+}
+
+.empty-state button {
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.carrier-card {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  transition: all 0.2s ease;
+}
+
+.carrier-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.carrier-card.inactive {
+  opacity: 0.7;
+  background: #f9fafb;
+}
+
+.carrier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.carrier-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.service-badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badge-surface {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.badge-air {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.badge-premium {
+  background: #f3e8ff;
+  color: #7c3aed;
+}
+
+.badge-express {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.badge-default {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-indicator {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.status-indicator.active {
+  background: #dcfce7;
+  color: #16a34a;
+}
+
+.status-indicator.inactive {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.carrier-meta {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.carrier-code {
+  font-family: monospace;
+  background: #f3f4f6;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #374151;
+}
+
+.carrier-group {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.carrier-actions {
+  display: flex;
+  gap: 10px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.view-rates-btn {
+  flex: 1;
+  padding: 10px 16px;
+  background: #2563eb;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.view-rates-btn:hover {
+  background: #1d4ed8;
+}
+
+.toggle-status-btn {
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggle-status-btn.deactivate {
+  background: #fff;
+  border: 1px solid #dc2626;
+  color: #dc2626;
+}
+
+.toggle-status-btn.deactivate:hover {
+  background: #fef2f2;
+}
+
+.toggle-status-btn.activate {
+  background: #fff;
+  border: 1px solid #16a34a;
+  color: #16a34a;
+}
+
+.toggle-status-btn.activate:hover {
+  background: #dcfce7;
+}
+
 .ratecard-categories {
-  margin-top: 40px;
+  margin-top: 20px;
+}
+
+.categories-note {
+  color: #6b7280;
+  font-size: 14px;
+  margin-bottom: 20px;
 }
 
 .categories-grid {
@@ -58,6 +378,8 @@
 .category-icon {
   font-size: 48px;
   margin-bottom: 8px;
+  font-weight: 700;
+  color: #2563eb;
 }
 
 .category-label {
@@ -73,13 +395,34 @@
 }
 
 @media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+  }
+
+  .filters-section {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .manage-carriers-btn {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .carriers-grid {
+    grid-template-columns: 1fr;
+  }
+
   .categories-grid {
     grid-template-columns: 1fr;
   }
-  
+
   .category-button {
     min-height: 150px;
     padding: 24px 16px;
   }
-}
 
+  .carrier-actions {
+    flex-direction: column;
+  }
+}

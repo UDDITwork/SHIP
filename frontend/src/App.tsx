@@ -60,6 +60,8 @@ import AdminRemittances from './pages/AdminRemittances';
 import AdminOrders from './pages/AdminOrders';
 import AdminClientDashboard from './pages/AdminClientDashboard';
 import AdminNDR from './pages/AdminNDR';
+import AdminCarriers from './pages/AdminCarriers';
+import AdminCarrierRates from './pages/AdminCarrierRates';
 import AdminLayout from './components/AdminLayout';
 
 // Protected Route Component
@@ -445,23 +447,39 @@ function App() {
                 </AdminLayout>
               } 
             />
-            <Route 
-              path="/admin/ratecard" 
+            <Route
+              path="/admin/ratecard"
               element={
                 <AdminLayout>
                   <AdminRateCard />
                 </AdminLayout>
-              } 
+              }
             />
-            <Route 
-              path="/admin/ratecard/:userCategory" 
+            <Route
+              path="/admin/ratecard/:userCategory"
               element={
                 <AdminLayout>
                   <AdminRateCardCategory />
                 </AdminLayout>
-              } 
+              }
             />
-            
+            <Route
+              path="/admin/carriers"
+              element={
+                <AdminLayout>
+                  <AdminCarriers />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/carriers/:carrierId/rates"
+              element={
+                <AdminLayout>
+                  <AdminCarrierRates />
+                </AdminLayout>
+              }
+            />
+
             {/* Catch all route */}
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>

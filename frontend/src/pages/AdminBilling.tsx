@@ -95,6 +95,12 @@ const AdminBilling: React.FC = () => {
     pages: 1
   });
 
+  // Monthly billing generation state
+  const [showMonthlyBillingModal, setShowMonthlyBillingModal] = useState(false);
+  const [billingMonth, setBillingMonth] = useState('');
+  const [billingYear, setBillingYear] = useState(new Date().getFullYear().toString());
+  const [generatingBilling, setGeneratingBilling] = useState(false);
+
   // Detail view state
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState<string | null>(null);
@@ -135,6 +141,44 @@ const AdminBilling: React.FC = () => {
     setTransactionDateTo('');
     setTransactionSearchAWB('');
     setTransactionsPage(1);
+  };
+
+  const handleGenerateMonthlyBilling = async () => {
+    if (!billingMonth || !billingYear) {
+      alert('Please select both month and year');
+      return;
+    }
+
+    const confirmMessage = `This will generate monthly billing for ${getMonthName(parseInt(billingMonth))} ${billingYear}. Continue?`;
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    setGeneratingBilling(true);
+    try {
+      const response = await adminService.generateMonthlyBilling({
+        month: parseInt(billingMonth),
+        year: parseInt(billingYear)
+      });
+
+      if (response.success) {
+        alert(`Monthly billing generated successfully!\n\nProcessed: ${response.data?.processed || 0} clients\nTotal amount: Rs ${response.data?.totalAmount?.toFixed(2) || '0.00'}`);
+        setShowMonthlyBillingModal(false);
+        setBillingMonth('');
+      } else {
+        alert(`Error: ${response.message || 'Failed to generate billing'}`);
+      }
+    } catch (error: any) {
+      alert(`Error: ${error?.message || 'Failed to generate monthly billing'}`);
+    } finally {
+      setGeneratingBilling(false);
+    }
+  };
+
+  const getMonthName = (monthNum: number) => {
+    const months = ['January', 'February', 'March', 'April', 'May', 'June',
+                    'July', 'August', 'September', 'October', 'November', 'December'];
+    return months[monthNum - 1] || '';
   };
 
   // Reset all page state when menu item is clicked again
@@ -346,8 +390,85 @@ const AdminBilling: React.FC = () => {
             }}
             className="billing-search-input"
           />
+          <button
+            className="generate-billing-btn"
+            onClick={() => setShowMonthlyBillingModal(true)}
+          >
+            Generate Monthly Billing
+          </button>
         </div>
       </div>
+
+      {/* Monthly Billing Modal */}
+      {showMonthlyBillingModal && (
+        <div className="modal-overlay" onClick={() => setShowMonthlyBillingModal(false)}>
+          <div className="modal-content billing-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Generate Monthly Billing</h2>
+              <button className="close-btn" onClick={() => setShowMonthlyBillingModal(false)}>x</button>
+            </div>
+            <div className="modal-body">
+              <p className="modal-description">
+                Generate billing invoices for all clients for a specific month. This will calculate shipping charges,
+                COD fees, and any adjustments for the selected period.
+              </p>
+              <div className="billing-form-row">
+                <div className="form-group">
+                  <label>Month</label>
+                  <select
+                    value={billingMonth}
+                    onChange={(e) => setBillingMonth(e.target.value)}
+                    className="billing-select"
+                  >
+                    <option value="">Select Month</option>
+                    <option value="1">January</option>
+                    <option value="2">February</option>
+                    <option value="3">March</option>
+                    <option value="4">April</option>
+                    <option value="5">May</option>
+                    <option value="6">June</option>
+                    <option value="7">July</option>
+                    <option value="8">August</option>
+                    <option value="9">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label>Year</label>
+                  <select
+                    value={billingYear}
+                    onChange={(e) => setBillingYear(e.target.value)}
+                    className="billing-select"
+                  >
+                    {[...Array(5)].map((_, i) => {
+                      const year = new Date().getFullYear() - i;
+                      return <option key={year} value={year}>{year}</option>;
+                    })}
+                  </select>
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button
+                className="cancel-btn"
+                onClick={() => setShowMonthlyBillingModal(false)}
+                disabled={generatingBilling}
+              >
+                Cancel
+              </button>
+              <button
+                className="generate-btn"
+                onClick={handleGenerateMonthlyBilling}
+                disabled={generatingBilling || !billingMonth}
+              >
+                {generatingBilling ? 'Generating...' : 'Generate Billing'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {listError && (
         <div className="billing-error">

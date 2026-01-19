@@ -41,6 +41,27 @@ const staffSchema = new mongoose.Schema({
   is_active: {
     type: Boolean,
     default: true
+  },
+  // Staff permissions - all default false (admin must grant)
+  permissions: {
+    // Menu access permissions
+    dashboard: { type: Boolean, default: true },
+    clients: { type: Boolean, default: true },
+    orders: { type: Boolean, default: true },
+    tickets: { type: Boolean, default: true },
+    billing: { type: Boolean, default: true },
+    remittances: { type: Boolean, default: true },
+    ndr: { type: Boolean, default: true },
+    weight_discrepancies: { type: Boolean, default: true },
+    // Optional menu access (admin must enable)
+    wallet_recharge: { type: Boolean, default: false },
+    rate_cards: { type: Boolean, default: false },
+    carriers: { type: Boolean, default: false },
+    staff_management: { type: Boolean, default: false },
+    // Action permissions
+    can_recharge_wallet: { type: Boolean, default: false },
+    can_change_client_category: { type: Boolean, default: false },
+    can_generate_monthly_billing: { type: Boolean, default: false }
   }
 }, {
   timestamps: true,

@@ -24,7 +24,9 @@ interface OrdersClientSummary {
     out_for_delivery: number;
     delivered: number;
     ndr: number;
-    rto: number;
+    rto_in_transit: number;
+    rto_delivered: number;
+    lost: number;
     cancelled: number;
   };
 }
@@ -64,30 +66,72 @@ interface AdminOrder {
 
 type GroupedOrders = Record<string, AdminOrder[]>;
 
+type OrderStatusKey = 'all' | 'new' | 'ready_to_ship' | 'pickups_manifests' | 'in_transit' | 'out_for_delivery' | 'delivered' | 'ndr' | 'rto_in_transit' | 'rto_delivered' | 'lost' | 'cancelled';
+
 const STATUS_CARDS: Array<{
-  key: 'new' | 'ready_to_ship' | 'pickups_manifests' | 'cancelled';
+  key: OrderStatusKey;
   title: string;
   description: string;
 }> = [
   {
+    key: 'all',
+    title: 'All Orders',
+    description: 'View all orders regardless of status.'
+  },
+  {
     key: 'new',
-    title: 'New Orders',
-    description: 'Orders that have been created and await processing.'
+    title: 'New',
+    description: 'Orders created and awaiting processing.'
   },
   {
     key: 'ready_to_ship',
     title: 'Ready to Ship',
-    description: 'Orders verified and ready for courier pickup.'
+    description: 'Orders verified and ready for pickup.'
   },
   {
     key: 'pickups_manifests',
-    title: 'Pickup & Manifests',
-    description: 'Orders handed over to courier with generated manifests.'
+    title: 'Pickup & Manifest',
+    description: 'Orders with generated manifests.'
+  },
+  {
+    key: 'in_transit',
+    title: 'In Transit',
+    description: 'Orders currently being shipped.'
+  },
+  {
+    key: 'out_for_delivery',
+    title: 'Out for Delivery',
+    description: 'Orders out for final delivery.'
+  },
+  {
+    key: 'delivered',
+    title: 'Delivered',
+    description: 'Successfully delivered orders.'
+  },
+  {
+    key: 'ndr',
+    title: 'NDR',
+    description: 'Non-delivery report orders.'
+  },
+  {
+    key: 'rto_in_transit',
+    title: 'RTO in Transit',
+    description: 'Return to origin in transit.'
+  },
+  {
+    key: 'rto_delivered',
+    title: 'RTO Delivered',
+    description: 'Return to origin completed.'
+  },
+  {
+    key: 'lost',
+    title: 'Lost',
+    description: 'Orders marked as lost.'
   },
   {
     key: 'cancelled',
-    title: 'Cancelled Orders',
-    description: 'Orders cancelled by client or system validations.'
+    title: 'Cancelled',
+    description: 'Cancelled orders.'
   }
 ];
 
@@ -299,7 +343,7 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [activeStatus, setActiveStatus] = useState<'new' | 'ready_to_ship' | 'pickups_manifests' | 'cancelled'>('new');
+  const [activeStatus, setActiveStatus] = useState<OrderStatusKey>('all');
   const [selectedOrderSummary, setSelectedOrderSummary] = useState<AdminOrder | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<AdminOrderDetails | null>(null);
@@ -439,13 +483,24 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
 
   const groupedOrders: GroupedOrders = useMemo(() => {
     const groups: GroupedOrders = {
+      all: [],
       new: [],
       ready_to_ship: [],
       pickups_manifests: [],
+      in_transit: [],
+      out_for_delivery: [],
+      delivered: [],
+      ndr: [],
+      rto_in_transit: [],
+      rto_delivered: [],
+      lost: [],
       cancelled: []
     };
 
     orders.forEach((order) => {
+      // Add to 'all' group
+      groups.all.push(order);
+
       const isCancelled =
         order.status === 'cancelled' ||
         order.delhivery_data?.cancellation_status === 'cancelled';
@@ -455,7 +510,10 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
         return;
       }
 
-      switch (order.status) {
+      // Normalize status for grouping
+      const status = (order.status || '').toLowerCase().replace(/ /g, '_');
+
+      switch (status) {
         case 'new':
           groups.new.push(order);
           break;
@@ -463,7 +521,40 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
           groups.ready_to_ship.push(order);
           break;
         case 'pickups_manifests':
+        case 'pickup_manifests':
+        case 'manifested':
           groups.pickups_manifests.push(order);
+          break;
+        case 'in_transit':
+        case 'in-transit':
+        case 'intransit':
+          groups.in_transit.push(order);
+          break;
+        case 'out_for_delivery':
+        case 'out-for-delivery':
+        case 'outfordelivery':
+          groups.out_for_delivery.push(order);
+          break;
+        case 'delivered':
+          groups.delivered.push(order);
+          break;
+        case 'ndr':
+        case 'non_delivery':
+        case 'pending':
+          groups.ndr.push(order);
+          break;
+        case 'rto_in_transit':
+        case 'rto-in-transit':
+        case 'rto_intransit':
+          groups.rto_in_transit.push(order);
+          break;
+        case 'rto_delivered':
+        case 'rto-delivered':
+        case 'rto':
+          groups.rto_delivered.push(order);
+          break;
+        case 'lost':
+          groups.lost.push(order);
           break;
         default:
           break;
@@ -475,9 +566,17 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
 
   const summaryCounts = useMemo(() => {
     return {
+      all: groupedOrders.all.length,
       new: groupedOrders.new.length,
       ready_to_ship: groupedOrders.ready_to_ship.length,
       pickups_manifests: groupedOrders.pickups_manifests.length,
+      in_transit: groupedOrders.in_transit.length,
+      out_for_delivery: groupedOrders.out_for_delivery.length,
+      delivered: groupedOrders.delivered.length,
+      ndr: groupedOrders.ndr.length,
+      rto_in_transit: groupedOrders.rto_in_transit.length,
+      rto_delivered: groupedOrders.rto_delivered.length,
+      lost: groupedOrders.lost.length,
       cancelled: groupedOrders.cancelled.length,
       total: orders.length
     };
@@ -532,16 +631,15 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
       );
     }
 
-    const showAwbColumn = activeStatus === 'new';
-
     return (
       <div className="admin-orders__table-wrapper">
         <table className="admin-orders__table">
           <thead>
             <tr>
               <th>Order ID</th>
-              {showAwbColumn && <th>AWB Number</th>}
+              <th>AWB Number</th>
               <th>Customer</th>
+              <th>Contact</th>
               <th>Payment Mode</th>
               <th>Order Date</th>
               <th>Status</th>
@@ -557,22 +655,28 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
                 <td>
                   <span className="admin-orders__order-id">{order.order_id || '—'}</span>
                 </td>
-                {showAwbColumn && (
-                  <td>
-                    <span className="admin-orders__awb">
-                      {order.delhivery_data?.waybill || 'AWB not generated yet'}
-                    </span>
-                  </td>
-                )}
                 <td>
-                  <div className="admin-orders__customer">
-                    <span>{order.customer_info?.buyer_name || 'Unnamed customer'}</span>
-                    <small>{order.customer_info?.phone || '—'}</small>
-                  </div>
+                  <span className="admin-orders__awb">
+                    {order.delhivery_data?.waybill || '—'}
+                  </span>
+                </td>
+                <td>
+                  <span className="admin-orders__customer-name">
+                    {order.customer_info?.buyer_name || 'N/A'}
+                  </span>
+                </td>
+                <td>
+                  <span className="admin-orders__customer-phone">
+                    {order.customer_info?.phone || '—'}
+                  </span>
                 </td>
                 <td>{formatPaymentMode(order.payment_info?.payment_mode)}</td>
                 <td>{formatDate(order.order_date || order.createdAt)}</td>
-                <td>{formatStatus(order.status)}</td>
+                <td>
+                  <span className={`admin-orders__status-badge admin-orders__status-badge--${(order.status || '').toLowerCase().replace(/_/g, '-')}`}>
+                    {formatStatus(order.status)}
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -631,7 +735,7 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
         </div>
       )}
 
-      <div className="admin-orders__summary">
+      <div className="admin-orders__summary admin-orders__summary--scrollable">
         {STATUS_CARDS.map((card) => (
           <button
             key={card.key}
@@ -640,14 +744,8 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
           >
             <div className="admin-orders__summary-count">{summaryCounts[card.key]}</div>
             <div className="admin-orders__summary-title">{card.title}</div>
-            <p>{card.description}</p>
           </button>
         ))}
-        <div className="admin-orders__summary-card admin-orders__summary-card--total">
-          <div className="admin-orders__summary-count">{summaryCounts.total}</div>
-          <div className="admin-orders__summary-title">Total Orders</div>
-          <p>Aggregate count of all orders for this client.</p>
-        </div>
       </div>
 
       <div className="admin-orders__filters">

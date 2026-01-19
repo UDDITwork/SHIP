@@ -1,6 +1,42 @@
 import React, { useState, useEffect } from 'react';
-import { adminService, Staff } from '../services/adminService';
+import { adminService, Staff, StaffPermissions } from '../services/adminService';
 import './AdminStaffManagement.css';
+
+const DEFAULT_PERMISSIONS: StaffPermissions = {
+  dashboard: true,
+  clients: true,
+  orders: true,
+  tickets: true,
+  billing: true,
+  remittances: true,
+  ndr: true,
+  weight_discrepancies: true,
+  wallet_recharge: false,
+  rate_cards: false,
+  carriers: false,
+  staff_management: false,
+  can_recharge_wallet: false,
+  can_change_client_category: false,
+  can_generate_monthly_billing: false
+};
+
+const PERMISSION_LABELS: Record<keyof StaffPermissions, string> = {
+  dashboard: 'Dashboard',
+  clients: 'Clients',
+  orders: 'Orders',
+  tickets: 'Tickets',
+  billing: 'Billing',
+  remittances: 'Remittances',
+  ndr: 'NDR',
+  weight_discrepancies: 'Weight Discrepancies',
+  wallet_recharge: 'Wallet Recharge',
+  rate_cards: 'Rate Cards',
+  carriers: 'Carriers',
+  staff_management: 'Staff Management',
+  can_recharge_wallet: 'Can Recharge Wallet',
+  can_change_client_category: 'Can Change Client Category',
+  can_generate_monthly_billing: 'Can Generate Monthly Billing'
+};
 
 const AdminStaffManagement: React.FC = () => {
   const [staffList, setStaffList] = useState<Staff[]>([]);
@@ -8,12 +44,16 @@ const AdminStaffManagement: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
-  
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [permissionsStaff, setPermissionsStaff] = useState<Staff | null>(null);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: ''
   });
+
+  const [permissionsData, setPermissionsData] = useState<StaffPermissions>(DEFAULT_PERMISSIONS);
 
   useEffect(() => {
     fetchStaff();
@@ -51,7 +91,7 @@ const AdminStaffManagement: React.FC = () => {
         formData.email,
         formData.password
       );
-      
+
       if (response.success) {
         setFormData({ name: '', email: '', password: '' });
         setShowCreateForm(false);
@@ -83,13 +123,13 @@ const AdminStaffManagement: React.FC = () => {
         name: formData.name,
         email: formData.email
       };
-      
+
       if (formData.password) {
         updates.password = formData.password;
       }
 
       const response = await adminService.updateStaff(editingStaff._id, updates);
-      
+
       if (response.success) {
         setFormData({ name: '', email: '', password: '' });
         setShowCreateForm(false);
@@ -110,7 +150,7 @@ const AdminStaffManagement: React.FC = () => {
     try {
       setError(null);
       const response = await adminService.deleteStaff(staffId);
-      
+
       if (response.success) {
         await fetchStaff();
         alert('Staff account deactivated successfully!');
@@ -124,6 +164,39 @@ const AdminStaffManagement: React.FC = () => {
     setShowCreateForm(false);
     setEditingStaff(null);
     setFormData({ name: '', email: '', password: '' });
+  };
+
+  const handleOpenPermissions = (staff: Staff) => {
+    setPermissionsStaff(staff);
+    setPermissionsData(staff.permissions || DEFAULT_PERMISSIONS);
+    setShowPermissionsModal(true);
+  };
+
+  const handlePermissionChange = (key: keyof StaffPermissions) => {
+    setPermissionsData(prev => ({
+      ...prev,
+      [key]: !prev[key]
+    }));
+  };
+
+  const handleSavePermissions = async () => {
+    if (!permissionsStaff) return;
+
+    try {
+      setError(null);
+      const response = await adminService.updateStaff(permissionsStaff._id, {
+        permissions: permissionsData
+      } as any);
+
+      if (response.success) {
+        setShowPermissionsModal(false);
+        setPermissionsStaff(null);
+        await fetchStaff();
+        alert('Permissions updated successfully!');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Failed to update permissions');
+    }
   };
 
   if (loading && staffList.length === 0) {
@@ -161,7 +234,7 @@ const AdminStaffManagement: React.FC = () => {
       {error && (
         <div className="error-banner">
           <p>{error}</p>
-          <button onClick={() => setError(null)}>×</button>
+          <button onClick={() => setError(null)}>x</button>
         </div>
       )}
 
@@ -260,9 +333,16 @@ const AdminStaffManagement: React.FC = () => {
                         {staff.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td>{new Date(staff.createdAt).toLocaleDateString()}</td>
+                    <td>{new Date(staff.createdAt).toLocaleDateString('en-GB')}</td>
                     <td>
                       <div className="action-buttons">
+                        <button
+                          className="btn-permissions"
+                          onClick={() => handleOpenPermissions(staff)}
+                          title="Manage Permissions"
+                        >
+                          Permissions
+                        </button>
                         <button
                           className="btn-edit"
                           onClick={() => handleEditStaff(staff)}
@@ -286,9 +366,87 @@ const AdminStaffManagement: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {/* Permissions Modal */}
+      {showPermissionsModal && permissionsStaff && (
+        <div className="modal-overlay" onClick={() => setShowPermissionsModal(false)}>
+          <div className="modal-content permissions-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>Permissions for {permissionsStaff.name}</h2>
+              <button className="close-btn" onClick={() => setShowPermissionsModal(false)}>
+                x
+              </button>
+            </div>
+
+            <div className="permissions-content">
+              <div className="permissions-section">
+                <h3>Menu Access</h3>
+                <p className="section-desc">Control which menu items this staff member can see</p>
+                <div className="permissions-grid">
+                  {(['dashboard', 'clients', 'orders', 'tickets', 'billing', 'remittances', 'ndr', 'weight_discrepancies'] as const).map(key => (
+                    <label key={key} className="permission-item">
+                      <input
+                        type="checkbox"
+                        checked={permissionsData[key]}
+                        onChange={() => handlePermissionChange(key)}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="permission-label">{PERMISSION_LABELS[key]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="permissions-section">
+                <h3>Optional Access (Requires Explicit Grant)</h3>
+                <p className="section-desc">These permissions are disabled by default</p>
+                <div className="permissions-grid">
+                  {(['wallet_recharge', 'rate_cards', 'carriers', 'staff_management'] as const).map(key => (
+                    <label key={key} className="permission-item restricted">
+                      <input
+                        type="checkbox"
+                        checked={permissionsData[key]}
+                        onChange={() => handlePermissionChange(key)}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="permission-label">{PERMISSION_LABELS[key]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div className="permissions-section">
+                <h3>Action Permissions</h3>
+                <p className="section-desc">Control specific actions this staff member can perform</p>
+                <div className="permissions-grid">
+                  {(['can_recharge_wallet', 'can_change_client_category', 'can_generate_monthly_billing'] as const).map(key => (
+                    <label key={key} className="permission-item action">
+                      <input
+                        type="checkbox"
+                        checked={permissionsData[key]}
+                        onChange={() => handlePermissionChange(key)}
+                      />
+                      <span className="checkmark"></span>
+                      <span className="permission-label">{PERMISSION_LABELS[key]}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowPermissionsModal(false)}>
+                Cancel
+              </button>
+              <button className="btn-primary" onClick={handleSavePermissions}>
+                Save Permissions
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 export default AdminStaffManagement;
-
