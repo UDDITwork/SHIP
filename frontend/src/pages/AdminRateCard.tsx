@@ -3,14 +3,14 @@ import { useNavigate } from 'react-router-dom';
 import { adminService, Carrier } from '../services/adminService';
 import './AdminRateCard.css';
 
-type SortOrder = 'asc' | 'desc';
+type SortOrder = 'a-z' | 'z-a' | 'newest' | 'oldest';
 
 const AdminRateCard: React.FC = () => {
   const navigate = useNavigate();
   const [carriers, setCarriers] = useState<Carrier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('a-z');
   const [showInactive, setShowInactive] = useState(false);
   const [viewMode, setViewMode] = useState<'carriers' | 'categories'>('carriers');
 
@@ -31,10 +31,10 @@ const AdminRateCard: React.FC = () => {
       setError(null);
       const response = await adminService.getCarriers({
         sort: sortOrder,
-        include_inactive: showInactive
+        active_only: !showInactive
       });
       if (response.success) {
-        setCarriers(response.data.carriers);
+        setCarriers(response.data);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to fetch carriers');
@@ -112,14 +112,14 @@ const AdminRateCard: React.FC = () => {
             <div className="filter-group">
               <label>Sort:</label>
               <button
-                className={`filter-btn ${sortOrder === 'asc' ? 'active' : ''}`}
-                onClick={() => setSortOrder('asc')}
+                className={`filter-btn ${sortOrder === 'a-z' ? 'active' : ''}`}
+                onClick={() => setSortOrder('a-z')}
               >
                 A-Z
               </button>
               <button
-                className={`filter-btn ${sortOrder === 'desc' ? 'active' : ''}`}
-                onClick={() => setSortOrder('desc')}
+                className={`filter-btn ${sortOrder === 'z-a' ? 'active' : ''}`}
+                onClick={() => setSortOrder('z-a')}
               >
                 Z-A
               </button>

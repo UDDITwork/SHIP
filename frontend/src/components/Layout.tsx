@@ -531,7 +531,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             <button type="submit" className="search-button">
-              <img src={searchIcon} alt="Search" style={{ width: '20px', height: '20px' }} />
+              <img src={searchIcon} alt="Search" style={{ width: '22px', height: '22px' }} />
             </button>
           </form>
         </div>
@@ -678,7 +678,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     >
                       <span className="sidebar-icon">
                         {item.svgIcon ? (
-                          <img src={item.svgIcon} alt={item.label} style={{ width: '20px', height: '20px' }} />
+                          <img src={item.svgIcon} alt={item.label} style={{ width: '22px', height: '22px' }} />
                         ) : (
                           item.icon
                         )}
@@ -700,7 +700,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                         >
                           <span className="sidebar-icon">
                             {child.svgIcon ? (
-                              <img src={child.svgIcon} alt={child.label} style={{ width: '20px', height: '20px' }} />
+                              <img src={child.svgIcon} alt={child.label} style={{ width: '22px', height: '22px' }} />
                             ) : (
                               child.icon
                             )}
@@ -718,7 +718,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   >
                     <span className="sidebar-icon">
                       {item.svgIcon ? (
-                        <img src={item.svgIcon} alt={item.label} style={{ width: '20px', height: '20px' }} />
+                        <img src={item.svgIcon} alt={item.label} style={{ width: '22px', height: '22px' }} />
                       ) : (
                         item.icon
                       )}

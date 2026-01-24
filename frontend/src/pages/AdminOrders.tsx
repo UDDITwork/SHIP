@@ -24,9 +24,7 @@ interface OrdersClientSummary {
     out_for_delivery: number;
     delivered: number;
     ndr: number;
-    rto_in_transit: number;
-    rto_delivered: number;
-    lost: number;
+    rto: number;
     cancelled: number;
   };
 }
