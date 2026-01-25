@@ -4,6 +4,12 @@ import { environmentConfig } from '../config/environment';
 import { ticketService } from '../services/ticketService';
 import './WeightDiscrepancies.css';
 
+// Import SVG icons for summary cards
+import CartNewIcon from '../weightdiscrepancyvectors/cart-new.svg';
+import CartPendingIcon from '../weightdiscrepancyvectors/cart-pending.svg';
+import CartAcceptedIcon from '../weightdiscrepancyvectors/cart-accepted.svg';
+import CartRejectedIcon from '../weightdiscrepancyvectors/cart-rejected.svg';
+
 interface WeightDiscrepancy {
   _id: string;
   awb_number: string;
@@ -226,43 +232,43 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
       <div className="weight-discrepancies-container">
         {/* Summary Cards */}
         <div className="summary-cards">
-          <div className="summary-card">
-            <div className="summary-card-icon">⚖️</div>
+          <div className="summary-card dark">
+            <div className="summary-card-icon">
+              <img src={CartNewIcon} alt="New Discrepancies" />
+            </div>
             <div className="summary-card-content">
-              <div className="summary-card-label">Total Discrepancies</div>
+              <div className="summary-card-label">New Weight Discrepancies</div>
               <div className="summary-card-value">{summary.total_discrepancies}</div>
             </div>
           </div>
 
-          <div className="summary-card">
-            <div className="summary-card-icon">📊</div>
+          <div className="summary-card dark">
+            <div className="summary-card-icon">
+              <img src={CartPendingIcon} alt="Disputes Pending" />
+            </div>
             <div className="summary-card-content">
-              <div className="summary-card-label">Total Weight Difference</div>
-              <div className="summary-card-value">{summary.total_weight_discrepancy.toFixed(1)} g</div>
+              <div className="summary-card-label">Disputes Pending by Courier</div>
+              <div className="summary-card-value">{summary.total_discrepancies - summary.disputes_accepted - summary.disputes_rejected}</div>
             </div>
           </div>
 
-          <div className="summary-card">
-            <div className="summary-card-icon">💸</div>
+          <div className="summary-card dark">
+            <div className="summary-card-icon">
+              <img src={CartAcceptedIcon} alt="Disputes Accepted" />
+            </div>
             <div className="summary-card-content">
-              <div className="summary-card-label">Total Deduction</div>
-              <div className="summary-card-value red">₹{summary.total_deduction.toFixed(2)}</div>
+              <div className="summary-card-label">Disputes Accepted by Courier</div>
+              <div className="summary-card-value">{summary.disputes_accepted}</div>
             </div>
           </div>
 
-          <div className="summary-card">
-            <div className="summary-card-icon">✅</div>
-            <div className="summary-card-content">
-              <div className="summary-card-label">Disputes Accepted</div>
-              <div className="summary-card-value green">{summary.disputes_accepted}</div>
+          <div className="summary-card dark">
+            <div className="summary-card-icon">
+              <img src={CartRejectedIcon} alt="Disputes Rejected" />
             </div>
-          </div>
-
-          <div className="summary-card">
-            <div className="summary-card-icon">❌</div>
             <div className="summary-card-content">
-              <div className="summary-card-label">Disputes Rejected</div>
-              <div className="summary-card-value red">{summary.disputes_rejected}</div>
+              <div className="summary-card-label">Disputes Rejected by Courier</div>
+              <div className="summary-card-value">{summary.disputes_rejected}</div>
             </div>
           </div>
         </div>
@@ -329,7 +335,9 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
                   <tr>
                     <td colSpan={10} className="no-data">
                       <div className="no-discrepancies">
-                        <div className="no-discrepancies-icon">⚖️</div>
+                        <div className="no-discrepancies-icon">
+                          <img src={CartNewIcon} alt="No Discrepancies" />
+                        </div>
                         <h3>No weight discrepancies found</h3>
                         <p>Weight discrepancies will appear here when charged</p>
                       </div>
