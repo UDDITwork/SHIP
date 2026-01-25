@@ -34,6 +34,7 @@ import About from './pages/About';
 import Tracking from './pages/Tracking';
 import TrackingDetail from './pages/TrackingDetail';
 import PublicRateCalculator from './pages/PublicRateCalculator';
+import RateCalculator from './pages/RateCalculator';
 import Channel from './pages/Channel';
 import AccountSettings from './pages/AccountSettings';
 import ManageLabel from './pages/ManageLabel';
@@ -82,7 +83,7 @@ function App() {
             <Route path="/contact" element={<Contact />} />
             <Route path="/tracking" element={<Tracking />} />
             <Route path="/tracking/detail" element={<TrackingDetail />} />
-            <Route path="/rate-calculator" element={<PublicRateCalculator />} />
+            <Route path="/public/rate-calculator" element={<PublicRateCalculator />} />
             <Route path="/privacy-policy" element={<PrivacyPolicy />} />
             <Route path="/terms-conditions" element={<TermsConditions />} />
             <Route path="/return-policy" element={<ReturnPolicy />} />
@@ -309,15 +310,23 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/settings/manage-label" 
+            <Route
+              path="/settings/manage-label"
               element={
                 <ProtectedRoute>
                   <ManageLabel />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
+            <Route
+              path="/rate-calculator"
+              element={
+                <ProtectedRoute>
+                  <RateCalculator />
+                </ProtectedRoute>
+              }
+            />
+
             {/* Admin Protected Routes */}
             <Route 
               path="/admin/dashboard" 
