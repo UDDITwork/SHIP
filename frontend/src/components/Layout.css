@@ -606,7 +606,7 @@
   height: 200%;
   background: url('./sidebar-active-bg.svg') no-repeat center center;
   background-size: 100% 100%;
-  z-index: -1; /* Behind text, but SVG still visible */
+  z-index: 1; /* Above adjacent items */
   pointer-events: none;
 }
 
@@ -617,7 +617,7 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  z-index: 2; /* Above pseudo-element background */
+  z-index: 10; /* Above pseudo-element (z-index: 1) */
 }
 
 /* Vector icon styling - white for inactive, orange for active */
@@ -638,7 +638,7 @@
   overflow: visible;
   flex: 1;
   position: relative;
-  z-index: 2; /* Above pseudo-element background */
+  z-index: 10; /* Above pseudo-element (z-index: 1) */
 }
 
 /* Allow longer text in child menu items */
