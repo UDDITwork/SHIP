@@ -138,7 +138,8 @@ const documentUploadLimiter = rateLimit({
 app.use('/api/health', healthCheckLimiter);
 // Apply document upload limiter to upload-document endpoint BEFORE general limiter
 app.use('/api/users/upload-document', documentUploadLimiter);
-app.use('/api/', limiter);
+// DISABLED: Rate limiting was causing 429 errors - removed per user request
+// app.use('/api/', limiter);
 
 // Optimized Request Logging Middleware - Only log essential info for performance
 app.use((req, res, next) => {

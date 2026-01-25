@@ -404,7 +404,7 @@
 .layout-body {
   display: flex;
   flex: 1;
-  overflow: hidden;
+  overflow: visible; /* Allow active tab to overlay content */
   gap: 0;
   align-items: stretch;
   margin: 0;
@@ -421,7 +421,7 @@
   background-color: #F68723; /* Exact Figma color */
   padding: 0;
   overflow-y: auto;
-  overflow-x: visible;
+  overflow-x: visible; /* Allow active tab to extend beyond sidebar */
   transition: width 0.3s ease, transform 0.3s ease;
   position: relative;
   display: flex;
@@ -456,6 +456,22 @@
 
 .sidebar-logo-sarthi {
   color: #2C4563;
+}
+
+/* NEW: Sidebar Logo Container - Figma Design */
+.sidebar-logo-container {
+  padding: 20px 24px 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-left: 22px;
+}
+
+.sidebar-logo-img {
+  height: 40px;
+  width: auto;
+  /* Make logo white/light for visibility on orange background */
+  filter: brightness(0) invert(1);
 }
 
 .sidebar-nav {
@@ -512,19 +528,21 @@
 }
 
 /* ACTIVE STATE - WHITE PROTRUDING TAB (EXACT FIGMA)
-   The white pill extends from indent (x=72 in SVG) to right edge */
+   Full pill shape that extends PAST sidebar into content area */
 .sidebar-item.active {
   background-color: #FFFFFF !important;
   color: #F68723 !important; /* Exact Figma orange */
-  /* EXACT: 37px rounded left, 0 right (extends to edge) */
-  border-radius: 37px 0 0 37px;
-  /* Subtle shadow on curved edge only */
-  box-shadow: -2px 0 8px rgba(0, 0, 0, 0.05);
+  /* FULL PILL: rounded on BOTH sides */
+  border-radius: 37px;
+  /* Shadow on both curved edges */
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   font-weight: 600;
-  /* Extend to sidebar edge - seamless connection */
-  margin-right: 0;
+  /* Extend past sidebar into content area */
+  margin-right: -25px;
+  padding-right: 45px; /* Compensate for negative margin */
   margin-left: 22px;
   z-index: 100;
+  position: relative;
   border: none;
   outline: none;
 }
@@ -630,10 +648,14 @@
 .sidebar-child.active {
   background-color: #FFFFFF !important;
   color: #F68723 !important;
-  border-radius: 25px 0 0 25px !important;
+  /* Full pill shape for child items too */
+  border-radius: 25px !important;
   margin-left: 0 !important;
-  margin-right: 0 !important;
-  box-shadow: -2px 0 6px rgba(0, 0, 0, 0.04);
+  margin-right: -20px !important;
+  padding-right: 38px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: relative;
+  z-index: 100;
 }
 
 .sidebar-child.active .sidebar-icon img {
