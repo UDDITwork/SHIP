@@ -606,7 +606,7 @@
   height: 200%;
   background: url('./sidebar-active-bg.svg') no-repeat center center;
   background-size: 100% 100%;
-  z-index: 50; /* Above content (z-index: 1) */
+  z-index: -1; /* Behind text, but SVG still visible */
   pointer-events: none;
 }
 
@@ -616,6 +616,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 2; /* Above pseudo-element background */
 }
 
 /* Vector icon styling - white for inactive, orange for active */
@@ -635,6 +637,8 @@
   font-weight: inherit;
   overflow: visible;
   flex: 1;
+  position: relative;
+  z-index: 2; /* Above pseudo-element background */
 }
 
 /* Allow longer text in child menu items */
