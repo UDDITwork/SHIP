@@ -405,21 +405,22 @@
 .metric-card {
     background-color: #002B59;
     border-radius: 12px;
-    padding: 14px;
+    padding: 16px;
     color: #FFFFFF;
     display: flex;
     gap: 12px;
     align-items: flex-start;
     transition: transform 0.3s ease;
+    position: relative;
   }
-  
+
   .metric-card:hover {
     transform: translateY(-5px);
   }
-  
+
 .card-icon {
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     background-color: #FFFFFF;
     border-radius: 50%;
     display: flex;
@@ -427,35 +428,33 @@
     justify-content: center;
     flex-shrink: 0;
   }
-  
+
 .card-icon img.icon {
-    width: 24px;
-    height: 22px;
+    width: 26px;
+    height: 24px;
     object-fit: contain;
     filter: brightness(0) saturate(100%);
   }
-  
+
   .card-content {
     flex: 1;
   }
-  
-.metric-card .card-header {
-    display: flex;
-    justify-content: flex-start;
-    align-items: center;
-    margin-bottom: 15px;
-  background-color: transparent !important; /* remove any white block behind the title */
-  border: none !important;
-  box-shadow: none !important;
-  padding: 0;
+
+  .card-content h3 {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0 0 8px 0;
+    color: #FFFFFF;
   }
-  
-.metric-card .card-header h3 {
-    font-size: 16px;
-    font-weight: 600;
-    margin: 0;
-  color: #FFFFFF; /* ensure title text is white */
-  background-color: transparent !important; /* no background box behind the text */
+
+  .card-stats-icon {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 18px;
+    height: 18px;
+    opacity: 0.6;
+    filter: brightness(0) invert(1);
   }
   
 .card-value {

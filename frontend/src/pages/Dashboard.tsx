@@ -10,6 +10,7 @@ import { Pie } from 'react-chartjs-2';
 import CartIcon from '../dashboardvectors/Cart.svg';
 import WalletIcon from '../dashboardvectors/Wallet.svg';
 import TruckIcon from '../dashboardvectors/Truck.svg';
+import StatsIcon from '../dashboardvectors/Stats.svg';
 import './Dashboard.css';
 
 /**
@@ -640,9 +641,7 @@ const Dashboard: React.FC = () => {
                 <img src={CartIcon} alt="Cart" className="icon" />
               </div>
               <div className="card-content">
-                <div className="card-header">
-                  <h3>Today's Orders</h3>
-                </div>
+                <h3>Today's Orders</h3>
                 <div className="card-value">{dashboardData?.metrics?.todaysOrders?.current || 0}</div>
                 <div className="card-subtitle">
                   Yesterday's Orders
@@ -650,6 +649,7 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">{dashboardData?.metrics?.todaysOrders?.previous || 0}</span>
                 </div>
               </div>
+              <img src={StatsIcon} alt="Stats" className="card-stats-icon" />
             </div>
 
             {/* Today's Revenue Card */}
@@ -658,9 +658,7 @@ const Dashboard: React.FC = () => {
                 <img src={WalletIcon} alt="Wallet" className="icon" />
               </div>
               <div className="card-content">
-                <div className="card-header">
-                  <h3>Today's Revenue</h3>
-                </div>
+                <h3>Today's Revenue</h3>
                 <div className="card-value">₹ {dashboardData?.metrics?.todaysRevenue?.current || 0}</div>
                 <div className="card-subtitle">
                   Yesterday's Revenue
@@ -668,6 +666,7 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">₹ {dashboardData?.metrics?.todaysRevenue?.previous || 0}</span>
                 </div>
               </div>
+              <img src={StatsIcon} alt="Stats" className="card-stats-icon" />
             </div>
 
             {/* Average Shipping Cost Card */}
@@ -676,9 +675,7 @@ const Dashboard: React.FC = () => {
                 <img src={TruckIcon} alt="Truck" className="icon" />
               </div>
               <div className="card-content">
-                <div className="card-header">
-                  <h3>Average Shipping Cost</h3>
-                </div>
+                <h3>Average Shipping Cost</h3>
                 <div className="card-value">₹ {(dashboardData?.metrics?.averageShippingCost?.amount || 0).toFixed(2)}</div>
                 <div className="card-subtitle">
                   Total Orders
@@ -686,6 +683,7 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">{dashboardData?.metrics?.averageShippingCost?.totalOrders || 0}</span>
                 </div>
               </div>
+              <img src={StatsIcon} alt="Stats" className="card-stats-icon" />
             </div>
           </div>
 
