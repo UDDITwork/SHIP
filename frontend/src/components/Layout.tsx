@@ -658,11 +658,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="layout-body">
         {/* Sidebar */}
         <aside className={`layout-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
-          {/* Sidebar Logo */}
-          <div className="sidebar-logo-container">
-            <img src="/NEW LOGO.png" alt="Shipsarthi" className="sidebar-logo-img" />
-          </div>
-
           <nav className="sidebar-nav">
             {menuItems.map((item) => (
               <div key={item.path || item.id} className="sidebar-menu-item">

@@ -61,10 +61,11 @@
   display: flex;
   align-items: center;
   letter-spacing: -0.5px;
+  margin-top: -2px; /* Shift logo upward */
 }
 
 .logo-image {
-  height: 36px;
+  height: 42px; /* Increased from 36px */
   width: auto;
   display: block;
   object-fit: contain;
@@ -456,22 +457,6 @@
 
 .sidebar-logo-sarthi {
   color: #2C4563;
-}
-
-/* NEW: Sidebar Logo Container - Figma Design */
-.sidebar-logo-container {
-  padding: 20px 24px 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  margin-left: 22px;
-}
-
-.sidebar-logo-img {
-  height: 40px;
-  width: auto;
-  /* Make logo white/light for visibility on orange background */
-  filter: brightness(0) invert(1);
 }
 
 .sidebar-nav {
