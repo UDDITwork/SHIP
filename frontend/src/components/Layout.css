@@ -574,24 +574,25 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* ACTIVE STATE - WHITE PROTRUDING TAB (EXACT FIGMA)
-   Full pill shape that extends PAST sidebar into content area */
+/* ACTIVE STATE - WHITE PROTRUDING TAB WITH CONCAVE CURVES (EXACT FIGMA)
+   Uses SVG background for the wave shape that extends into content area */
 .sidebar-item.active {
-  background-color: #FFFFFF !important;
+  background: url('./sidebar-active-bg.svg') no-repeat left center;
+  background-size: 100% 100%;
+  background-color: transparent !important;
   color: #F68723 !important; /* Exact Figma orange */
-  /* FULL PILL: rounded on BOTH sides */
-  border-radius: 37px;
-  /* Shadow on both curved edges */
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
   font-weight: 600;
   /* Extend past sidebar into content area */
-  margin-right: -25px;
-  padding-right: 45px; /* Compensate for negative margin */
-  margin-left: 22px;
+  margin-right: -30px;
+  padding-right: 50px; /* Compensate for negative margin */
+  margin-left: 0;
+  padding-left: 36px;
   z-index: 100;
   position: relative;
   border: none;
   outline: none;
+  border-radius: 0; /* Remove CSS border-radius, SVG handles shape */
+  box-shadow: none; /* SVG handles the visual */
 }
 
 .sidebar-icon {
