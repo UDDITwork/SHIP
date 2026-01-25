@@ -21,7 +21,7 @@
   align-items: center;
   height: 50px;
   min-height: 50px;
-  padding: 0 16px;
+  padding: 0 16px 0 0; /* Remove left padding - header-left will handle it */
   background-color: #FFFFFF;
   border-bottom: 1px solid #E5E5E5;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
@@ -31,11 +31,13 @@
 .header-left {
   display: flex;
   align-items: center;
+  justify-content: center; /* Center logo within the sidebar width */
   gap: 12px;
   /* Match sidebar width so logo aligns properly above sidebar */
   width: 250px;
   min-width: 250px;
   flex-shrink: 0;
+  padding-left: 16px;
 }
 
 .menu-toggle {
@@ -68,10 +70,11 @@
 }
 
 .logo-image {
-  height: 38px;
+  height: 36px;
   width: auto;
   display: block;
   object-fit: contain;
+  max-width: 180px;
 }
 
 .logo-ship {
