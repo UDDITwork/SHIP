@@ -32,11 +32,33 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 12px;
   /* Match sidebar width so logo aligns properly above sidebar */
   width: 250px;
   min-width: 250px;
   flex-shrink: 0;
-  padding: 0;
+  padding: 0 16px;
+}
+
+/* Header hamburger toggle - shows when sidebar is closed */
+.header-menu-toggle {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #F68723;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.header-menu-toggle:hover {
+  background-color: rgba(246, 135, 35, 0.1);
 }
 
 .menu-toggle {
