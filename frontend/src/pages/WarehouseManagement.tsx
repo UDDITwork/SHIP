@@ -155,20 +155,14 @@ const WarehouseManagement: React.FC = () => {
   return (
     <Layout>
       <div className="warehouse-management">
-        {/* Header */}
-        <div className="warehouse-header">
-          <div className="header-left">
-            <h1>Warehouse Management</h1>
-            <p>Manage your warehouses and shipping locations</p>
-          </div>
-          <div className="header-right">
-            <button 
-              className="create-warehouse-btn"
-              onClick={handleCreateWarehouse}
-            >
-              ➕ CREATE WAREHOUSE
-            </button>
-          </div>
+        {/* Create Warehouse Button */}
+        <div className="warehouse-actions-bar">
+          <button
+            className="create-warehouse-btn"
+            onClick={handleCreateWarehouse}
+          >
+            + CREATE WAREHOUSE
+          </button>
         </div>
 
         {/* Filters */}

@@ -4,46 +4,28 @@
   margin: 0 auto;
 }
 
-/* Header */
-.warehouse-header {
+/* Warehouse Actions Bar */
+.warehouse-actions-bar {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 32px;
-  padding-bottom: 24px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.header-left h1 {
-  color: #1f2937;
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-}
-
-.header-left p {
-  color: #6b7280;
-  font-size: 1rem;
-  margin: 0;
+  justify-content: flex-end;
+  margin-bottom: 20px;
 }
 
 .create-warehouse-btn {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  color: white;
-  border: none;
+  background: #FFFFFF;
+  color: #1f2937;
+  border: 1px solid #d1d5db;
   padding: 12px 24px;
   border-radius: 8px;
   font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
 .create-warehouse-btn:hover {
-  background: linear-gradient(135deg, #2563eb, #1e40af);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.3);
+  background: #f3f4f6;
+  border-color: #9ca3af;
 }
 
 /* Filters */
@@ -409,10 +391,8 @@
     padding: 16px;
   }
 
-  .warehouse-header {
-    flex-direction: column;
-    gap: 16px;
-    align-items: stretch;
+  .warehouse-actions-bar {
+    justify-content: center;
   }
 
   .filters-section {
