@@ -493,18 +493,31 @@ const Dashboard: React.FC = () => {
           </div>
         )}
         
-        {/* Date Range Display with Real-time Clock */}
-        <div className="date-time-display">
+        {/* Combined Info Toolbar */}
+        <div className="info-toolbar">
+          {/* Wallet Balance Display */}
+          <div className="wallet-balance-compact">
+            <img src={WalletIcon} alt="Wallet" className="wallet-icon-small" />
+            <span className="wallet-label-compact">Wallet Balance</span>
+            <span className={`wallet-amount-compact ${isBalanceUpdating ? 'updating' : ''}`}>
+              ₹{(walletBalance?.balance ?? 0).toFixed(2)}
+            </span>
+          </div>
+
+          {/* Separator */}
+          <div className="toolbar-separator"></div>
+
+          {/* Date Range Display */}
           <div className="date-range-display" ref={datePickerRef} style={{ position: 'relative' }}>
             <span className="calendar-icon"></span>
-            <span 
-              className="date-text" 
+            <span
+              className="date-text"
               onClick={() => setShowDatePicker(!showDatePicker)}
               style={{ cursor: 'pointer' }}
             >
               {formatDateRange()}
             </span>
-            
+
             {/* Date Picker Dropdown */}
             {showDatePicker && (
               <div className="date-picker-dropdown">
@@ -605,28 +618,17 @@ const Dashboard: React.FC = () => {
               </div>
             )}
           </div>
-          <div className="current-time-display">
+
+          {/* Time Display */}
+          <div className="current-time-compact">
             <span className="time-text">{formatCurrentTime()}</span>
             <span className="day-text">{getDayOfWeek()}</span>
           </div>
-        </div>
 
-        {/* Wallet Balance Section */}
-        <div className="wallet-balance-section">
-          <div className="wallet-card">
-            <div className="wallet-icon">
-              <img src={WalletIcon} alt="Wallet" />
-            </div>
-            <div className="wallet-info">
-              <div className="wallet-label">Wallet Balance</div>
-              <div className={`wallet-amount ${isBalanceUpdating ? 'updating' : ''}`}>
-                ₹{(walletBalance?.balance ?? 0).toFixed(2)}
-              </div>
-            </div>
-            <button className="wallet-recharge-btn" onClick={handleRecharge}>
-              Recharge
-            </button>
-          </div>
+          {/* Recharge Button */}
+          <button className="recharge-btn-compact" onClick={handleRecharge}>
+            Recharge
+          </button>
         </div>
 
         <div className="dashboard-grid">
