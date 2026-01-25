@@ -501,15 +501,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Top Header */}
       <header className="layout-header">
         <div className="header-left">
-          {/* Show hamburger in header only when sidebar is closed */}
-          {!isSidebarOpen && (
-            <button
-              className="header-menu-toggle"
-              onClick={() => setIsSidebarOpen(true)}
-            >
-              <span style={{ fontSize: '24px' }}>&#9776;</span>
-            </button>
-          )}
           <Link to="/dashboard" className="logo" aria-label="Shipsarthi home">
             <img src="/NEW LOGO.png" alt="Shipsarthi" className="logo-image" />
           </Link>
