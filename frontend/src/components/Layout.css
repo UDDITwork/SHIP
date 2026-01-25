@@ -606,7 +606,7 @@
   height: 200%;
   background: url('./sidebar-active-bg.svg') no-repeat center center;
   background-size: 100% 100%;
-  z-index: -1;
+  z-index: 1000; /* High z-index to appear over content edge */
   pointer-events: none;
 }
 
@@ -729,7 +729,7 @@
 .layout-main {
   flex: 1;
   overflow-y: auto;
-  overflow-x: clip;
+  overflow-x: visible;
   background-color: #FFFFFF;
   padding: 20px 24px;
   margin-left: 0;
