@@ -1,6 +1,12 @@
-<svg viewBox="0 0 235 148" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-  <!-- Main pill shape - perfect semicircle on left using arc command -->
-  <path d="M37 37 L165 37 L165 111 L37 111 A37 37 0 0 1 37 37 Z" fill="#FFFFFF"/>
-  <!-- Right concave curves - shifted left, same dimensions (37px) -->
-  <path d="M235 148C235 127.565 218.435 111 198 111H165V37H198C218.435 37 235 20.4345 235 0V148Z" fill="#FFFFFF"/>
+<svg viewBox="0 0 200 120" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <!-- Simplified SVG with more prominent curves -->
+  <!-- Pill area: y=30 to y=90 (60px, 50% of 120) -->
+  <!-- Top curve: y=0 to y=30 (25%) -->
+  <!-- Bottom curve: y=90 to y=120 (25%) -->
+
+  <!-- Main pill with semicircle left -->
+  <path d="M30 30 L150 30 L150 90 L30 90 A30 30 0 0 1 30 30 Z" fill="#FFFFFF"/>
+
+  <!-- Right side with concave curves -->
+  <path d="M200 120 C200 100 180 90 160 90 L150 90 L150 30 L160 30 C180 30 200 20 200 0 L200 120 Z" fill="#FFFFFF"/>
 </svg>

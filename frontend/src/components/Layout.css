@@ -599,18 +599,18 @@
 .sidebar-item.active::before {
   content: '';
   position: absolute;
-  /* Calculated: SVG has pill at 25%-75%, curves at 0-25% and 75-100% */
-  /* To show both curves, extend 33% above and below (total 166% height) */
-  top: -33%;
-  bottom: -33%;
+  /* SVG: pill is 50% of height (y=37-111 of 148), curves are 25% each */
+  /* Need height: 200% with top: -50% to properly scale curves */
+  top: -50%;
   left: 0;
-  /* Width: sidebar item + 60px extension into content for visible curves */
   width: calc(100% + 60px);
-  /* Use top/bottom instead of height for better control */
-  background: url('./sidebar-active-bg.svg') no-repeat center center;
+  height: 200%;
+  background: url('./sidebar-active-bg.svg') no-repeat left center;
   background-size: 100% 100%;
-  z-index: 50; /* High z-index to appear above adjacent items */
+  z-index: 50;
   pointer-events: none;
+  /* DEBUG: uncomment to see pseudo-element bounds */
+  /* border: 2px solid red; */
 }
 
 .sidebar-icon {
@@ -737,17 +737,29 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: visible;
-  background-color: #FFFFFF;
+  /* Transparent background - let sidebar curves show through */
+  background-color: transparent;
   padding: 20px 24px;
-  /* Negative margin pulls content UNDER the sidebar edge, allowing curves to show */
-  margin-left: -30px;
-  padding-left: 54px; /* Compensate: 24px original + 30px margin */
+  padding-left: 64px; /* Extra left padding for content */
+  margin-left: -40px; /* Pull under sidebar to create overlap zone */
   position: relative;
   z-index: 1;
   border-left: none;
   min-height: 0;
   flex-basis: 0;
   max-height: 100%;
+}
+
+/* White background via pseudo-element, starting after curve zone */
+.layout-main::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 40px; /* Start 40px from left to leave space for curves */
+  right: 0;
+  bottom: 0;
+  background-color: #FFFFFF;
+  z-index: -1;
 }
 
 .content-wrapper {
