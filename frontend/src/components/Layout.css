@@ -599,13 +599,14 @@
 .sidebar-item.active::before {
   content: '';
   position: absolute;
-  /* Extend above and below for concave curves (37px each side) */
-  top: -50%;
+  /* Calculated: SVG has pill at 25%-75%, curves at 0-25% and 75-100% */
+  /* To show both curves, extend 33% above and below (total 166% height) */
+  top: -33%;
+  bottom: -33%;
   left: 0;
   /* Width: sidebar item + 60px extension into content for visible curves */
   width: calc(100% + 60px);
-  /* Height: 200% to show concave curves above/below */
-  height: 200%;
+  /* Use top/bottom instead of height for better control */
   background: url('./sidebar-active-bg.svg') no-repeat center center;
   background-size: 100% 100%;
   z-index: 50; /* High z-index to appear above adjacent items */
