@@ -650,6 +650,17 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </header>
 
       <div className="layout-body">
+        {/* Floating Hamburger - appears on page when sidebar is closed */}
+        {!isSidebarOpen && (
+          <button
+            className="floating-hamburger"
+            onClick={() => setIsSidebarOpen(true)}
+            aria-label="Open sidebar"
+          >
+            <span>&#9776;</span>
+          </button>
+        )}
+
         {/* Sidebar */}
         <aside className={`layout-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
           {/* Hamburger Menu Toggle */}
