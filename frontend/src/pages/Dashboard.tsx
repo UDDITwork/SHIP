@@ -10,7 +10,7 @@ import { Pie } from 'react-chartjs-2';
 import CartIcon from '../dashboardvectors/Cart.svg';
 import WalletIcon from '../dashboardvectors/Wallet.svg';
 import TruckIcon from '../dashboardvectors/Truck.svg';
-import StatsIcon from '../dashboardvectors/Stats.svg';
+import CalendarSettingsIcon from '../dashboardvectors/CalendarSettings.svg';
 import './Dashboard.css';
 
 /**
@@ -649,7 +649,7 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">{dashboardData?.metrics?.todaysOrders?.previous || 0}</span>
                 </div>
               </div>
-              <img src={StatsIcon} alt="Stats" className="card-stats-icon" />
+              <img src={CalendarSettingsIcon} alt="Calendar" className="card-stats-icon" />
             </div>
 
             {/* Today's Revenue Card */}
@@ -666,7 +666,7 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">₹ {dashboardData?.metrics?.todaysRevenue?.previous || 0}</span>
                 </div>
               </div>
-              <img src={StatsIcon} alt="Stats" className="card-stats-icon" />
+              <img src={CalendarSettingsIcon} alt="Calendar" className="card-stats-icon" />
             </div>
 
             {/* Average Shipping Cost Card */}
@@ -683,7 +683,7 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">{dashboardData?.metrics?.averageShippingCost?.totalOrders || 0}</span>
                 </div>
               </div>
-              <img src={StatsIcon} alt="Stats" className="card-stats-icon" />
+              <img src={CalendarSettingsIcon} alt="Calendar" className="card-stats-icon" />
             </div>
           </div>
 

@@ -1,0 +1,12 @@
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- Calendar base -->
+<rect x="3" y="4" width="14" height="14" rx="2" stroke="#FFFFFF" stroke-width="1.5" fill="none"/>
+<!-- Calendar top lines (binding) -->
+<line x1="7" y1="2" x2="7" y2="6" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/>
+<line x1="13" y1="2" x2="13" y2="6" stroke="#FFFFFF" stroke-width="1.5" stroke-linecap="round"/>
+<!-- Calendar horizontal line -->
+<line x1="3" y1="9" x2="17" y2="9" stroke="#FFFFFF" stroke-width="1.5"/>
+<!-- Gear/Settings icon (bottom right) -->
+<circle cx="18" cy="18" r="2" stroke="#FFFFFF" stroke-width="1.5" fill="none"/>
+<path d="M18 14v1.5M18 20.5V22M14 18h1.5M20.5 18H22M15.17 15.17l1.06 1.06M19.77 19.77l1.06 1.06M15.17 20.83l1.06-1.06M19.77 16.23l1.06-1.06" stroke="#FFFFFF" stroke-width="1.2" stroke-linecap="round"/>
+</svg>
