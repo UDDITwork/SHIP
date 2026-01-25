@@ -600,8 +600,8 @@
   /* Extend above and below for concave curves (37px each side) */
   top: -50%;
   left: 0;
-  /* Width: sidebar item + 22px extension into content */
-  width: calc(100% + 22px);
+  /* Width: sidebar item + 42px extension into content for visible curves */
+  width: calc(100% + 42px);
   /* Height: 200% to show concave curves above/below */
   height: 200%;
   background: url('./sidebar-active-bg.svg') no-repeat center center;

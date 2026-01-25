@@ -1,6 +1,6 @@
-<svg viewBox="0 0 250 148" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-  <!-- Main pill shape - left semicircle with flat right edge -->
-  <path d="M0 74C0 53.5655 16.5655 37 37 37H228V111H37C16.5655 111 0 94.4345 0 74Z" fill="#FFFFFF"/>
-  <!-- Right concave extension - narrower horizontal width for visible curves -->
-  <path d="M250 148C250 127.565 238 111 228 111H228V37H228C238 37 250 20.4345 250 0V148Z" fill="#FFFFFF"/>
+<svg viewBox="0 0 270 148" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+  <!-- Main pill shape - shorter horizontal length -->
+  <path d="M0 74C0 53.5655 16.5655 37 37 37H200V111H37C16.5655 111 0 94.4345 0 74Z" fill="#FFFFFF"/>
+  <!-- Right concave extension - full width curves now visible -->
+  <path d="M270 148C270 127.565 253.435 111 233 111H200V37H233C253.435 37 270 20.4345 270 0V148Z" fill="#FFFFFF"/>
 </svg>
