@@ -50,15 +50,29 @@ const RateCalculator: React.FC = () => {
         pickup_pincode: pickupPincode,
         delivery_pincode: deliveryPincode,
         weight: parseFloat(weight),
-        length: length ? parseFloat(length) : undefined,
-        breadth: breadth ? parseFloat(breadth) : undefined,
-        height: height ? parseFloat(height) : undefined,
+        dimensions: {
+          length: length ? parseFloat(length) : 0,
+          breadth: breadth ? parseFloat(breadth) : 0,
+          height: height ? parseFloat(height) : 0
+        },
         payment_mode: paymentType === 'cod' ? 'COD' : 'Prepaid',
         cod_amount: paymentType === 'cod' && codAmount ? parseFloat(codAmount) : undefined
       };
 
-      const response = await shippingService.calculateShipping(request);
-      setResult(response);
+      const response = await shippingService.calculateShippingCharges(request);
+      setResult({
+        user_category: '',
+        weight: parseFloat(weight),
+        dimensions: request.dimensions,
+        zone: response.zone || '',
+        volumetric_weight: response.volumetricWeight,
+        chargeable_weight: response.chargeableWeight,
+        forward_charges: response.forwardCharges,
+        rto_charges: response.rtoCharges,
+        cod_charges: response.codCharges,
+        total_charges: response.totalCharges,
+        carrier: ''
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to calculate shipping rate');
     } finally {
