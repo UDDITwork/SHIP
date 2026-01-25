@@ -28,14 +28,14 @@ const DEFAULT_STATUS_COUNTS: ClientStatusCounts = {
   all: 0
 };
 
-const STATUS_TABS: Array<{ key: TicketStatus; label: string; icon: string }> = [
-  { key: 'open', label: 'Open', icon: '📧' },
-  { key: 'in_progress', label: 'In Progress', icon: '⏳' },
-  { key: 'waiting_customer', label: 'Waiting Customer', icon: '🕒' },
-  { key: 'escalated', label: 'Escalated', icon: '⚠️' },
-  { key: 'resolved', label: 'Resolved', icon: '✅' },
-  { key: 'closed', label: 'Closed', icon: '🔒' },
-  { key: 'all', label: 'All', icon: '📋' }
+const STATUS_TABS: Array<{ key: TicketStatus; label: string }> = [
+  { key: 'open', label: 'Open' },
+  { key: 'in_progress', label: 'In Progress' },
+  { key: 'waiting_customer', label: 'Waiting Customer' },
+  { key: 'escalated', label: 'Escalated' },
+  { key: 'resolved', label: 'Resolved' },
+  { key: 'closed', label: 'Closed' },
+  { key: 'all', label: 'All' }
 ];
 
 const formatStatusLabel = (status: string) => {
@@ -384,13 +384,13 @@ const Support: React.FC = () => {
             className={`support-tab ${activeTab === 'tickets' ? 'active' : ''}`}
             onClick={() => setActiveTab('tickets')}
           >
-            📧 Tickets
+            Tickets
           </button>
           <button
             className={`support-tab ${activeTab === 'training' ? 'active' : ''}`}
             onClick={() => setActiveTab('training')}
           >
-            📚 Training
+            Training
           </button>
         </div>
 
@@ -406,7 +406,7 @@ const Support: React.FC = () => {
                     className={`status-tab ${activeStatus === tab.key ? 'active' : ''}`}
                     onClick={() => setActiveStatus(tab.key)}
                   >
-                    {tab.icon} {tab.label} ({count})
+                    {tab.label} ({count})
                   </button>
                 );
               })}
@@ -422,9 +422,9 @@ const Support: React.FC = () => {
                 <input type="text" placeholder="Search by order id" className="search-input" />
               </div>
               <button className="raise-ticket-btn" onClick={() => setShowCreateModal(true)}>
-                🎫 Raise Ticket
+                Raise Ticket
               </button>
-              <button className="help-btn">🔄</button>
+              <button className="help-btn" onClick={fetchTickets} title="Refresh">Refresh</button>
             </div>
 
             {/* Tickets Table */}
