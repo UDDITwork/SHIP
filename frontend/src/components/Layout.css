@@ -31,7 +31,11 @@
 .header-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 12px;
+  /* Match sidebar width so logo aligns properly above sidebar */
+  width: 250px;
+  min-width: 250px;
+  flex-shrink: 0;
 }
 
 .menu-toggle {
@@ -61,11 +65,10 @@
   display: flex;
   align-items: center;
   letter-spacing: -0.5px;
-  margin-top: -2px; /* Shift logo upward */
 }
 
 .logo-image {
-  height: 42px; /* Increased from 36px */
+  height: 38px;
   width: auto;
   display: block;
   object-fit: contain;
