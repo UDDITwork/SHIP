@@ -1,6 +1,6 @@
 <svg viewBox="0 0 235 148" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-  <!-- Main pill shape - shortened but still fits text -->
-  <path d="M0 74C0 53.5655 16.5655 37 37 37H165V111H37C16.5655 111 0 94.4345 0 74Z" fill="#FFFFFF"/>
+  <!-- Main pill shape - perfect semicircle on left using arc command -->
+  <path d="M37 37 L165 37 L165 111 L37 111 A37 37 0 0 1 37 37 Z" fill="#FFFFFF"/>
   <!-- Right concave curves - shifted left, same dimensions (37px) -->
   <path d="M235 148C235 127.565 218.435 111 198 111H165V37H198C218.435 37 235 20.4345 235 0V148Z" fill="#FFFFFF"/>
 </svg>
