@@ -1,8 +1,7 @@
 <svg viewBox="0 0 250 60" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-  <!-- Main pill shape with concave right corners -->
+  <!-- Main pill shape with perfect semicircle left and concave right corners -->
   <path d="
-    M 0 30
-    C 0 13.43 13.43 0 30 0
+    M 30 0
     L 200 0
     C 210 0 220 5 220 15
     Q 220 0 235 0
@@ -12,7 +11,7 @@
     Q 220 60 220 45
     C 220 55 210 60 200 60
     L 30 60
-    C 13.43 60 0 46.57 0 30
+    A 30 30 0 0 1 30 0
     Z
-  " fill="#FFF5EB"/>
+  " fill="#FFFFFF"/>
 </svg>
