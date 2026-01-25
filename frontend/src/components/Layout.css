@@ -568,6 +568,8 @@
 /* Inactive State - transparent, blends with orange */
 .sidebar-item:not(.active):not(.sidebar-parent):not(.active-parent) {
   background-color: transparent;
+  position: relative;
+  z-index: 0; /* Below active item's pseudo-element */
 }
 
 .sidebar-item:not(.active):hover {
@@ -584,7 +586,7 @@
   margin-left: 0;
   padding-left: 36px;
   margin-right: 0;
-  z-index: 100;
+  /* Remove z-index to avoid creating stacking context - let pseudo-element handle it */
   position: relative;
   border: none;
   outline: none;
@@ -606,7 +608,7 @@
   height: 200%;
   background: url('./sidebar-active-bg.svg') no-repeat center center;
   background-size: 100% 100%;
-  z-index: 1; /* Above adjacent items */
+  z-index: 50; /* High z-index to appear above adjacent items */
   pointer-events: none;
 }
 
@@ -617,7 +619,7 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  z-index: 10; /* Above pseudo-element (z-index: 1) */
+  z-index: 100; /* Above pseudo-element (z-index: 50) */
 }
 
 /* Vector icon styling - white for inactive, orange for active */
@@ -638,7 +640,7 @@
   overflow: visible;
   flex: 1;
   position: relative;
-  z-index: 10; /* Above pseudo-element (z-index: 1) */
+  z-index: 100; /* Above pseudo-element (z-index: 50) */
 }
 
 /* Allow longer text in child menu items */
