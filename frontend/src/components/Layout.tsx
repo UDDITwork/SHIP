@@ -747,7 +747,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </aside>
 
         {/* Main Content */}
-        <main className="layout-main">
+        <main className={`layout-main ${!isSidebarOpen ? 'sidebar-closed' : ''}`}>
           <div className="content-wrapper">
             {children}
           </div>

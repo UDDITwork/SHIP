@@ -479,24 +479,24 @@
   z-index: 1000;
   width: 48px;
   height: 48px;
-  background-color: #F68723;
-  border: none;
+  background-color: #FFFFFF;
+  border: 0.5px solid #4B0082;
   border-radius: 8px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   transition: background-color 0.2s ease, transform 0.2s ease;
 }
 
 .floating-hamburger span {
   font-size: 24px;
-  color: #FFFFFF;
+  color: #4B0082;
 }
 
 .floating-hamburger:hover {
-  background-color: #E07A1F;
+  background-color: #F5F5F5;
   transform: scale(1.05);
 }
 

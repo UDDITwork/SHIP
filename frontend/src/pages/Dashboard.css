@@ -47,6 +47,12 @@
     flex-wrap: wrap;
   }
 
+  /* Shift info-toolbar to the right when sidebar is closed */
+  .sidebar-closed .info-toolbar {
+    justify-content: flex-end;
+    margin-left: 60px;
+  }
+
   /* Date Range Display */
   .date-range-display {
     display: flex;
