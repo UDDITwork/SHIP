@@ -600,13 +600,13 @@
   /* Extend above and below for concave curves (37px each side) */
   top: -50%;
   left: 0;
-  /* Width: sidebar item + 42px extension into content for visible curves */
-  width: calc(100% + 42px);
+  /* Width: sidebar item + 60px extension into content for visible curves */
+  width: calc(100% + 60px);
   /* Height: 200% to show concave curves above/below */
   height: 200%;
   background: url('./sidebar-active-bg.svg') no-repeat center center;
   background-size: 100% 100%;
-  z-index: -1;
+  z-index: 50; /* Above content (z-index: 1) */
   pointer-events: none;
 }
 
@@ -729,10 +729,12 @@
 .layout-main {
   flex: 1;
   overflow-y: auto;
-  overflow-x: clip;
+  overflow-x: visible;
   background-color: #FFFFFF;
   padding: 20px 24px;
-  margin-left: 0;
+  /* Negative margin pulls content UNDER the sidebar edge, allowing curves to show */
+  margin-left: -30px;
+  padding-left: 54px; /* Compensate: 24px original + 30px margin */
   position: relative;
   z-index: 1;
   border-left: none;
