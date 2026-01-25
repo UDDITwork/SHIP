@@ -501,12 +501,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Top Header */}
       <header className="layout-header">
         <div className="header-left">
-          <button 
-            className="menu-toggle"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          >
-            ☰
-          </button>
           <Link to="/dashboard" className="logo" aria-label="Shipsarthi home">
             <img src="/NEW LOGO.png" alt="Shipsarthi" className="logo-image" />
           </Link>
@@ -658,6 +652,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <div className="layout-body">
         {/* Sidebar */}
         <aside className={`layout-sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
+          {/* Hamburger Menu Toggle */}
+          <div className="sidebar-hamburger">
+            <button
+              className="sidebar-menu-toggle"
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            >
+              <span style={{ fontSize: '24px' }}>&#9776;</span>
+            </button>
+          </div>
+
           <nav className="sidebar-nav">
             {menuItems.map((item) => (
               <div key={item.path || item.id} className="sidebar-menu-item">

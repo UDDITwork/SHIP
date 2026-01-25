@@ -31,13 +31,12 @@
 .header-left {
   display: flex;
   align-items: center;
-  justify-content: center; /* Center logo within the sidebar width */
-  gap: 12px;
+  justify-content: center;
   /* Match sidebar width so logo aligns properly above sidebar */
   width: 250px;
   min-width: 250px;
   flex-shrink: 0;
-  padding-left: 16px;
+  padding: 0;
 }
 
 .menu-toggle {
@@ -442,6 +441,34 @@
   min-width: 0;
   padding: 0;
   overflow: hidden;
+}
+
+/* Sidebar Hamburger Toggle */
+.sidebar-hamburger {
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.sidebar-menu-toggle {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #FFFFFF;
+  padding: 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+}
+
+.sidebar-menu-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 /* Sidebar Logo Section */
