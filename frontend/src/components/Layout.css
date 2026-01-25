@@ -575,24 +575,39 @@
 }
 
 /* ACTIVE STATE - WHITE PROTRUDING TAB WITH CONCAVE CURVES (EXACT FIGMA)
-   Uses SVG background for the wave shape that extends into content area */
+   SVG: 270x148, pill at y=37-111 (74px), concave extension 42px wide
+   Uses pseudo-element for SVG to extend beyond item bounds */
 .sidebar-item.active {
-  background: url('./sidebar-active-bg.svg') no-repeat left center;
-  background-size: 100% 100%;
   background-color: transparent !important;
   color: #F68723 !important; /* Exact Figma orange */
   font-weight: 600;
-  /* Extend past sidebar into content area */
-  margin-right: -30px;
-  padding-right: 50px; /* Compensate for negative margin */
   margin-left: 0;
   padding-left: 36px;
+  margin-right: 0;
   z-index: 100;
   position: relative;
   border: none;
   outline: none;
-  border-radius: 0; /* Remove CSS border-radius, SVG handles shape */
-  box-shadow: none; /* SVG handles the visual */
+  border-radius: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* Pseudo-element creates the SVG background with concave curves */
+.sidebar-item.active::before {
+  content: '';
+  position: absolute;
+  /* Extend above and below for concave curves (37px each side) */
+  top: -50%;
+  left: 0;
+  /* Width: sidebar item + 42px extension into content */
+  width: calc(100% + 42px);
+  /* Height: 200% to show concave curves above/below */
+  height: 200%;
+  background: url('./sidebar-active-bg.svg') no-repeat center center;
+  background-size: 100% 100%;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .sidebar-icon {
