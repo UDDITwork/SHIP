@@ -195,8 +195,7 @@ const userSchema = new mongoose.Schema({
   last_login: Date,
   login_attempts: {
     type: Number,
-    default: 0,
-    max: 5
+    default: 0
   },
   locked_until: Date,
 
