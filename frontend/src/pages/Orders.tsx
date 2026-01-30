@@ -5,7 +5,7 @@ import OrderCreationModal from '../components/OrderCreationModal';
 import TrackingModal from '../components/TrackingModal';
 import PickupRequestModal from '../components/PickupRequestModal';
 import BulkActionBar from '../components/BulkActionBar';
-import LabelFormatModal from '../components/LabelFormatModal';
+// LabelFormatModal removed — format selection now handled directly in BulkActionBar dropdown
 import BulkResultModal, { BulkResult } from '../components/BulkResultModal';
 import { orderService, Order } from '../services/orderService';
 import { warehouseService } from '../services/warehouseService';
@@ -192,7 +192,7 @@ const Orders: React.FC = () => {
   const [warehouseOptions, setWarehouseOptions] = useState<WarehouseOption[]>([]);
 
   // Bulk action states
-  const [showLabelFormatModal, setShowLabelFormatModal] = useState(false);
+  // Label format modal removed — format selected directly from BulkActionBar dropdown
   const [bulkResultModal, setBulkResultModal] = useState<{
     open: boolean;
     result: BulkResult | null;
@@ -1167,20 +1167,8 @@ const Orders: React.FC = () => {
     }
   };
 
-  const handleBulkLabel = (format: string) => {
-    // Open label format modal
-    setShowLabelFormatModal(true);
-  };
-
-  const handleBulkNeedHelp = () => {
-    // Navigate to support page with selected order IDs
-    const orderIds = selectedOrders.join(',');
-    navigate(`/support?orderIds=${encodeURIComponent(orderIds)}&bulk=true`);
-  };
-
-  const handleBulkLabelConfirm = async (format: string) => {
-    setShowLabelFormatModal(false);
-
+  const handleBulkLabel = async (format: string) => {
+    // Print directly — format already selected from BulkActionBar dropdown
     if (selectedOrders.length === 0) {
       alert('Please select orders to print labels');
       return;
@@ -1194,6 +1182,12 @@ const Orders: React.FC = () => {
     } finally {
       setBulkLoading(false);
     }
+  };
+
+  const handleBulkNeedHelp = () => {
+    // Navigate to support page with selected order IDs
+    const orderIds = selectedOrders.join(',');
+    navigate(`/support?orderIds=${encodeURIComponent(orderIds)}&bulk=true`);
   };
 
   const handleClearSelection = () => {
@@ -2208,13 +2202,7 @@ const Orders: React.FC = () => {
         />
       )}
 
-      {/* Label Format Modal */}
-      <LabelFormatModal
-        isOpen={showLabelFormatModal}
-        onClose={() => setShowLabelFormatModal(false)}
-        onConfirm={handleBulkLabelConfirm}
-        selectedCount={selectedOrders.length}
-      />
+      {/* Label format selection handled directly in BulkActionBar dropdown */}
 
       {/* Bulk Result Modal */}
       <BulkResultModal
