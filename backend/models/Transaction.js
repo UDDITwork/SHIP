@@ -189,6 +189,12 @@ const transactionSchema = new mongoose.Schema({
       type: String,
       enum: ['admin', 'staff', 'system']
     }
+  },
+
+  // Idempotency key to prevent duplicate transactions
+  idempotency_key: {
+    type: String,
+    sparse: true
   }
 });
 
@@ -202,6 +208,7 @@ transactionSchema.index({ transaction_date: -1 });
 transactionSchema.index({ 'payment_info.gateway_transaction_id': 1 });
 transactionSchema.index({ 'payment_info.gateway_order_id': 1 });
 transactionSchema.index({ related_order_id: 1 });
+transactionSchema.index({ idempotency_key: 1 }, { unique: true, sparse: true });
 
 // Compound indexes
 transactionSchema.index({ user_id: 1, transaction_date: -1 });

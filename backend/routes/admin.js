@@ -2354,7 +2354,7 @@ router.get('/tracking-failures', async (req, res) => {
 // @access  Admin
 router.post('/wallet-recharge', async (req, res) => {
   try {
-    const { client_id, amount, description, type = 'credit' } = req.body;
+    const { client_id, amount, description, type = 'credit', idempotency_key } = req.body;
 
     // Validate input
     if (!client_id || !amount) {
@@ -2378,6 +2378,77 @@ router.post('/wallet-recharge', async (req, res) => {
         message: 'Transaction type must be credit or debit'
       });
     }
+
+    // --- DUPLICATE PREVENTION ---
+
+    // Check 1: Idempotency key (if provided by frontend)
+    if (idempotency_key) {
+      const existingByKey = await Transaction.findOne({ idempotency_key });
+      if (existingByKey) {
+        logger.warn('Duplicate wallet recharge blocked by idempotency key', {
+          idempotency_key,
+          existing_transaction_id: existingByKey.transaction_id,
+          client_id,
+          amount
+        });
+        // Return the existing transaction as if it succeeded (idempotent response)
+        const existingClient = await User.findById(client_id).select('wallet_balance company_name email');
+        return res.json({
+          success: true,
+          message: `Wallet ${type === 'credit' ? 'recharged' : 'deducted'} successfully`,
+          data: {
+            client_id,
+            client_name: existingClient?.company_name,
+            client_email: existingClient?.email,
+            transaction_type: existingByKey.transaction_type,
+            amount: existingByKey.amount,
+            previous_balance: existingByKey.balance_info?.opening_balance,
+            new_balance: existingClient?.wallet_balance || 0,
+            transaction_id: existingByKey.transaction_id,
+            duplicate: true
+          }
+        });
+      }
+    }
+
+    // Check 2: Time-window deduplication (same client, amount, type within 60 seconds)
+    const sixtySecondsAgo = new Date(Date.now() - 60 * 1000);
+    const recentDuplicate = await Transaction.findOne({
+      user_id: client_id,
+      amount: Math.round(parseFloat(amount) * 100) / 100,
+      transaction_type: type,
+      transaction_category: 'manual_adjustment',
+      status: 'completed',
+      created_at: { $gte: sixtySecondsAgo }
+    });
+
+    if (recentDuplicate) {
+      logger.warn('Duplicate wallet recharge blocked by time-window check', {
+        existing_transaction_id: recentDuplicate.transaction_id,
+        client_id,
+        amount,
+        type,
+        created_at: recentDuplicate.created_at
+      });
+      const existingClient = await User.findById(client_id).select('wallet_balance company_name email');
+      return res.json({
+        success: true,
+        message: `Wallet ${type === 'credit' ? 'recharged' : 'deducted'} successfully`,
+        data: {
+          client_id,
+          client_name: existingClient?.company_name,
+          client_email: existingClient?.email,
+          transaction_type: recentDuplicate.transaction_type,
+          amount: recentDuplicate.amount,
+          previous_balance: recentDuplicate.balance_info?.opening_balance,
+          new_balance: existingClient?.wallet_balance || 0,
+          transaction_id: recentDuplicate.transaction_id,
+          duplicate: true
+        }
+      });
+    }
+
+    // --- END DUPLICATE PREVENTION ---
 
     // Find the client
     const client = await User.findById(client_id);
@@ -2435,7 +2506,8 @@ router.post('/wallet-recharge', async (req, res) => {
         closing_balance: newBalance
       },
       performed_by: performedBy,
-      created_by: performedBy.name
+      created_by: performedBy.name,
+      ...(idempotency_key && { idempotency_key })
     });
 
     // Update client wallet balance

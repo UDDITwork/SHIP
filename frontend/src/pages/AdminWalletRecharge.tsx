@@ -26,18 +26,26 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [submittedKey, setSubmittedKey] = useState<string | null>(null);
 
-  // Reset form when client changes
+  // Reset form when client changes — but never reset loading if a request is in-flight
   useEffect(() => {
-    setAmount('');
-    setTransactionType('credit');
-    setReason('');
-    setError(null);
-    setSuccess(false);
+    if (!loading) {
+      setAmount('');
+      setTransactionType('credit');
+      setReason('');
+      setError(null);
+      setSuccess(false);
+      setSubmittedKey(null);
+    }
   }, [client._id]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Block if already submitting
+    if (loading) return;
+
     if (!amount || parseFloat(amount) <= 0) {
       setError('Please enter a valid amount');
       return;
@@ -63,6 +71,7 @@ const WalletRechargeModal: React.FC<WalletRechargeModalProps> = ({
       setSuccess(true);
       setAmount('');
       setReason('');
+      setSubmittedKey(Date.now().toString());
 
       // Show success message for 2 seconds before closing
       setTimeout(() => {

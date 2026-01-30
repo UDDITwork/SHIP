@@ -1046,20 +1046,39 @@ class AdminService {
 
   // Wallet adjustment method (credit or debit)
   // Includes idempotency key to prevent duplicate transactions
-  async adjustWallet(clientId: string, amount: number, type: 'credit' | 'debit', description?: string): Promise<{ success: boolean; message: string; data: any }> {
-    // Generate unique idempotency key to prevent duplicate transactions
-    const idempotency_key = `wallet_${clientId}_${amount}_${type}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  private _lastIdempotencyKey: string | null = null;
 
-    const response = await apiService.post<{ success: boolean; message: string; data: any }>(`/admin/wallet-recharge`, {
-      client_id: clientId,
-      amount,
-      type,
-      description,
-      idempotency_key
-    }, {
-      headers: this.getAdminHeaders()
-    });
-    return response;
+  async adjustWallet(clientId: string, amount: number, type: 'credit' | 'debit', description?: string): Promise<{ success: boolean; message: string; data: any }> {
+    // Generate a stable idempotency key per logical operation.
+    // Uses a 1-minute time bucket so retries within the same minute share the same key.
+    const timeBucket = Math.floor(Date.now() / 60000);
+    const idempotency_key = `wallet_${clientId}_${amount}_${type}_${timeBucket}`;
+
+    // Prevent frontend from firing the same call twice concurrently
+    if (this._lastIdempotencyKey === idempotency_key) {
+      throw new Error('Please wait — this transaction is already being processed.');
+    }
+    this._lastIdempotencyKey = idempotency_key;
+
+    try {
+      const response = await apiService.post<{ success: boolean; message: string; data: any }>(`/admin/wallet-recharge`, {
+        client_id: clientId,
+        amount,
+        type,
+        description,
+        idempotency_key
+      }, {
+        headers: this.getAdminHeaders()
+      });
+      return response;
+    } finally {
+      // Clear after 5 seconds to allow a genuinely new recharge
+      setTimeout(() => {
+        if (this._lastIdempotencyKey === idempotency_key) {
+          this._lastIdempotencyKey = null;
+        }
+      }, 5000);
+    }
   }
 
   // Legacy method - kept for backward compatibility
