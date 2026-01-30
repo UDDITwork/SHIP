@@ -433,12 +433,14 @@ class LabelRenderer {
       font-weight: normal;
     }
     .awb-barcode {
-      height: 30px;
+      height: 10.583mm;
+      width: 47.625mm;
       margin-bottom: 2px;
     }
     .awb-barcode img {
-      max-height: 30px;
-      max-width: 100%;
+      height: 10.583mm;
+      width: 47.625mm;
+      object-fit: contain;
     }
     .awb-number {
       font-weight: bold;
@@ -527,13 +529,14 @@ class LabelRenderer {
       font-weight: bold;
     }
     .order-barcode {
-      width: 80px;
-      height: 40px;
+      width: 47.625mm;
+      height: 10.583mm;
       margin-bottom: 2px;
     }
     .order-barcode img {
-      max-height: 40px;
-      max-width: 100%;
+      height: 10.583mm;
+      width: 47.625mm;
+      object-fit: contain;
     }
     .reference-id {
       font-size: 7px;
@@ -651,21 +654,21 @@ class LabelRenderer {
       </div>
     </div>
 
-    <!-- Section 2: Courier & Payment Info Row -->
+    <!-- Section 2: Payment Info (left) & Courier/AWB Barcode (right) -->
     <div class="label-section-courier">
-      <div class="courier-section">
-        <div class="courier-name">Courier: <span>${courierName}</span></div>
-        <div class="awb-barcode">
-          ${barcodeImage ? `<img src="${barcodeImage}" alt="AWB Barcode">` : '<div style="height:30px;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
-        </div>
-        <div class="awb-number">AWB: <span>${awb}</span></div>
-      </div>
       <div class="payment-info-section">
         ${showComponent('dimensions') ? `<div class="payment-info-row"><span class="payment-info-label">Dimensions:</span><span class="payment-info-value">${dimensions}</span></div>` : ''}
         ${showComponent('weight') ? `<div class="payment-info-row"><span class="payment-info-label">Weight:</span><span class="payment-info-value">${weight}Kg</span></div>` : ''}
         ${showComponent('payment_type') ? `<div class="payment-info-row"><span class="payment-info-label">Payment:</span><span class="payment-info-value">${paymentMode}</span></div>` : ''}
         ${showComponent('invoice_number') ? `<div class="payment-info-row"><span class="payment-info-label">Invoice No:</span><span class="payment-info-value">${invoiceRef}</span></div>` : ''}
         ${showComponent('invoice_date') ? `<div class="payment-info-row"><span class="payment-info-label">Invoice Date:</span><span class="payment-info-value">${formatDate(invoiceDate)}</span></div>` : ''}
+      </div>
+      <div class="courier-section">
+        <div class="courier-name">Courier: <span>${courierName}</span></div>
+        <div class="awb-barcode">
+          ${barcodeImage ? `<img src="${barcodeImage}" alt="AWB Barcode">` : '<div style="height:10.583mm;width:47.625mm;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
+        </div>
+        <div class="awb-number">AWB: <span>${awb}</span></div>
       </div>
     </div>
 
@@ -685,7 +688,7 @@ class LabelRenderer {
       <div class="order-info-section">
         <div class="order-id-row"><span class="order-id-label">Order ID:</span> ${orderId}</div>
         <div class="order-barcode">
-          ${barcodeImage ? `<img src="${barcodeImage}" alt="Order Barcode">` : '<div style="height:40px;background:repeating-linear-gradient(0deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
+          ${barcodeImage ? `<img src="${barcodeImage}" alt="Order Barcode">` : '<div style="height:10.583mm;width:47.625mm;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
         </div>
         <div class="reference-id"><span>Reference ID:</span> ${referenceId}</div>
         <div class="payment-badge ${paymentMode.toLowerCase()}">${paymentMode.toUpperCase()}</div>
@@ -951,8 +954,9 @@ class LabelRenderer {
 
     .label-slot .awb-barcode img,
     .label-slot .order-barcode img {
-      max-height: 35px !important;
-      max-width: 100% !important;
+      height: 10.583mm !important;
+      width: 47.625mm !important;
+      object-fit: contain !important;
     }
 
     @media print {
