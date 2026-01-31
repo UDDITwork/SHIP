@@ -423,7 +423,6 @@ class LabelRenderer {
     }
     .courier-section {
       padding: 6px 8px;
-      overflow: hidden;
     }
     .courier-name {
       font-weight: bold;
@@ -522,7 +521,6 @@ class LabelRenderer {
       display: flex;
       flex-direction: column;
       align-items: center;
-      overflow: hidden;
     }
     .order-id-row {
       font-size: 8px;
