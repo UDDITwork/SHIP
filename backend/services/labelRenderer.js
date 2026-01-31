@@ -423,6 +423,7 @@ class LabelRenderer {
     }
     .courier-section {
       padding: 6px 8px;
+      overflow: hidden;
     }
     .courier-name {
       font-weight: bold;
@@ -435,11 +436,13 @@ class LabelRenderer {
     .awb-barcode {
       height: 10.583mm;
       width: 47.625mm;
+      max-width: 100%;
       margin-bottom: 2px;
     }
     .awb-barcode img {
       height: 10.583mm;
-      width: 47.625mm;
+      width: 100%;
+      max-width: 47.625mm;
       object-fit: contain;
     }
     .awb-number {
@@ -519,6 +522,7 @@ class LabelRenderer {
       display: flex;
       flex-direction: column;
       align-items: center;
+      overflow: hidden;
     }
     .order-id-row {
       font-size: 8px;
@@ -530,12 +534,14 @@ class LabelRenderer {
     }
     .order-barcode {
       width: 47.625mm;
+      max-width: 100%;
       height: 10.583mm;
       margin-bottom: 2px;
     }
     .order-barcode img {
       height: 10.583mm;
-      width: 47.625mm;
+      width: 100%;
+      max-width: 47.625mm;
       object-fit: contain;
     }
     .reference-id {
@@ -956,7 +962,8 @@ class LabelRenderer {
     .label-slot .awb-barcode img,
     .label-slot .order-barcode img {
       height: 10.583mm !important;
-      width: 47.625mm !important;
+      width: 100% !important;
+      max-width: 47.625mm !important;
       object-fit: contain !important;
     }
 
