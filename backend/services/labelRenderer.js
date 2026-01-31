@@ -934,21 +934,22 @@ class LabelRenderer {
       transform-origin: top left;
     }
 
-    /* Constrain all images within labels */
+    /* Constrain non-barcode images within labels */
     .label-slot img {
       max-width: 100% !important;
-      height: auto !important;
     }
 
     .label-slot .company-logo-preview {
       max-width: 80px !important;
       max-height: 30px !important;
+      height: auto !important;
       object-fit: contain !important;
     }
 
     .label-slot .footer-branding-logo {
       max-width: 50px !important;
       max-height: 18px !important;
+      height: auto !important;
       object-fit: contain !important;
     }
 
