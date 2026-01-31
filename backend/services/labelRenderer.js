@@ -924,7 +924,7 @@ class LabelRenderer {
 
     .label-slot {
       width: ${config.width};
-      max-height: ${config.height || 'none'};
+      height: ${config.height || 'auto'};
       overflow: hidden;
       border: 1px solid #ccc;
       background: white;
@@ -933,6 +933,7 @@ class LabelRenderer {
     /* Ensure label container fits within slot */
     .label-slot .label-container {
       width: 100% !important;
+      height: 100% !important;
       max-width: ${config.width} !important;
       transform-origin: top left;
     }
