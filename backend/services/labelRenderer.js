@@ -434,15 +434,13 @@ class LabelRenderer {
     }
     .awb-barcode {
       height: 22mm;
-      width: 47.625mm;
-      max-width: 100%;
+      width: 100%;
       margin-bottom: 2px;
     }
     .awb-barcode img {
       height: 22mm;
       width: 100%;
-      max-width: 47.625mm;
-      object-fit: contain;
+      object-fit: fill;
     }
     .awb-number {
       font-weight: bold;
@@ -670,7 +668,7 @@ class LabelRenderer {
       <div class="courier-section">
         <div class="courier-name">Courier: <span>${courierName}</span></div>
         <div class="awb-barcode">
-          ${barcodeImage ? `<img src="${barcodeImage}" alt="AWB Barcode">` : '<div style="height:22mm;width:47.625mm;max-width:100%;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
+          ${barcodeImage ? `<img src="${barcodeImage}" alt="AWB Barcode">` : '<div style="height:22mm;width:100%;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
         </div>
         <div class="awb-number">AWB: <span>${awb}</span></div>
       </div>
@@ -960,8 +958,7 @@ class LabelRenderer {
     .label-slot .awb-barcode img {
       height: 22mm !important;
       width: 100% !important;
-      max-width: 47.625mm !important;
-      object-fit: contain !important;
+      object-fit: fill !important;
     }
 
     .label-slot .order-barcode img {
