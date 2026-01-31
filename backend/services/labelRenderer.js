@@ -44,8 +44,8 @@ const LABEL_FORMATS = {
   },
   FOUR_IN_ONE: {
     name: '4 In One',
-    width: '98mm',
-    height: '137mm',
+    width: '95mm',
+    height: '140mm',
     labelsPerSheet: 4,
     paperType: 'A4',
     paperWidth: '210mm',
@@ -810,8 +810,8 @@ class LabelRenderer {
       'Standard': { width: '100mm', height: '150mm', perRow: 1 },
       '2in1': { width: '100mm', height: '150mm', perRow: 2 },
       '2 In One': { width: '100mm', height: '150mm', perRow: 2 },
-      '4in1': { width: '100mm', height: '150mm', perRow: 2, rows: 2 },
-      '4 In One': { width: '100mm', height: '150mm', perRow: 2, rows: 2 }
+      '4in1': { width: '95mm', height: '140mm', perRow: 2, rows: 2 },
+      '4 In One': { width: '95mm', height: '140mm', perRow: 2, rows: 2 }
     };
 
     const config = formatConfig[format] || formatConfig['thermal'];
@@ -866,12 +866,12 @@ class LabelRenderer {
     /* Bulk print specific styles */
     @page {
       size: ${format === '2in1' || format === '2 In One' || format === '4in1' || format === '4 In One' ? 'A4' : '100mm 150mm'};
-      margin: 3mm;
+      margin: 0;
     }
 
     body {
       margin: 0;
-      padding: 5mm;
+      padding: 6mm 7.5mm;
       font-family: Arial, sans-serif;
       background: white;
     }
@@ -901,7 +901,7 @@ class LabelRenderer {
     }
 
     .page-container {
-      margin-bottom: 5mm;
+      margin-bottom: 0;
     }
 
     .page-break {
@@ -917,13 +917,14 @@ class LabelRenderer {
 
     .labels-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 3mm;
-      justify-items: center;
+      grid-template-columns: 95mm 95mm;
+      gap: 5mm;
+      justify-content: center;
     }
 
     .label-slot {
       width: ${config.width};
+      max-height: ${config.height || 'none'};
       overflow: hidden;
       border: 1px solid #ccc;
       background: white;
@@ -973,7 +974,7 @@ class LabelRenderer {
         display: none;
       }
       body {
-        padding: 0;
+        padding: 6mm 7.5mm;
         margin: 0;
       }
       .page-container {
