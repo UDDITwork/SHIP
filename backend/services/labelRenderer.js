@@ -936,6 +936,13 @@ class LabelRenderer {
       height: 100% !important;
       max-width: ${config.width} !important;
       transform-origin: top left;
+      display: flex !important;
+      flex-direction: column !important;
+    }
+
+    /* Product section grows to fill remaining label height */
+    .label-slot .label-section-products {
+      flex: 1 !important;
     }
 
     /* Constrain non-barcode images within labels */
