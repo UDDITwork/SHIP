@@ -4,39 +4,42 @@ const logger = require('../utils/logger');
  * Label Renderer Service
  * Converts Delhivery JSON response to printable HTML/PDF format
  *
- * SHIPPING LABEL DIMENSIONS (Industry Standard):
- * - Thermal (1-in-1): 4" x 6" (100mm x 150mm) - Direct thermal printer
- * - Standard (1-in-1): 4" x 6" (100mm x 150mm) - Single label per sheet
- * - 2-in-1: Two 4"x6" labels on A4 portrait (210mm x 297mm)
- * - 4-in-1: Four 4"x6" labels on A4 (210mm x 297mm)
- *
- * A4 Layout Specifications:
- * - Paper: 210mm x 297mm
- * - Label: 100mm x 148mm (fits 2 columns x 2 rows)
- * - Margins: 5mm left/right
- * - Gap: 0mm horizontal, 1mm vertical
+ * SHIPPING LABEL DIMENSIONS:
+ * - Base label: 95mm x 140mm (1122 x 1653 pixels)
+ * - Thermal (1-in-1): 95mm x 140mm label centered on 4"x6" (101.6mm x 152.4mm) paper
+ * - Standard (1-in-1): Same as thermal
+ * - 2-in-1: Two labels on A4 portrait (210mm x 297mm), rotated 90deg, scaled 1.3929x
+ *   → Slot: 195mm x 132.3mm, gap: 17.36mm, margins: 7.5mm all sides
+ *   → AWB barcode: 66mm x 14mm
+ * - 4-in-1: Four labels on A4 (210mm x 297mm), 2x2 grid
+ *   → Label: 95mm x 140mm, gap: 5mm, margins: 7.5mm sides, 6mm top/bottom
+ *   → AWB barcode: 47mm x 10mm
  */
 
 // Label format constants
 const LABEL_FORMATS = {
   THERMAL: {
     name: 'Thermal',
-    width: '100mm',    // 4 inches
-    height: '150mm',   // 6 inches
+    width: '95mm',
+    height: '140mm',
     labelsPerSheet: 1,
-    paperType: 'thermal'
+    paperType: 'thermal',
+    paperWidth: '101.6mm',
+    paperHeight: '152.4mm'
   },
   STANDARD: {
     name: 'Standard',
-    width: '100mm',
-    height: '150mm',
+    width: '95mm',
+    height: '140mm',
     labelsPerSheet: 1,
-    paperType: 'standard'
+    paperType: 'standard',
+    paperWidth: '101.6mm',
+    paperHeight: '152.4mm'
   },
   TWO_IN_ONE: {
     name: '2 In One',
-    width: '137mm',
-    height: '200mm',
+    width: '95mm',
+    height: '140mm',
     labelsPerSheet: 2,
     paperType: 'A4',
     paperWidth: '210mm',
@@ -308,6 +311,12 @@ class LabelRenderer {
       // Get label format configuration
       const labelFormat = this.getLabelFormat(format);
       const labelWidth = labelFormat.width;
+      const paperWidth = labelFormat.paperWidth || labelWidth;
+      const paperHeight = labelFormat.paperHeight || 'auto';
+      const hPad = paperWidth !== labelWidth ?
+        `${(parseFloat(paperWidth) - parseFloat(labelWidth)) / 2}mm` : '0';
+      const vPad = paperHeight !== 'auto' ?
+        `${(parseFloat(paperHeight) - parseFloat(labelFormat.height)) / 2}mm` : '0';
 
       const formatCurrency = (amount) => {
         if (!amount) return '₹0';
@@ -334,14 +343,14 @@ class LabelRenderer {
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
       font-family: Arial, sans-serif;
-      padding: 0;
+      padding: ${vPad} ${hPad};
       margin: 0;
       font-size: 8px;
       line-height: 1.2;
       background: white;
     }
     @page {
-      size: ${labelWidth} auto;
+      size: ${paperWidth} ${paperHeight};
       margin: 0;
     }
 
@@ -804,12 +813,12 @@ class LabelRenderer {
 
     // Format mapping for page sizing
     const formatConfig = {
-      'thermal': { width: '100mm', height: '150mm', perRow: 1 },
-      'Thermal': { width: '100mm', height: '150mm', perRow: 1 },
-      'standard': { width: '100mm', height: '150mm', perRow: 1 },
-      'Standard': { width: '100mm', height: '150mm', perRow: 1 },
-      '2in1': { width: '100mm', height: '150mm', perRow: 2 },
-      '2 In One': { width: '100mm', height: '150mm', perRow: 2 },
+      'thermal': { width: '95mm', height: '140mm', perRow: 1 },
+      'Thermal': { width: '95mm', height: '140mm', perRow: 1 },
+      'standard': { width: '95mm', height: '140mm', perRow: 1 },
+      'Standard': { width: '95mm', height: '140mm', perRow: 1 },
+      '2in1': { width: '195mm', height: '132.3mm', perRow: 1 },
+      '2 In One': { width: '195mm', height: '132.3mm', perRow: 1 },
       '4in1': { width: '95mm', height: '140mm', perRow: 2, rows: 2 },
       '4 In One': { width: '95mm', height: '140mm', perRow: 2, rows: 2 }
     };
@@ -865,13 +874,13 @@ class LabelRenderer {
 
     /* Bulk print specific styles */
     @page {
-      size: ${format === '2in1' || format === '2 In One' || format === '4in1' || format === '4 In One' ? 'A4' : '100mm 150mm'};
+      size: ${format === '2in1' || format === '2 In One' || format === '4in1' || format === '4 In One' ? 'A4' : '101.6mm 152.4mm'};
       margin: 0;
     }
 
     body {
       margin: 0;
-      padding: 6mm 7.5mm;
+      padding: ${format === '4in1' || format === '4 In One' ? '6mm 7.5mm' : format === '2in1' || format === '2 In One' ? '7.5mm' : '6.2mm 3.3mm'};
       font-family: Arial, sans-serif;
       background: white;
     }
@@ -910,9 +919,9 @@ class LabelRenderer {
 
     .labels-row {
       display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 3mm;
+      flex-direction: column;
+      align-items: center;
+      gap: 17.36mm;
     }
 
     .labels-grid {
@@ -977,12 +986,53 @@ class LabelRenderer {
       object-fit: contain !important;
     }
 
+    ${(format === '4in1' || format === '4 In One') ? `
+    /* 4-in-1: AWB barcode 47mm x 10mm per client spec */
+    .label-slot .awb-barcode {
+      height: 10mm !important;
+      width: 47mm !important;
+    }
+    .label-slot .awb-barcode img {
+      height: 10mm !important;
+      width: 47mm !important;
+      object-fit: fill !important;
+    }
+    ` : ''}
+
+    ${(format === '2in1' || format === '2 In One') ? `
+    /* 2-in-1: rotate labels 90deg and scale 1.3929x to fill 195mm x 132.3mm slots */
+    .label-slot {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      overflow: visible !important;
+    }
+    .label-slot .label-container {
+      width: 95mm !important;
+      height: 140mm !important;
+      max-width: 95mm !important;
+      flex-shrink: 0 !important;
+      transform: rotate(-90deg) scale(1.3929) !important;
+      transform-origin: center center !important;
+    }
+    /* 2-in-1: AWB barcode 66mm x 14mm per client spec */
+    .label-slot .awb-barcode {
+      height: 14mm !important;
+      width: 66mm !important;
+    }
+    .label-slot .awb-barcode img {
+      height: 14mm !important;
+      width: 66mm !important;
+      object-fit: fill !important;
+    }
+    ` : ''}
+
     @media print {
       .print-header {
         display: none;
       }
       body {
-        padding: 6mm 7.5mm;
+        padding: ${format === '4in1' || format === '4 In One' ? '6mm 7.5mm' : format === '2in1' || format === '2 In One' ? '7.5mm' : '6.2mm 3.3mm'};
         margin: 0;
       }
       .page-container {
