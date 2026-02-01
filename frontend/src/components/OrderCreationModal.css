@@ -767,19 +767,20 @@
 }
 
 .add-address-btn {
-  background-color: #28a745;
-  color: white;
+  background: #002B59;
+  color: #FFFFFF;
   border: none;
   padding: 10px 20px;
   border-radius: 6px;
   cursor: pointer;
   font-size: 11px;
-  transition: background-color 0.2s;
+  font-weight: 500;
+  transition: all 0.2s;
   width: 100%;
 }
 
 .add-address-btn:hover {
-  background-color: #218838;
+  background: #001a3d;
 }
 
 /* OR Separator - Fixed duplicate issue */
@@ -837,7 +838,7 @@ select.error {
 
 /* Buttons */
 .add-product-btn {
-  background: #28a745;
+  background: #009EAF;
   color: #FFFFFF;
   border: none;
   padding: 10px 20px;
@@ -845,7 +846,7 @@ select.error {
   cursor: pointer;
   font-weight: 500;
   font-size: 11px;
-  transition: all 0.3s ease;
+  transition: all 0.2s;
   margin-top: 8px;
   display: inline-block;
   width: fit-content;
@@ -853,24 +854,10 @@ select.error {
 }
 
 .add-product-btn:hover {
-  background: #218838;
+  background: #008a99;
 }
 
-.add-address-btn {
-  background: #007bff;
-  color: #FFFFFF;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 11px;
-  margin-left: 8px;
-  transition: all 0.3s ease;
-}
-
-.add-address-btn:hover {
-  background: #0056b3;
-}
+/* add-address-btn styles consolidated above */
 
 /* Page Footer */
 .page-footer {
@@ -906,30 +893,31 @@ select.error {
 }
 
 .btn-secondary {
-  background: #778899;
-  color: #FFFFFF;
+  background: #FFFFFF;
+  color: #002B59;
+  border: 1.5px solid #002B59;
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background: #5f6e7f;
+  background: rgba(0, 43, 89, 0.05);
 }
 
 .btn-primary {
-  background: #1F4068;
+  background: #002B59;
   color: #FFFFFF;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #152d4a;
+  background: #001a3d;
 }
 
 .btn-success {
-  background: #00A8A8;
+  background: #009EAF;
   color: #FFFFFF;
 }
 
 .btn-success:hover:not(:disabled) {
-  background: #008a8a;
+  background: #008a99;
 }
 
 /* Responsive Design */
@@ -1144,4 +1132,57 @@ select.error {
     height: 28px;
     font-size: 12px;
   }
+}
+
+/* ============================================
+   INLINE NOTIFICATION BANNER
+   ============================================ */
+
+.ocm-notification {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  margin: 0 30px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  animation: ocmNotifSlide 0.3s ease;
+}
+
+@keyframes ocmNotifSlide {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ocm-notification-success {
+  background: #002B59;
+  color: #FFFFFF;
+  border-left: 4px solid #009EAF;
+}
+
+.ocm-notification-error {
+  background: #002B59;
+  color: #FFFFFF;
+  border-left: 4px solid #F68723;
+}
+
+.ocm-notification-info {
+  background: #002B59;
+  color: #FFFFFF;
+  border-left: 4px solid #009EAF;
+}
+
+.ocm-notification-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 0 0 12px;
+  line-height: 1;
+}
+
+.ocm-notification-close:hover {
+  color: #FFFFFF;
 }

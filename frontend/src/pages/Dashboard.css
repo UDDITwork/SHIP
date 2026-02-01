@@ -352,24 +352,6 @@
     opacity: 0.9;
   }
 
-  /* Compact Recharge Button */
-  .recharge-btn-compact {
-    background-color: #F68723;
-    border: none;
-    color: white;
-    padding: 8px 20px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    margin-left: auto;
-  }
-
-  .recharge-btn-compact:hover {
-    background-color: #E57A35;
-    transform: translateY(-1px);
-  }
   
 .wallet-downtime-banner {
     margin-top: 16px;
@@ -444,7 +426,7 @@
     flex: 1;
   }
 
-  .card-content h3 {
+  .metric-card .card-content h3 {
     font-size: 14px;
     font-weight: 500;
     margin: 0 0 8px 0;
@@ -461,20 +443,20 @@
     opacity: 0.5;
   }
   
-.card-value {
+.metric-card .card-value {
     font-size: 18px;
     font-weight: 700;
     margin-bottom: 8px;
     color: #FFFFFF;
   }
-  
-  .card-subtitle {
+
+  .metric-card .card-subtitle {
     font-size: 13px;
     color: #FFFFFF;
     line-height: 1.6;
   }
-  
-  .previous-value {
+
+  .metric-card .previous-value {
     font-size: 14px;
     font-weight: 600;
     color: #FFFFFF;
@@ -825,12 +807,6 @@
 
     .current-time-compact {
       justify-content: center;
-    }
-
-    .recharge-btn-compact {
-      margin-left: 0;
-      width: 100%;
-      text-align: center;
     }
 
     .time-text {

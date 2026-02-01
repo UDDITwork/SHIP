@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { userService, UserProfile } from '../services/userService';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { formatDate } from '../utils/dateFormat';
+import { Pencil, User, MapPin, Landmark, KeyRound, Eye, EyeOff, Copy, AlertTriangle, RefreshCw, FileText, BarChart3, Check, X } from 'lucide-react';
 import './Profile.css';
 
 const Profile: React.FC = () => {
@@ -143,7 +144,7 @@ const Profile: React.FC = () => {
             </div>
           </div>
           <Link className="edit-profile-btn" to="/account-settings">
-            ✏️ Edit Profile
+            <Pencil size={14} /> Edit Profile
           </Link>
         </div>
 
@@ -152,7 +153,7 @@ const Profile: React.FC = () => {
           {/* Left Column - Basic Information */}
           <div className="profile-card">
             <div className="profile-card-header">
-              <h2>👤 Basic Information</h2>
+              <h2><User size={16} /> Basic Information</h2>
             </div>
             <div className="profile-card-content">
               <div className="info-row">
@@ -170,12 +171,12 @@ const Profile: React.FC = () => {
               <div className="info-row">
                 <span className="info-label">Email:</span>
                 <span className="info-value">{user.email || 'N/A'}</span>
-                {user.email_verified && <span className="verified-badge">✓ Verified</span>}
+                {user.email_verified && <span className="verified-badge"><Check size={12} /> Verified</span>}
               </div>
               <div className="info-row">
                 <span className="info-label">Phone:</span>
                 <span className="info-value">{user.phone_number || 'N/A'}</span>
-                {user.phone_verified && <span className="verified-badge">✓ Verified</span>}
+                {user.phone_verified && <span className="verified-badge"><Check size={12} /> Verified</span>}
               </div>
               <div className="info-row">
                 <span className="info-label">User Type:</span>
@@ -197,7 +198,7 @@ const Profile: React.FC = () => {
           {/* Right Column - Address Information */}
           <div className="profile-card">
             <div className="profile-card-header">
-              <h2>📍 Address Information</h2>
+              <h2><MapPin size={16} /> Address Information</h2>
             </div>
             <div className="profile-card-content">
               {user.address?.full_address ? (
@@ -234,7 +235,7 @@ const Profile: React.FC = () => {
           {/* Bank Details */}
           <div className="profile-card">
             <div className="profile-card-header">
-              <h2>🏦 Bank Details</h2>
+              <h2><Landmark size={16} /> Bank Details</h2>
             </div>
             <div className="profile-card-content">
               {user.bank_details?.bank_name ? (
@@ -272,12 +273,12 @@ const Profile: React.FC = () => {
           {/* API Details */}
           <div className="profile-card">
             <div className="profile-card-header">
-              <h2>🔑 API Details</h2>
+              <h2><KeyRound size={16} /> API Details</h2>
               <button 
                 className="toggle-keys-btn"
                 onClick={() => setShowApiKeys(!showApiKeys)}
               >
-                {showApiKeys ? '👁️ Hide' : '👁️ Show'} Keys
+                {showApiKeys ? <><EyeOff size={14} /> Hide</> : <><Eye size={14} /> Show</>} Keys
               </button>
             </div>
             <div className="profile-card-content">
@@ -289,12 +290,12 @@ const Profile: React.FC = () => {
                       <span className="info-value api-key">
                         {showApiKeys ? user.api_details.public_key : '••••••••••••••••'}
                       </span>
-                      <button 
+                      <button
                         className="copy-btn"
                         onClick={() => copyToClipboard(user.api_details.public_key, 'Public Key')}
                         title="Copy Public Key"
                       >
-                        📋
+                        <Copy size={14} />
                       </button>
                     </div>
                   </div>
@@ -307,7 +308,7 @@ const Profile: React.FC = () => {
                           '••••••••••••••••'}
                       </span>
                       <div className="key-actions">
-                        <button 
+                        <button
                           className="copy-btn"
                           onClick={() => {
                             if (user.api_details.private_key) {
@@ -317,7 +318,7 @@ const Profile: React.FC = () => {
                           title="Copy Private Key"
                           disabled={!showPrivateKey || !showApiKeys}
                         >
-                          📋
+                          <Copy size={14} />
                         </button>
                         <button 
                           className="toggle-key-btn"
@@ -325,7 +326,7 @@ const Profile: React.FC = () => {
                           disabled={!showApiKeys}
                           title={showPrivateKey ? 'Hide Private Key' : 'Show Private Key'}
                         >
-                          {showPrivateKey ? '👁️‍🗨️' : '👁️'}
+                          {showPrivateKey ? <EyeOff size={14} /> : <Eye size={14} />}
                         </button>
                       </div>
                     </div>
@@ -335,13 +336,13 @@ const Profile: React.FC = () => {
                     <span className="info-value">{user.api_details.api_documentation_version || '1.0'}</span>
                   </div>
                   <div className="api-warning">
-                    ⚠️ Keep your API keys secure. Never share your private key publicly.
+                    <AlertTriangle size={14} /> Keep your API keys secure. Never share your private key publicly.
                   </div>
-                  <button 
+                  <button
                     className="regenerate-keys-btn"
                     onClick={() => navigate('/settings')}
                   >
-                    🔄 Regenerate Keys
+                    <RefreshCw size={14} /> Regenerate Keys
                   </button>
                 </>
               ) : (
@@ -361,7 +362,7 @@ const Profile: React.FC = () => {
           {/* Documents */}
           <div className="profile-card">
             <div className="profile-card-header">
-              <h2>📄 Documents</h2>
+              <h2><FileText size={16} /> Documents</h2>
             </div>
             <div className="profile-card-content">
               {user.documents && user.documents.length > 0 ? (
@@ -383,7 +384,7 @@ const Profile: React.FC = () => {
                           rel="noopener noreferrer"
                           className="view-document-btn"
                         >
-                          View 📄
+                          View
                         </a>
                       )}
                       <span className="document-date">
@@ -401,7 +402,7 @@ const Profile: React.FC = () => {
           {/* Account Summary */}
           <div className="profile-card">
             <div className="profile-card-header">
-              <h2>📊 Account Summary</h2>
+              <h2><BarChart3 size={16} /> Account Summary</h2>
             </div>
             <div className="profile-card-content">
               <div className="info-row">
@@ -429,13 +430,13 @@ const Profile: React.FC = () => {
               <div className="info-row">
                 <span className="info-label">Email Verified:</span>
                 <span className="info-value">
-                  {user.email_verified ? <span className="verified-badge">✓ Yes</span> : <span className="unverified-badge">✗ No</span>}
+                  {user.email_verified ? <span className="verified-badge"><Check size={12} /> Yes</span> : <span className="unverified-badge"><X size={12} /> No</span>}
                 </span>
               </div>
               <div className="info-row">
                 <span className="info-label">Phone Verified:</span>
                 <span className="info-value">
-                  {user.phone_verified ? <span className="verified-badge">✓ Yes</span> : <span className="unverified-badge">✗ No</span>}
+                  {user.phone_verified ? <span className="verified-badge"><Check size={12} /> Yes</span> : <span className="unverified-badge"><X size={12} /> No</span>}
                 </span>
               </div>
             </div>

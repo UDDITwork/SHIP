@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './OrderCreationModal.css';
 import { generateOrderId } from '../utils/orderIdGenerator';
 import { environmentConfig } from '../config/environment';
@@ -77,7 +77,17 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
   const [filteredWarehouses, setFilteredWarehouses] = useState<Warehouse[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  
+
+  // Inline notification state (replaces browser alerts)
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const notificationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const showNotification = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info', duration = 5000) => {
+    if (notificationTimerRef.current) clearTimeout(notificationTimerRef.current);
+    setNotification({ message, type });
+    notificationTimerRef.current = setTimeout(() => setNotification(null), duration);
+  }, []);
+
   // Pincode validation states
   const [validatingDeliveryPincode, setValidatingDeliveryPincode] = useState(false);
   const [validatingPickupPincode, setValidatingPickupPincode] = useState(false);
@@ -913,13 +923,13 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     e.preventDefault();
     // Ensure shipping charges are calculated before proceeding
     if (!finalShippingCalculation.completed || formData.payment_info.shipping_charges === 0) {
-      alert('Please wait for shipping charges to be calculated before saving.');
+      showNotification('Please wait for shipping charges to be calculated before saving.', 'error');
       await calculateFinalShippingCharges();
       return;
     }
     // Check wallet balance before proceeding
     if (finalShippingCalculation.insufficientBalance) {
-      alert(`[Warning] Insufficient Wallet Balance!\n\nYour wallet balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than the shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}).\n\nPlease ask admin to recharge your wallet before creating this order.`);
+      showNotification(`Insufficient Wallet Balance. Your balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}). Please ask admin to recharge your wallet.`, 'error', 8000);
       return;
     }
     await handleOrderSubmission(false); // generate_awb = false
@@ -930,13 +940,13 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     e.preventDefault();
     // Ensure shipping charges are calculated before proceeding
     if (!finalShippingCalculation.completed || formData.payment_info.shipping_charges === 0) {
-      alert('Please wait for shipping charges to be calculated before saving.');
+      showNotification('Please wait for shipping charges to be calculated before saving.', 'error');
       await calculateFinalShippingCharges();
       return;
     }
     // Check wallet balance before proceeding
     if (finalShippingCalculation.insufficientBalance) {
-      alert(`[Warning] Insufficient Wallet Balance!\n\nYour wallet balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than the shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}).\n\nPlease ask admin to recharge your wallet before creating this order.`);
+      showNotification(`Insufficient Wallet Balance. Your balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}). Please ask admin to recharge your wallet.`, 'error', 8000);
       return;
     }
     await handleOrderSubmission(true); // generate_awb = true
@@ -1066,7 +1076,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     }
 
     if (validationErrors.length > 0) {
-      alert('Please fix the following errors:\n' + validationErrors.join('\n'));
+      showNotification(validationErrors.join(' | '), 'error', 8000);
       setLoading(false);
       return;
     }
@@ -1215,7 +1225,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
           errorData: errorData,
           timestamp: new Date().toISOString()
         });
-        alert(`[Error] Order creation failed:\n\n${errorMessage}\n\nPlease check the form and try again.`);
+        showNotification(`Order creation failed: ${errorMessage}`, 'error', 8000);
         setLoading(false);
         return;
       }
@@ -1235,18 +1245,18 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         });
 
         // Show success message with order details
-        let successMessage = '';
         const orderStatus = data.data.order?.status || 'new';
-        
+        let successMessage = '';
+
         if (generateAWB && data.data.awb_number) {
-          successMessage = `Order created and AWB assigned successfully!\n\nOrder ID: ${data.data.order.order_id}\nAWB Number: ${data.data.awb_number}\nStatus: ${orderStatus}\n\nOrder appears in "Ready to Ship" tab. You can request pickup from there.`;
+          successMessage = `Order created — AWB ${data.data.awb_number} assigned. Check "Ready to Ship" tab.`;
         } else if (generateAWB) {
-          successMessage = `Order created and AWB generation initiated!\n\nOrder ID: ${data.data.order.order_id}\nAWB: Processing...\nStatus: ${orderStatus}\n\nOrder appears in "Ready to Ship" tab.`;
+          successMessage = `Order ${data.data.order.order_id} created. AWB processing...`;
         } else {
-          successMessage = `Order saved successfully!\n\nOrder ID: ${data.data.order.order_id}\nStatus: ${orderStatus}\n\nOrder appears in "NEW" tab. You can generate AWB later.`;
+          successMessage = `Order ${data.data.order.order_id} saved. Check "NEW" tab.`;
         }
-        
-        alert(successMessage);
+
+        showNotification(successMessage, 'success', 6000);
         
         // Transform order data to include AWB for parent component
         const orderWithAWB = {
@@ -1382,6 +1392,14 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
           <button className="back-btn" onClick={onBack}>← Back</button>
         )}
       </div>
+
+        {/* Inline Notification Banner */}
+        {notification && (
+          <div className={`ocm-notification ocm-notification-${notification.type}`}>
+            <span>{notification.message}</span>
+            <button className="ocm-notification-close" onClick={() => setNotification(null)}>×</button>
+          </div>
+        )}
 
         {/* Validation Errors Display */}
         {validationErrors.length > 0 && (

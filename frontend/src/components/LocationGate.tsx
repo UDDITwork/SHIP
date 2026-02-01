@@ -87,11 +87,12 @@ const LocationGate: React.FC<LocationGateProps> = ({ children }) => {
           textAlign: 'center',
           maxWidth: '400px'
         }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>📍</div>
+          <div style={{ width: '48px', height: '48px', margin: '0 auto 16px', borderRadius: '50%', border: '3px solid #009EAF', borderTopColor: 'transparent', animation: 'locSpin 0.8s linear infinite' }}></div>
           <h2 style={{ color: '#002B59', marginBottom: '8px', fontSize: '18px' }}>Requesting Location Access</h2>
-          <p style={{ color: '#666', fontSize: '14px' }}>
+          <p style={{ color: '#002B59', opacity: 0.6, fontSize: '14px' }}>
             Please allow location access in your browser to continue.
           </p>
+          <style>{`@keyframes locSpin { to { transform: rotate(360deg); } }`}</style>
         </div>
       </div>
     );
@@ -116,16 +117,18 @@ const LocationGate: React.FC<LocationGateProps> = ({ children }) => {
           textAlign: 'center',
           maxWidth: '450px'
         }}>
-          <div style={{ fontSize: '40px', marginBottom: '16px' }}>⚠️</div>
+          <div style={{ width: '48px', height: '48px', margin: '0 auto 16px', borderRadius: '50%', background: '#F68723', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
           <h2 style={{ color: '#002B59', marginBottom: '12px', fontSize: '18px' }}>Location Permission Required</h2>
-          <p style={{ color: '#666', fontSize: '14px', marginBottom: '20px', lineHeight: '1.6' }}>
+          <p style={{ color: '#002B59', opacity: 0.6, fontSize: '14px', marginBottom: '20px', lineHeight: '1.6' }}>
             Location permission is required to use services. Please enable location access in your browser settings and try again.
           </p>
           <button
             onClick={requestLocation}
             style={{
-              backgroundColor: '#F68723',
-              color: 'white',
+              backgroundColor: '#002B59',
+              color: '#FFFFFF',
               border: 'none',
               borderRadius: '8px',
               padding: '10px 24px',

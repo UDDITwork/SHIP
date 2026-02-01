@@ -330,7 +330,6 @@ const Dashboard: React.FC = () => {
     };
   }, [fetchAllDashboardData, dateFilter.startDate, dateFilter.endDate]); // Refetch when date filter changes
 
-  // Navigate to billing page for recharge (uses HDFC payment gateway)
   const handleRecharge = () => {
     navigate('/billing');
   };
@@ -629,10 +628,6 @@ const Dashboard: React.FC = () => {
             <span className="day-text">{getDayOfWeek()}</span>
           </div>
 
-          {/* Recharge Button */}
-          <button className="recharge-btn-compact" onClick={handleRecharge}>
-            Recharge
-          </button>
         </div>
 
         <div className="dashboard-grid">

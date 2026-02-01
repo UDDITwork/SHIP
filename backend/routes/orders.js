@@ -1257,7 +1257,17 @@ router.get('/', auth, [
     }
 
     if (req.query.warehouse_id) {
-      filterQuery['pickup_address.warehouse_id'] = req.query.warehouse_id;
+      // Orders store warehouse data inline (name, address), not as a reference.
+      // Look up the warehouse name from the ID and filter by pickup_address.name.
+      try {
+        const Warehouse = require('../models/Warehouse');
+        const selectedWarehouse = await Warehouse.findById(req.query.warehouse_id);
+        if (selectedWarehouse) {
+          filterQuery['pickup_address.name'] = selectedWarehouse.name;
+        }
+      } catch (whErr) {
+        console.error('Warehouse lookup for filter failed:', whErr);
+      }
     }
 
     if (req.query.search) {

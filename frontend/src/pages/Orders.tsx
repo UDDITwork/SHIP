@@ -74,7 +74,46 @@ const Orders: React.FC = () => {
   }, [orders]);
   const [loading, setLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-  
+
+  // Toast notification state
+  const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: 'success' | 'error' | 'info' }>>([]);
+  const toastIdRef = useRef(0);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = ++toastIdRef.current;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  }, []);
+
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    confirmText?: string;
+    cancelText?: string;
+    variant?: 'danger' | 'default';
+  }>({ open: false, title: '', message: '', onConfirm: () => {} });
+
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void, options?: { confirmText?: string; cancelText?: string; variant?: 'danger' | 'default' }) => {
+    setConfirmModal({
+      open: true,
+      title,
+      message,
+      onConfirm,
+      confirmText: options?.confirmText || 'OK',
+      cancelText: options?.cancelText || 'Cancel',
+      variant: options?.variant || 'default',
+    });
+  }, []);
+
+  const closeConfirmModal = useCallback(() => {
+    setConfirmModal(prev => ({ ...prev, open: false }));
+  }, []);
+
   // Filter States
   const [filters, setFilters] = useState<OrderFilters>({
     dateFrom: '',
@@ -392,7 +431,7 @@ const Orders: React.FC = () => {
       // First, force refresh all orders (calls Delhivery API to get fresh status)
       const token = localStorage.getItem('token');
       if (!token) {
-        alert('Authentication required. Please log in again.');
+        showToast('Authentication required. Please log in again.', 'error');
         setLoading(false);
         return;
       }
@@ -418,12 +457,12 @@ const Orders: React.FC = () => {
           
           if (syncResult.success) {
             const synced = syncResult.data?.synced || 0;
-            alert(`Orders refreshed and synced successfully!\n${refreshed} orders refreshed from API\n${synced} orders updated in database.`);
+            showToast(`Orders refreshed and synced! ${refreshed} refreshed, ${synced} updated.`, 'success');
           } else {
-            alert(`Orders refreshed from API (${refreshed} orders), but sync failed: ${syncResult.error || 'Unknown error'}`);
+            showToast(`Orders refreshed (${refreshed}), but sync failed: ${syncResult.error || 'Unknown error'}`, 'error');
           }
         } else {
-          alert(`Failed to refresh orders: ${refreshData.message || 'Unknown error'}`);
+          showToast(`Failed to refresh orders: ${refreshData.message || 'Unknown error'}`, 'error');
         }
       } catch (refreshError) {
         console.error('Error refreshing orders:', refreshError);
@@ -432,9 +471,9 @@ const Orders: React.FC = () => {
         if (syncResult.success) {
           const synced = syncResult.data?.synced || 0;
           const total = syncResult.data?.total || 0;
-          alert(`Orders synced (refresh failed):\n${synced} out of ${total} orders updated.`);
+          showToast(`Orders synced: ${synced} out of ${total} orders updated.`, 'success');
         } else {
-          alert(`Failed to sync orders: ${syncResult.error || 'Unknown error'}`);
+          showToast(`Failed to sync orders: ${syncResult.error || 'Unknown error'}`, 'error');
         }
       }
       
@@ -472,7 +511,7 @@ const Orders: React.FC = () => {
       await fetchOrders();
     } catch (error) {
       console.error('Error syncing orders:', error);
-      alert('Failed to sync orders');
+      showToast('Failed to sync orders', 'error');
     } finally {
       setLoading(false);
     }
@@ -593,7 +632,7 @@ const Orders: React.FC = () => {
 
       if (response.ok) {
         const data = await response.json();
-        alert(`✅ Pickup requested successfully!\n\nPickup ID: ${data.data.pickup_request_id || 'N/A'}\nScheduled: ${data.data.pickup_date} at ${data.data.pickup_time}`);
+        showToast(`Pickup requested! ID: ${data.data.pickup_request_id || 'N/A'}, Scheduled: ${data.data.pickup_date} at ${data.data.pickup_time}`, 'success');
         
         // Close modal
         setPickupModal({ open: false, orderId: null, orderNumber: null, warehouseName: null });
@@ -613,20 +652,19 @@ const Orders: React.FC = () => {
         }
         
         // Show detailed error message to user
-        alert(`❌ Pickup Request Failed\n\n${errorMessage}\n\nNote: This error is from your Delhivery account wallet balance, not your application wallet.`);
+        showToast(`Pickup Request Failed: ${errorMessage}`, 'error');
       }
     } catch (error: any) {
       console.error('Pickup request error:', error);
-      
-      // Extract error message from various possible sources
+
       let errorMessage = 'Failed to request pickup';
       if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       } else if (error.message) {
         errorMessage = error.message;
       }
-      
-      alert(`❌ Pickup Request Failed\n\n${errorMessage}\n\nNote: This error is from your Delhivery account wallet balance, not your application wallet.`);
+
+      showToast(`Pickup Request Failed: ${errorMessage}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -713,10 +751,10 @@ const Orders: React.FC = () => {
         await exportToPDF(exportData);
       }
       
-      alert(`${format.toUpperCase()} export completed successfully!`);
+      showToast(`${format.toUpperCase()} export completed successfully!`, 'success');
     } catch (error) {
       console.error('Export error:', error);
-      alert(`Failed to export ${format.toUpperCase()}. Please try again.`);
+      showToast(`Failed to export ${format.toUpperCase()}. Please try again.`, 'error');
     } finally {
       setLoading(false);
     }
@@ -867,7 +905,7 @@ const Orders: React.FC = () => {
     const sanitizedAwb = (awb || '').trim();
 
     if (!sanitizedAwb) {
-      alert('AWB number not available for tracking');
+      showToast('AWB number not available for tracking', 'info');
       return;
     }
 
@@ -876,16 +914,20 @@ const Orders: React.FC = () => {
     navigate(trackingUrl);
   };
 
-  const handleGenerateAWB = async (orderId: string, orderDbId: string) => {
+  const handleGenerateAWB = (orderId: string, orderDbId: string) => {
     if (!orderDbId) {
-      alert('Order ID not available');
+      showToast('Order ID not available', 'error');
       return;
     }
+    showConfirm(
+      'Generate AWB',
+      'Generate AWB number for this order? The order will move to "Ready to Ship" tab.',
+      () => executeGenerateAWB(orderId, orderDbId),
+      { confirmText: 'Generate', variant: 'default' }
+    );
+  };
 
-    if (!window.confirm('Generate AWB number for this order? The order will move to "Ready to Ship" tab.')) {
-      return;
-    }
-
+  const executeGenerateAWB = async (orderId: string, orderDbId: string) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
@@ -911,7 +953,7 @@ const Orders: React.FC = () => {
             return norm === true || norm === 'y' || norm === 'yes' || norm === 'true' || norm === 1 || norm === '1';
           };
           if (!isServiceable(pickupInfo) || !isServiceable(deliveryInfo)) {
-            alert('PINCODE IS NOT SERVICEABLE');
+            showToast('PINCODE IS NOT SERVICEABLE', 'error');
             setLoading(false);
             return;
           }
@@ -931,7 +973,7 @@ const Orders: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.status === 'success') {
-        alert(`✅ AWB generated successfully!\n\nAWB Number: ${data.data.awb_number}\n\nOrder moved to "Ready to Ship" tab.`);
+        showToast(`AWB generated: ${data.data.awb_number}. Order moved to "Ready to Ship".`, 'success');
         // Clear cache and refresh orders
         orderService.clearCache();
         fetchOrders();
@@ -944,28 +986,31 @@ const Orders: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Generate AWB error:', error);
-      alert(`❌ Failed to generate AWB: ${error.message || 'Unknown error'}`);
+      showToast(`Failed to generate AWB: ${error.message || 'Unknown error'}`, 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleCancelShipment = async (orderId: string, orderDbId: string, awb?: string | null) => {
+  const handleCancelShipment = (orderId: string, orderDbId: string, awb?: string | null) => {
     if (!orderDbId) {
-      alert('Order ID not available');
+      showToast('Order ID not available', 'error');
       return;
     }
+    const awbText = awb ? `AWB: ${awb}` : 'AWB: Not generated';
+    showConfirm(
+      'Cancel Shipment',
+      `Cancel this shipment?\n\nOrder ID: ${orderId}\n${awbText}\n\nThis action cannot be undone.`,
+      () => executeCancelShipment(orderDbId),
+      { confirmText: 'Cancel Shipment', variant: 'danger' }
+    );
+  };
 
-    // Confirm cancellation
-    const awbText = awb ? `AWB Number: ${awb}` : 'AWB Number: Not generated';
-    if (!window.confirm(`Are you sure you want to cancel this shipment?\n\nOrder ID: ${orderId}\n${awbText}\n\nThis action cannot be undone.`)) {
-      return;
-    }
-
+  const executeCancelShipment = async (orderDbId: string) => {
     try {
       setLoading(true);
       const token = localStorage.getItem('token');
-      
+
       const response = await fetch(`${environmentConfig.apiUrl}/orders/${orderDbId}/cancel-shipment`, {
         method: 'POST',
         headers: {
@@ -977,23 +1022,15 @@ const Orders: React.FC = () => {
       const data = await response.json();
 
       if (response.ok && data.status === 'success') {
-        const cancellationStatus = data.data?.cancellation_status || 'unknown';
-        const cancelledWaybill = data.data?.waybill || 'Not Generated';
-        alert(`✅ Shipment cancelled successfully!\n\nOrder ID: ${data.data.order_id}\nAWB Number: ${cancelledWaybill}\nCancellation Status: ${cancellationStatus}\n\n${data.data.message || ''}`);
-        
-        // Clear cache and refresh orders to show the cancellation badge
+        showToast(`Shipment cancelled successfully! Order: ${data.data.order_id}`, 'success');
         orderService.clearCache();
-        
-        // Small delay to ensure backend has saved the cancellation status
-        setTimeout(() => {
-          fetchOrders();
-        }, 500);
+        setTimeout(() => { fetchOrders(); }, 500);
       } else {
         throw new Error(data.message || data.error || 'Failed to cancel shipment');
       }
     } catch (error: any) {
       console.error('Cancel shipment error:', error);
-      alert(`❌ Failed to cancel shipment: ${error.message || 'Unknown error'}`);
+      showToast(`Failed to cancel shipment: ${error.message || 'Unknown error'}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -1001,7 +1038,7 @@ const Orders: React.FC = () => {
 
   const handlePrintLabel = async (orderId: string, orderDbId?: string, awb?: string) => {
     if (!orderDbId) {
-      alert('Order ID not available');
+      showToast('Order ID not available', 'error');
       return;
     }
 
@@ -1051,7 +1088,7 @@ const Orders: React.FC = () => {
 
     } catch (error: any) {
       console.error('Print order error:', error);
-      alert(`❌ Failed to generate order print page: ${error.message || 'Unknown error'}`);
+      showToast(`Failed to generate print page: ${error.message || 'Unknown error'}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -1061,107 +1098,90 @@ const Orders: React.FC = () => {
   // BULK ACTION HANDLERS
   // ==========================================
 
-  const handleBulkAWB = async () => {
+  const handleBulkAWB = () => {
     if (selectedOrders.length === 0) {
-      alert('Please select orders to generate AWB');
+      showToast('Please select orders to generate AWB', 'info');
       return;
     }
-
-    // Only allow for 'new' tab orders
     if (activeTab !== 'new') {
-      alert('Bulk AWB generation is only available for orders in the "New" tab');
+      showToast('Bulk AWB generation is only available for orders in the "New" tab', 'info');
       return;
     }
-
-    if (!window.confirm(`Generate AWB for ${selectedOrders.length} orders?\n\nThis will process orders one by one and stop if wallet balance is insufficient.`)) {
-      return;
-    }
-
-    try {
-      setBulkLoading(true);
-      const result = await orderService.bulkGenerateAWB(selectedOrders);
-
-      setBulkResultModal({
-        open: true,
-        result: result,
-        operationType: 'awb'
-      });
-
-      // Clear selection and refresh orders
-      setSelectedOrders([]);
-      fetchOrders();
-    } catch (error: any) {
-      alert(`❌ Bulk AWB generation failed: ${error.message}`);
-    } finally {
-      setBulkLoading(false);
-    }
+    showConfirm(
+      'Bulk Generate AWB',
+      `Generate AWB for ${selectedOrders.length} orders? This will process orders one by one.`,
+      async () => {
+        try {
+          setBulkLoading(true);
+          const result = await orderService.bulkGenerateAWB(selectedOrders);
+          setBulkResultModal({ open: true, result, operationType: 'awb' });
+          setSelectedOrders([]);
+          fetchOrders();
+        } catch (error: any) {
+          showToast(`Bulk AWB generation failed: ${error.message}`, 'error');
+        } finally {
+          setBulkLoading(false);
+        }
+      },
+      { confirmText: 'Generate' }
+    );
   };
 
   const handleBulkPickup = async () => {
     if (selectedOrders.length === 0) {
-      alert('Please select orders to create pickup request');
+      showToast('Please select orders to create pickup request', 'info');
       return;
     }
 
-    // Get pickup date and time from user
     const pickupDate = prompt('Enter pickup date (YYYY-MM-DD):', new Date(Date.now() + 86400000).toISOString().split('T')[0]);
     if (!pickupDate) return;
 
     const pickupTime = prompt('Enter pickup time (HH:MM:SS):', '14:00:00');
     if (!pickupTime) return;
 
-    if (!window.confirm(`Request pickup for ${selectedOrders.length} orders?\n\nDate: ${pickupDate}\nTime: ${pickupTime}`)) {
-      return;
-    }
-
-    try {
-      setBulkLoading(true);
-      const result = await orderService.bulkRequestPickup(selectedOrders, pickupDate, pickupTime);
-
-      setBulkResultModal({
-        open: true,
-        result: result,
-        operationType: 'pickup'
-      });
-
-      // Clear selection and refresh orders
-      setSelectedOrders([]);
-      fetchOrders();
-    } catch (error: any) {
-      alert(`❌ Bulk pickup request failed: ${error.message}`);
-    } finally {
-      setBulkLoading(false);
-    }
+    showConfirm(
+      'Bulk Pickup Request',
+      `Request pickup for ${selectedOrders.length} orders?\n\nDate: ${pickupDate}\nTime: ${pickupTime}`,
+      async () => {
+        try {
+          setBulkLoading(true);
+          const result = await orderService.bulkRequestPickup(selectedOrders, pickupDate, pickupTime);
+          setBulkResultModal({ open: true, result, operationType: 'pickup' });
+          setSelectedOrders([]);
+          fetchOrders();
+        } catch (error: any) {
+          showToast(`Bulk pickup request failed: ${error.message}`, 'error');
+        } finally {
+          setBulkLoading(false);
+        }
+      },
+      { confirmText: 'Request Pickup' }
+    );
   };
 
-  const handleBulkCancel = async () => {
+  const handleBulkCancel = () => {
     if (selectedOrders.length === 0) {
-      alert('Please select orders to cancel');
+      showToast('Please select orders to cancel', 'info');
       return;
     }
-
-    if (!window.confirm(`Cancel ${selectedOrders.length} orders?\n\n⚠️ This action cannot be undone.\nShipping charges will be refunded to your wallet.`)) {
-      return;
-    }
-
-    try {
-      setBulkLoading(true);
-      const result = await orderService.bulkCancel(selectedOrders);
-
-      setBulkResultModal({
-        open: true,
-        result: result,
-        operationType: 'cancel'
-      });
-
-      // Clear selection and refresh orders
-      setSelectedOrders([]);
-      fetchOrders();
-    } catch (error: any) {
-      alert(`❌ Bulk cancellation failed: ${error.message}`);
-    } finally {
-      setBulkLoading(false);
-    }
+    showConfirm(
+      'Bulk Cancel Orders',
+      `Cancel ${selectedOrders.length} orders?\n\nThis action cannot be undone. Shipping charges will be refunded to your wallet.`,
+      async () => {
+        try {
+          setBulkLoading(true);
+          const result = await orderService.bulkCancel(selectedOrders);
+          setBulkResultModal({ open: true, result, operationType: 'cancel' });
+          setSelectedOrders([]);
+          fetchOrders();
+        } catch (error: any) {
+          showToast(`Bulk cancellation failed: ${error.message}`, 'error');
+        } finally {
+          setBulkLoading(false);
+        }
+      },
+      { confirmText: 'Cancel Orders', variant: 'danger' }
+    );
   };
 
   const handleBulkLabel = (format: string) => {
@@ -1179,7 +1199,7 @@ const Orders: React.FC = () => {
     setShowLabelFormatModal(false);
 
     if (selectedOrders.length === 0) {
-      alert('Please select orders to print labels');
+      showToast('Please select orders to print labels', 'info');
       return;
     }
 
@@ -1187,7 +1207,7 @@ const Orders: React.FC = () => {
       setBulkLoading(true);
       await orderService.bulkPrintLabels(selectedOrders, format);
     } catch (error: any) {
-      alert(`❌ Bulk label print failed: ${error.message}`);
+      showToast(`Bulk label print failed: ${error.message}`, 'error');
     } finally {
       setBulkLoading(false);
     }
@@ -1196,6 +1216,15 @@ const Orders: React.FC = () => {
   const handleClearSelection = () => {
     setSelectedOrders([]);
   };
+
+  // Active filter count
+  const activeFilterCount = [
+    filters.paymentMode,
+    filters.warehouseId,
+    filters.state && filters.state.trim(),
+    typeof filters.minAmount === 'number',
+    typeof filters.maxAmount === 'number',
+  ].filter(Boolean).length;
 
   // Order Details Modal Component
   const OrderDetailsModal = ({ open, order, onClose }: { open: boolean, order: Order | null, onClose: () => void }) => {
@@ -1212,7 +1241,7 @@ const Orders: React.FC = () => {
           <div className="modal-body">
             {/* Order Information */}
             <section className="details-section">
-              <h3>📦 Order Information</h3>
+              <h3>Order Information</h3>
               <div className="details-grid">
                 <div className="detail-item"><strong>Order ID:</strong> {order.orderId}</div>
                 <div className="detail-item"><strong>Reference ID:</strong> {order.referenceId || 'N/A'}</div>
@@ -1224,7 +1253,7 @@ const Orders: React.FC = () => {
 
             {/* Customer Information */}
             <section className="details-section">
-              <h3>👤 Customer Information</h3>
+              <h3>Customer Information</h3>
               <div className="details-grid">
                 <div className="detail-item"><strong>Name:</strong> {order.customerName}</div>
                 <div className="detail-item"><strong>Phone:</strong> {order.customerPhone}</div>
@@ -1236,7 +1265,7 @@ const Orders: React.FC = () => {
 
             {/* Product Information */}
             <section className="details-section">
-              <h3>🛍️ Product Information</h3>
+              <h3>Product Information</h3>
               <div className="details-grid">
                 <div className="detail-item"><strong>Product:</strong> {order.productName}</div>
                 <div className="detail-item"><strong>Quantity:</strong> {order.quantity}</div>
@@ -1249,7 +1278,7 @@ const Orders: React.FC = () => {
 
             {/* Payment Information */}
             <section className="details-section">
-              <h3>💳 Payment Information</h3>
+              <h3>Payment Information</h3>
               <div className="details-grid">
                 <div className="detail-item"><strong>Payment Mode:</strong> <span className={`payment-mode ${order.paymentMode?.toLowerCase()}`}>{order.paymentMode}</span></div>
                 <div className="detail-item"><strong>Total Amount:</strong> ₹{order.totalAmount}</div>
@@ -1259,7 +1288,7 @@ const Orders: React.FC = () => {
 
             {/* Pickup Information */}
             <section className="details-section">
-              <h3>🏢 Warehouse/Pickup Information</h3>
+              <h3>Warehouse/Pickup Information</h3>
               <div className="details-grid">
                 <div className="detail-item"><strong>Warehouse:</strong> {order.warehouse}</div>
                 <div className="detail-item"><strong>Pickup Location:</strong> {order.pickupLocation}</div>
@@ -1530,11 +1559,11 @@ const Orders: React.FC = () => {
           </form>
 
           <div className="more-filters-container">
-            <button 
+            <button
               className={`more-filters-btn ${showMoreFilters ? 'active' : ''}`}
               onClick={handleMoreFiltersToggle}
             >
-            More Filter
+            More Filter{activeFilterCount > 0 && ` (${activeFilterCount})`}
           </button>
             
             {showMoreFilters && (
@@ -1556,11 +1585,9 @@ const Orders: React.FC = () => {
                       value={filters.paymentMode || ''}
                       onChange={(e) => setFilters({...filters, paymentMode: e.target.value})}
                     >
-                      <option value="">All Payment Modes</option>
-                      <option value="COD">COD</option>
+                      <option value="">All Payment</option>
                       <option value="Prepaid">Prepaid</option>
-                      <option value="Pickup">Pickup</option>
-                      <option value="REPL">REPL</option>
+                      <option value="COD">COD</option>
                     </select>
                   </div>
 
@@ -1662,10 +1689,13 @@ const Orders: React.FC = () => {
                 <th>Package Details</th>
                 <th>Payment</th>
                 <th>Shipping Details</th>
-                <th>AWB Number</th>
-                {!['in_transit', 'out_for_delivery', 'delivered'].includes(activeTab) && (
+                {activeTab !== 'new' && <th>AWB Number</th>}
+                {['ready_to_ship', 'pickups_manifests'].includes(activeTab) && (
                   <th>Pickup Status</th>
                 )}
+                {activeTab === 'delivered' && <th>Delivery Date</th>}
+                {activeTab === 'rto' && <th>RTO Date</th>}
+                {activeTab === 'all' && <th>Status</th>}
                 <th>Warehouse</th>
                 <th>Action</th>
               </tr>
@@ -1673,15 +1703,15 @@ const Orders: React.FC = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={['in_transit', 'out_for_delivery', 'delivered'].includes(activeTab) ? 10 : 11} className="loading-cell">
+                  <td colSpan={99} className="loading-cell">
                     Loading orders...
                   </td>
                 </tr>
               ) : orders.length === 0 ? (
                 <tr>
-                  <td colSpan={['in_transit', 'out_for_delivery', 'delivered'].includes(activeTab) ? 10 : 11} className="no-data-cell">
+                  <td colSpan={99} className="no-data-cell">
                     <div className="no-orders">
-                      <div className="no-orders-icon">📦</div>
+                      <div className="no-orders-icon">—</div>
                       <h3>No orders found</h3>
                       <p>Create your first order to get started</p>
                       <button className="create-order-btn" onClick={handleAddOrder}>
@@ -1748,18 +1778,18 @@ const Orders: React.FC = () => {
                         </div>
                       </div>
                     </td>
+                    {activeTab !== 'new' && (
                     <td>
                       <div className="awb-cell">
                         {order.awb ? (
                           <div className="awb-number">
                             <AWBLink awb={order.awb} orderId={order.orderId} showPrefix={true} />
-                            {/* Cancellation indicator - check both cancellation_status and cancellation_response */}
-                            {(order.delhivery_data?.cancellation_status === 'cancelled' || 
+                            {(order.delhivery_data?.cancellation_status === 'cancelled' ||
                               order.delhivery_data?.cancellation_response?.status === true ||
-                              (order.delhivery_data?.cancellation_response?.remark && 
+                              (order.delhivery_data?.cancellation_response?.remark &&
                                order.delhivery_data.cancellation_response.remark.toLowerCase().includes('cancelled'))) && (
                               <span className="cancelled-badge" title="Shipment Cancelled">
-                                🚫 Cancelled
+                                Cancelled
                               </span>
                             )}
                             <button
@@ -1768,7 +1798,6 @@ const Orders: React.FC = () => {
                               onClick={() => {
                                 if (order.awb) {
                                   navigator.clipboard.writeText(order.awb);
-                                  // Show toast notification instead of alert
                                   const toast = document.createElement('div');
                                   toast.className = 'copy-toast';
                                   toast.textContent = 'Copied successfully';
@@ -1777,7 +1806,7 @@ const Orders: React.FC = () => {
                                 }
                               }}
                             >
-                              📋
+                              Copy
                             </button>
                           </div>
                         ) : (
@@ -1787,17 +1816,13 @@ const Orders: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    {!['in_transit', 'out_for_delivery', 'delivered'].includes(activeTab) && (
+                    )}
+                    {['ready_to_ship', 'pickups_manifests'].includes(activeTab) && (
                       <td>
                         <div className="pickup-status-cell">
                           {order.pickupRequestStatus ? (
                             <div className={`pickup-status ${order.pickupRequestStatus}`}>
                               <span className="pickup-status-badge">
-                                {order.pickupRequestStatus === 'pending' && '⏳'}
-                                {order.pickupRequestStatus === 'scheduled' && '📅'}
-                                {order.pickupRequestStatus === 'in_transit' && '🚚'}
-                                {order.pickupRequestStatus === 'completed' && '✅'}
-                                {order.pickupRequestStatus === 'failed' && '❌'}
                                 {order.pickupRequestStatus.charAt(0).toUpperCase() + order.pickupRequestStatus.slice(1)}
                               </span>
                               {order.pickupRequestDate && (
@@ -1814,11 +1839,32 @@ const Orders: React.FC = () => {
                           ) : (
                             <div className="pickup-status pending">
                               <span className="pickup-status-badge">
-                                ⏳ Pending
+                                Pending
                               </span>
                             </div>
                           )}
                         </div>
+                      </td>
+                    )}
+                    {activeTab === 'delivered' && (
+                      <td>{order.delhivery_data?.delivered_date ? formatDate(order.delhivery_data.delivered_date) : (order.delhivery_data?.status_datetime ? formatDate(order.delhivery_data.status_datetime) : 'N/A')}</td>
+                    )}
+                    {activeTab === 'rto' && (
+                      <td>{order.delhivery_data?.rto_date ? formatDate(order.delhivery_data.rto_date) : (order.delhivery_data?.status_datetime ? formatDate(order.delhivery_data.status_datetime) : 'N/A')}</td>
+                    )}
+                    {activeTab === 'all' && (
+                      <td>
+                        <span className={`status-badge ${order.status}`}>
+                          {order.status === 'new' ? 'New' :
+                           order.status === 'ready_to_ship' ? 'Ready to Ship' :
+                           order.status === 'pickups_manifests' ? 'Pickup' :
+                           order.status === 'in_transit' ? 'In Transit' :
+                           order.status === 'out_for_delivery' ? 'OFD' :
+                           order.status === 'delivered' ? 'Delivered' :
+                           order.status === 'ndr' ? 'NDR' :
+                           order.status === 'rto' ? 'RTO' :
+                           order.status || 'N/A'}
+                        </span>
                       </td>
                     )}
                     <td>{order.warehouse}</td>
@@ -1874,7 +1920,7 @@ const Orders: React.FC = () => {
                             className="action-icon-btn edit-btn"
                             onClick={() => handleEditOrder(order._id)}
                             title="Edit Order"
-                          >Edit</button>
+                          ></button>
                         )}
                         
                         {/* Track button - only visible if AWB exists */}
@@ -1919,10 +1965,9 @@ const Orders: React.FC = () => {
                             <button
                               className="action-btn return-order-btn"
                               onClick={() => {
-                                if (window.confirm('Are you sure you want to initiate a return for this order?')) {
-                                  // Return order logic can be implemented here
-                                  alert('Return request initiated for order: ' + order.orderId);
-                                }
+                                showConfirm('Return Order', 'Initiate a return for this order?', () => {
+                                  showToast('Return request initiated for order: ' + order.orderId, 'success');
+                                }, { confirmText: 'Return', variant: 'danger' });
                               }}
                               title="Return Order"
                             >
@@ -1945,9 +1990,9 @@ const Orders: React.FC = () => {
                               <button
                                 className="action-btn return-order-btn"
                                 onClick={() => {
-                                  if (window.confirm('Are you sure you want to initiate a return for this order?')) {
-                                    alert('Return request initiated for order: ' + order.orderId);
-                                  }
+                                  showConfirm('Return Order', 'Initiate a return for this order?', () => {
+                                    showToast('Return request initiated for order: ' + order.orderId, 'success');
+                                  }, { confirmText: 'Return', variant: 'danger' });
                                 }}
                                 title="Return Order"
                               >
@@ -1986,7 +2031,7 @@ const Orders: React.FC = () => {
                     download
                     className="download-template-btn"
                   >
-                    ⬇️ Download Sample CSV
+                    Download Sample CSV
                   </a>
                   <p className="bulk-template-note">Supported file types: .csv, .xlsx, .xls • File size ≤ 5MB</p>
                   <div className="bulk-columns-grid">
@@ -2132,7 +2177,7 @@ const Orders: React.FC = () => {
         {isNotificationsOpen && (
           <div className="notifications-dropdown">
             <div className="notifications-header">
-              <h4>🔔 Notifications</h4>
+              <h4>Notifications</h4>
               <button 
                 className="close-btn"
                 onClick={() => setIsNotificationsOpen(false)}
@@ -2142,21 +2187,21 @@ const Orders: React.FC = () => {
             </div>
             <div className="notifications-list">
               <div className="notification-item">
-                <div className="notification-icon">📦</div>
+                <div className="notification-icon" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#009EAF' }}></div>
                 <div className="notification-content">
                   <div className="notification-title">Order #ORD123456 shipped</div>
                   <div className="notification-time">2 hours ago</div>
                 </div>
               </div>
               <div className="notification-item">
-                <div className="notification-icon">💰</div>
+                <div className="notification-icon" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#009EAF' }}></div>
                 <div className="notification-content">
                   <div className="notification-title">Payment received for Order #ORD123457</div>
                   <div className="notification-time">4 hours ago</div>
                 </div>
               </div>
               <div className="notification-item">
-                <div className="notification-icon">⚠️</div>
+                <div className="notification-icon" style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F68723' }}></div>
                 <div className="notification-content">
                   <div className="notification-title">Low balance alert</div>
                   <div className="notification-time">1 day ago</div>
@@ -2227,6 +2272,43 @@ const Orders: React.FC = () => {
             <div className="bulk-loading-spinner"></div>
             <p>Processing bulk operation...</p>
             <p className="bulk-loading-note">Please wait, do not close this window.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notifications */}
+      {toasts.length > 0 && (
+        <div className="toast-container">
+          {toasts.map(toast => (
+            <div key={toast.id} className={`toast-item toast-${toast.type}`}>
+              <span className="toast-message">{toast.message}</span>
+              <button className="toast-close" onClick={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmModal.open && (
+        <div className="confirm-overlay" onClick={closeConfirmModal}>
+          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+            <div className="confirm-header">
+              <h3>{confirmModal.title}</h3>
+            </div>
+            <div className="confirm-body">
+              <p>{confirmModal.message}</p>
+            </div>
+            <div className="confirm-footer">
+              <button className="confirm-btn-cancel" onClick={closeConfirmModal}>
+                {confirmModal.cancelText || 'Cancel'}
+              </button>
+              <button
+                className={`confirm-btn-ok ${confirmModal.variant === 'danger' ? 'confirm-btn-danger' : ''}`}
+                onClick={() => { confirmModal.onConfirm(); closeConfirmModal(); }}
+              >
+                {confirmModal.confirmText || 'OK'}
+              </button>
+            </div>
           </div>
         </div>
       )}
