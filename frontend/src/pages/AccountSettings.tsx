@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { userService, type User } from '../services/userService';
 import { DataCache } from '../utils/dataCache';
 import { environmentConfig } from '../config/environment';
+import { formatDateTime } from '../utils/dateFormat';
 import './AccountSettings.css';
 
 interface EditMode {
@@ -910,7 +911,7 @@ const AccountSettings: React.FC = () => {
               </div>
               <div className="info-item">
                 <label>Joined:</label>
-                <span>{user?.joined_date ? new Date(user.joined_date).toLocaleString() : 'Not set'}</span>
+                <span>{user?.joined_date ? formatDateTime(user.joined_date) : 'Not set'}</span>
               </div>
               <div className="info-item">
                 <label>GSTIN:</label>
@@ -1212,7 +1213,7 @@ const AccountSettings: React.FC = () => {
               {user?.kyc_status?.verified_date && (
                 <div className="kyc-info">
                   <label>Verified At:</label>
-                  <span>{new Date(user.kyc_status.verified_date).toLocaleString()}</span>
+                  <span>{formatDateTime(user.kyc_status.verified_date)}</span>
                 </div>
               )}
               {user?.kyc_status?.status === 'pending' && (

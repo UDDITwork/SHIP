@@ -5,6 +5,7 @@ import { DashboardData } from '../services/userService';
 import { walletService, WalletBalance } from '../services/walletService';
 import { apiService } from '../services/api';
 import { DataCache } from '../utils/dataCache';
+import { formatDate } from '../utils/dateFormat';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
 import CartIcon from '../dashboardvectors/Cart.svg';
@@ -401,11 +402,11 @@ const Dashboard: React.FC = () => {
 
   // Format current time
   const formatCurrentTime = () => {
-    return currentDate.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
+    return currentDate.toLocaleTimeString('en-US', {
+      hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
-      hour12: true 
+      hour12: true
     });
   };
 
@@ -413,6 +414,8 @@ const Dashboard: React.FC = () => {
   const getDayOfWeek = () => {
     return currentDate.toLocaleDateString('en-US', { weekday: 'long' });
   };
+
+  // formatDate imported from ../utils/dateFormat
 
   // Prepare chart data
   const getPieChartData = () => {
@@ -816,7 +819,7 @@ const Dashboard: React.FC = () => {
                   {transactions && transactions.length > 0 ? (
                     transactions.map((transaction: any, index: number) => (
                       <tr key={index}>
-                        <td>{new Date(transaction.transaction_date).toLocaleDateString()}</td>
+                        <td>{formatDate(transaction.transaction_date)}</td>
                         <td>{transaction.transaction_id}</td>
                         <td className={`transaction-type ${transaction.transaction_type}`}>
                           {transaction.transaction_type}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, AdminDashboard as AdminDashboardType } from '../services/adminService';
+import { formatDate } from '../utils/dateFormat';
 import './AdminDashboard.css';
 
 const AdminDashboard: React.FC = () => {
@@ -189,7 +190,7 @@ const AdminDashboard: React.FC = () => {
                         </span>
                       </td>
                       <td>
-                        {client.created_at ? new Date(client.created_at).toLocaleDateString() : 'N/A'}
+                        {client.created_at ? formatDate(client.created_at) : 'N/A'}
                       </td>
                     </tr>
                     );

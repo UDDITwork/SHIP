@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminService, ClientDocument } from '../services/adminService';
+import { formatDate } from '../utils/dateFormat';
 import './DocumentViewerModal.css';
 
 interface DocumentViewerModalProps {
@@ -193,7 +194,7 @@ const DocumentViewerModal: React.FC<DocumentViewerModalProps> = ({
                         </div>
                         <div className="document-info">
                           <p><strong>Status:</strong> {doc.status}</p>
-                          <p><strong>Uploaded:</strong> {new Date(doc.uploadedAt).toLocaleDateString()}</p>
+                          <p><strong>Uploaded:</strong> {formatDate(doc.uploadedAt)}</p>
                         </div>
                       </div>
                     ))}

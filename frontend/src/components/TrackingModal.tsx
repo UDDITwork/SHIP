@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { apiService } from '../services/api';
+import { formatDateTime } from '../utils/dateFormat';
+import AWBLink from './AWBLink';
 import './TrackingModal.css';
 
 interface TrackingScan {
@@ -123,7 +125,7 @@ const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, awb, ord
               <div className="tracking-info-section">
                 <div className="tracking-info-row">
                   <span className="tracking-label">AWB Number:</span>
-                  <span className="tracking-value">{awb || shipment.AWB}</span>
+                  <AWBLink awb={awb || shipment.AWB || ''} />
                 </div>
               </div>
 
@@ -135,13 +137,7 @@ const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, awb, ord
                   </div>
                   {shipment.StatusDateTime && (
                     <p className="status-date">
-                      {new Date(shipment.StatusDateTime).toLocaleString('en-IN', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
+                      {formatDateTime(shipment.StatusDateTime)}
                     </p>
                   )}
                 </div>
@@ -175,13 +171,7 @@ const TrackingModal: React.FC<TrackingModalProps> = ({ isOpen, onClose, awb, ord
                           <div className="scan-header">
                             <span className="scan-type">{scan.ScanType || 'Update'}</span>
                             <span className="scan-date">
-                              {scan.ScanDateTime ? new Date(scan.ScanDateTime).toLocaleString('en-IN', {
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric',
-                                hour: '2-digit',
-                                minute: '2-digit'
-                              }) : 'N/A'}
+                              {scan.ScanDateTime ? formatDateTime(scan.ScanDateTime) : 'N/A'}
                             </span>
                           </div>
                           {scan.ScanLocation && (

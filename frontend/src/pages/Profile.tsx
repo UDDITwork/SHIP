@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { userService, UserProfile } from '../services/userService';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { formatDate } from '../utils/dateFormat';
 import './Profile.css';
 
 const Profile: React.FC = () => {
@@ -187,7 +188,7 @@ const Profile: React.FC = () => {
               <div className="info-row">
                 <span className="info-label">Joined Date:</span>
                 <span className="info-value">
-                  {user.joined_date ? new Date(user.joined_date).toLocaleDateString() : 'N/A'}
+                  {user.joined_date ? formatDate(user.joined_date) : 'N/A'}
                 </span>
               </div>
             </div>
@@ -386,7 +387,7 @@ const Profile: React.FC = () => {
                         </a>
                       )}
                       <span className="document-date">
-                        {doc.upload_date ? new Date(doc.upload_date).toLocaleDateString() : 'N/A'}
+                        {doc.upload_date ? formatDate(doc.upload_date) : 'N/A'}
                       </span>
                     </div>
                   ))}
@@ -415,7 +416,7 @@ const Profile: React.FC = () => {
                 <div className="info-row">
                   <span className="info-label">KYC Verified:</span>
                   <span className="info-value">
-                    {new Date(user.kyc_status.verified_date).toLocaleDateString()}
+                    {formatDate(user.kyc_status.verified_date)}
                   </span>
                 </div>
               )}

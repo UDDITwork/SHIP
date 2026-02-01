@@ -7,6 +7,7 @@ import {
   AdminOrderDetails,
   AdminOrderPickupAddress
 } from '../services/adminService';
+import AWBLink from '../components/AWBLink';
 import './AdminOrders.css';
 
 interface OrdersClientSummary {
@@ -654,9 +655,7 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
                   <span className="admin-orders__order-id">{order.order_id || '—'}</span>
                 </td>
                 <td>
-                  <span className="admin-orders__awb">
-                    {order.delhivery_data?.waybill || '—'}
-                  </span>
+                  <AWBLink awb={order.delhivery_data?.waybill || ''} orderId={order.order_id} />
                 </td>
                 <td>
                   <span className="admin-orders__customer-name">
@@ -814,7 +813,7 @@ const OrderDetailsDrawer: React.FC<{
             <p>
               {status ? formatStatus(status) : '—'}
               {orderDate ? ` • ${formatDate(orderDate)}` : ''}
-              {waybill ? ` • AWB ${waybill}` : ''}
+              {waybill ? <> • <AWBLink awb={waybill} showPrefix /></> : ''}
             </p>
           </div>
           <button className="admin-order-details__close" onClick={onClose} aria-label="Close order details">
@@ -920,7 +919,7 @@ const OrderDetailsContent: React.FC<{ details: AdminOrderDetails }> = ({ details
           </div>
           <div>
             <span className="admin-order-details__label">AWB Number</span>
-            <span className="admin-order-details__value">{delhivery_data?.waybill || '—'}</span>
+            <span className="admin-order-details__value"><AWBLink awb={delhivery_data?.waybill || ''} /></span>
           </div>
         </div>
       </section>
@@ -1105,7 +1104,7 @@ const OrderDetailsContent: React.FC<{ details: AdminOrderDetails }> = ({ details
         <div className="admin-order-details__grid admin-order-details__grid--two">
           <div>
             <span className="admin-order-details__label">Waybill</span>
-            <span className="admin-order-details__value">{delhivery_data?.waybill || '—'}</span>
+            <span className="admin-order-details__value"><AWBLink awb={delhivery_data?.waybill || ''} /></span>
           </div>
           <div>
             <span className="admin-order-details__label">Manifest ID</span>

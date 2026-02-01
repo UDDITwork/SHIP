@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import PackageCreationModal from '../components/PackageCreationModal';
 import { environmentConfig } from '../config/environment';
+import { formatDate } from '../utils/dateFormat';
 import './Packages.css';
 
 // Package Types
@@ -351,7 +352,7 @@ const Packages: React.FC = () => {
                       <div className="stat">
                         <span className="stat-label">Last used:</span>
                         <span className="stat-value">
-                          {new Date(packageItem.last_used).toLocaleDateString()}
+                          {formatDate(packageItem.last_used)}
                         </span>
                       </div>
                     )}

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { orderService, Order } from '../services/orderService';
+import { formatDateTime } from '../utils/dateFormat';
 import './OrderDetails.css';
 
 const OrderDetails: React.FC = () => {
@@ -52,17 +53,7 @@ const OrderDetails: React.FC = () => {
     window.print();
   };
 
-  const formatDate = (dateString: string | Date | undefined) => {
-    if (!dateString) return 'N/A';
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = (dateString: string | Date | undefined) => formatDateTime(dateString);
 
   const formatStatus = (status: string | undefined) => {
     if (!status) return 'N/A';

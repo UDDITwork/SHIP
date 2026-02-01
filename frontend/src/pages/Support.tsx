@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import { ticketService, Ticket, TicketStatusCounts, TicketFilters } from '../services/ticketService';
+import AWBLink from '../components/AWBLink';
 import './Support.css';
 
 type TicketStatus = 'open' | 'in_progress' | 'waiting_customer' | 'escalated' | 'resolved' | 'closed' | 'all';
@@ -462,7 +463,7 @@ const Support: React.FC = () => {
                       <tr key={ticket._id}>
                         <td>{ticket.ticket_id}</td>
                         <td>{ticket.category}</td>
-                        <td>{ticket.awb_numbers && ticket.awb_numbers.length > 0 ? ticket.awb_numbers.join(', ') : 'N/A'}</td>
+                        <td>{ticket.awb_numbers && ticket.awb_numbers.length > 0 ? ticket.awb_numbers.map((awb: string, idx: number) => <React.Fragment key={idx}>{idx > 0 && ', '}<AWBLink awb={awb} /></React.Fragment>) : 'N/A'}</td>
                         <td>
                           <span className={`status-badge ${ticket.status}`}>
                             {formatStatusLabel(ticket.status)}

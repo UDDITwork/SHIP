@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { environmentConfig } from '../config/environment';
 import { ticketService } from '../services/ticketService';
+import { formatDateSmart } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 import './WeightDiscrepancies.css';
 
 // Import SVG icons for summary cards
@@ -111,22 +113,7 @@ const WeightDiscrepancies: React.FC = () => {
     return () => clearInterval(pollInterval);
   }, [fetchDiscrepancies]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (date.toDateString() === today.toDateString()) {
-      return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, Today ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-    }
-
-    if (date.toDateString() === yesterday.toDateString()) {
-      return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, Yesterday ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-    }
-
-    return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-  };
+  const formatDate = (dateString: string) => formatDateSmart(dateString);
 
   const handleRaiseDispute = async (discrepancy: WeightDiscrepancy) => {
     setRaisingIssue(discrepancy._id);
@@ -346,7 +333,7 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
                 ) : (
                   discrepancies.map((disc) => (
                     <tr key={disc._id}>
-                      <td className="awb-cell">{disc.awb_number}</td>
+                      <td className="awb-cell"><AWBLink awb={disc.awb_number} /></td>
                       <td>{disc.order_id?.order_id || 'N/A'}</td>
                       <td>{formatDate(disc.discrepancy_date)}</td>
                       <td>

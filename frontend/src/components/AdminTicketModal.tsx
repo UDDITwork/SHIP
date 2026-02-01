@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, MessageSquare, Clock, User, Phone, Mail, Building, Calendar, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
 import { adminService, AdminTicket } from '../services/adminService';
+import { formatDate, formatDateTime } from '../utils/dateFormat';
 
 interface AdminTicketModalProps {
   isOpen: boolean;
@@ -252,7 +253,7 @@ const AdminTicketModal: React.FC<AdminTicketModalProps> = ({
                       </div>
                       <div className="text-sm text-gray-600 mb-1">{ticket.subject || 'No subject'}</div>
                       <div className="text-xs text-gray-500">
-                        {ticket.created_at ? new Date(ticket.created_at).toLocaleDateString() : 'Unknown date'}
+                        {ticket.created_at ? formatDate(ticket.created_at) : 'Unknown date'}
                       </div>
                       {ticket.user_id && (
                         <div className="text-xs text-gray-400 mt-1">
@@ -284,7 +285,7 @@ const AdminTicketModal: React.FC<AdminTicketModalProps> = ({
                       </div>
                   <div className="text-sm text-gray-600">{selectedTicket.subject || 'No subject'}</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    Created: {selectedTicket.created_at ? new Date(selectedTicket.created_at).toLocaleString() : 'Unknown date'}
+                    Created: {selectedTicket.created_at ? formatDateTime(selectedTicket.created_at) : 'Unknown date'}
                   </div>
                   {selectedTicket.user_id && (
                     <div className="text-xs text-gray-400 mt-1">
@@ -318,7 +319,7 @@ const AdminTicketModal: React.FC<AdminTicketModalProps> = ({
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-medium text-sm">{message.sender_name}</span>
                             <span className="text-xs text-gray-500">
-                              {message.timestamp ? new Date(message.timestamp).toLocaleString() : 'Unknown time'}
+                              {message.timestamp ? formatDateTime(message.timestamp) : 'Unknown time'}
                             </span>
                             {message.is_internal && (
                               <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">

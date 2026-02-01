@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { apiService } from '../services/api';
+import { formatDate as formatDateUtil, formatTime as formatTimeUtil, formatDateTime } from '../utils/dateFormat';
 import './PaymentConfirmation.css';
 
 interface TransactionDetails {
@@ -80,24 +81,9 @@ const PaymentConfirmation: React.FC = () => {
     fetchTransactionDetails();
   }, [orderId]);
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric'
-    });
-  };
+  const formatDate = (dateString: string) => formatDateUtil(dateString);
 
-  const formatTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-IN', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true
-    });
-  };
+  const formatTime = (dateString: string) => formatTimeUtil(dateString);
 
   const getDayOfWeek = (dateString: string) => {
     const date = new Date(dateString);
@@ -374,7 +360,7 @@ const PaymentConfirmation: React.FC = () => {
               <div className="receipt-footer print-only">
                 <p className="footer-note">This is a computer-generated receipt and does not require a signature.</p>
                 <p className="footer-timestamp">
-                  Generated on: {new Date().toLocaleString('en-IN')}
+                  Generated on: {formatDateTime(new Date())}
                 </p>
                 <p className="footer-company">Thank you for using Shipsarthi!</p>
               </div>

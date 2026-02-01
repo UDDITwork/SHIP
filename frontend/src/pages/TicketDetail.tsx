@@ -5,6 +5,7 @@ import { ticketService, Ticket } from '../services/ticketService';
 import { ArrowLeft, Send, Paperclip, User, MessageSquare } from 'lucide-react';
 import './TicketDetail.css';
 import { environmentConfig } from '../config/environment';
+import AWBLink from '../components/AWBLink';
 
 const TicketDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -266,7 +267,14 @@ const TicketDetail: React.FC = () => {
           {ticket.awb_numbers && ticket.awb_numbers.length > 0 && (
             <div className="info-row">
               <span className="info-label">AWB Numbers:</span>
-              <span className="info-value">{ticket.awb_numbers.join(', ')}</span>
+              <span className="info-value">
+                {ticket.awb_numbers.map((awb: string, idx: number) => (
+                  <React.Fragment key={idx}>
+                    {idx > 0 && ', '}
+                    <AWBLink awb={awb} />
+                  </React.Fragment>
+                ))}
+              </span>
             </div>
           )}
         </div>

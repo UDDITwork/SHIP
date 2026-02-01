@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, MessageSquare, Phone, Mail, Building, Filter, Search, Send, Paperclip } from 'lucide-react';
 import { adminService, AdminTicket, AdminClient } from '../services/adminService';
+import AWBLink from '../components/AWBLink';
 import './AdminClientTickets.css';
 
 // Format date in DD/MM/YYYY format
@@ -693,7 +694,7 @@ const AdminClientTickets: React.FC = () => {
                     <h3>AWB Numbers</h3>
                     <div className="awb-numbers-box">
                       {selectedTicket.awb_numbers.map((awb: string, index: number) => (
-                        <span key={index} className="awb-badge">{awb}</span>
+                        <AWBLink key={index} awb={awb} className="awb-badge" />
                       ))}
                     </div>
                   </div>

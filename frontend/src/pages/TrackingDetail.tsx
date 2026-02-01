@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import Layout from '../components/Layout';
 import { environmentConfig } from '../config/environment';
+import { formatDate, formatDateTime, formatTime } from '../utils/dateFormat';
 import './TrackingDetail.css';
 
 // Types for Delhivery tracking response
@@ -145,52 +146,7 @@ const TrackingDetail: React.FC = () => {
     }
   };
 
-  const formatDateTime = (dateTimeStr?: string): string => {
-    if (!dateTimeStr) return 'N/A';
-    try {
-      const date = new Date(dateTimeStr);
-      return date.toLocaleString('en-IN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return dateTimeStr;
-    }
-  };
-
-  const formatDate = (dateTimeStr?: string): string => {
-    if (!dateTimeStr) return 'N/A';
-    try {
-      const date = new Date(dateTimeStr);
-      return date.toLocaleDateString('en-IN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      });
-    } catch {
-      return dateTimeStr;
-    }
-  };
-
-  const formatTime = (dateTimeStr?: string): string => {
-    if (!dateTimeStr) return 'N/A';
-    try {
-      const date = new Date(dateTimeStr);
-      return date.toLocaleTimeString('en-IN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-      });
-    } catch {
-      return dateTimeStr;
-    }
-  };
+  // formatDate, formatDateTime, formatTime imported from ../utils/dateFormat
 
   // Extract scans from the Shipment data
   const scans = trackingData && Array.isArray(trackingData.Scans) ? trackingData.Scans : [];
@@ -314,7 +270,7 @@ const TrackingDetail: React.FC = () => {
                         <th>Location</th>
                         <th>Status</th>
                         <th>Instructions</th>
-                        <th>Status Code</th>
+
                       </tr>
                     </thead>
                     <tbody>
@@ -333,7 +289,7 @@ const TrackingDetail: React.FC = () => {
                               </span>
                             </td>
                             <td>{scan.Instructions || 'N/A'}</td>
-                            <td className="status-code">{scan.StatusCode || 'N/A'}</td>
+
                           </tr>
                         );
                       })}

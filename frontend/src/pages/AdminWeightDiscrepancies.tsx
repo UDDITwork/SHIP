@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { environmentConfig } from '../config/environment';
+import { formatDateTime } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 import './AdminWeightDiscrepancies.css';
 
 interface WeightDiscrepancy {
@@ -217,11 +219,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
     );
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
-           ' ' + date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-  };
+  const formatDate = (dateString: string) => formatDateTime(dateString);
 
   return (
     <div className="admin-weight-discrepancies">
@@ -326,7 +324,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
                     const disputeStatus = disc.dispute_status || 'NEW';
                     return (
                       <tr key={disc._id}>
-                        <td className="awb-cell">{disc.awb_number}</td>
+                        <td className="awb-cell"><AWBLink awb={disc.awb_number} /></td>
                         <td>
                           <div className="client-info">
                             <div>{disc.client_id?.company_name || 'N/A'}</div>

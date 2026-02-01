@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Layout from '../components/Layout';
 import { ndrService, NDROrder, NDRFilters, NDRStats, NDRActionData, BulkNDRActionData } from '../services/ndrService';
+import { formatDate } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 import './NDR.css';
 
 type NDRStatus = 'action_required' | 'action_taken' | 'delivered' | 'rto' | 'all';
@@ -346,7 +348,7 @@ const NDR: React.FC = () => {
                         onChange={() => handleSelectOrder(order._id)}
                       />
                     </td>
-                    <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                    <td>{formatDate(order.created_at)}</td>
                     <td>
                       <div className="order-details-cell">
                         <div className="order-id">{order.order_id}</div>
@@ -366,7 +368,7 @@ const NDR: React.FC = () => {
                     </td>
                     <td>
                       <div className="tracking-cell">
-                        <div className="awb">AWB: {order.delhivery_data.waybill}</div>
+                        <div className="awb"><AWBLink awb={order.delhivery_data.waybill} orderId={order.order_id} showPrefix={true} /></div>
                         <div className="nsl-code">NSL: {order.ndr_info.nsl_code}</div>
                       </div>
                     </td>
@@ -381,11 +383,11 @@ const NDR: React.FC = () => {
                       <div className="ndr-details-cell">
                         <div className="ndr-reason">{order.ndr_info.ndr_reason}</div>
                         <div className="ndr-date">
-                          {new Date(order.ndr_info.last_ndr_date).toLocaleDateString()}
+                          {formatDate(order.ndr_info.last_ndr_date)}
                         </div>
                         {order.ndr_info.next_attempt_date && (
                           <div className="next-attempt">
-                            Next: {new Date(order.ndr_info.next_attempt_date).toLocaleDateString()}
+                            Next: {formatDate(order.ndr_info.next_attempt_date)}
                           </div>
                         )}
                       </div>

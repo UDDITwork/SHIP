@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { apiService } from '../services/api';
+import { formatDateSmart } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 import './Billing.css';
 
 interface WalletTransaction {
@@ -372,25 +374,7 @@ const Billing: React.FC = () => {
   }, [fetchTransactions]);
 
   // Format date for display
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // Check if today
-    if (date.toDateString() === today.toDateString()) {
-      return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, Today ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-    }
-
-    // Check if yesterday
-    if (date.toDateString() === yesterday.toDateString()) {
-      return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}, Yesterday ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-    }
-
-    // Other dates
-    return `${date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })} ${date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
-  };
+  const formatDate = (dateString: string) => formatDateSmart(dateString);
 
   // Format weight display (weight provided in grams)
   const formatWeight = (weight: number | null) => {
@@ -669,7 +653,7 @@ const Billing: React.FC = () => {
                       </td>
                       <td>
                         <div className="awb-display">
-                          {txn.awb_number || '-'}
+                          <AWBLink awb={txn.awb_number || ''} />
                         </div>
                       </td>
                       <td>

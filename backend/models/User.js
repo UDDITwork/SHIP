@@ -281,6 +281,24 @@ const userSchema = new mongoose.Schema({
     }
   },
 
+  // Geolocation (for fraud prevention)
+  geolocation: {
+    last_location: {
+      latitude: { type: Number },
+      longitude: { type: Number },
+      accuracy: { type: Number },
+      captured_at: { type: Date }
+    },
+    location_history: [{
+      latitude: { type: Number, required: true },
+      longitude: { type: Number, required: true },
+      accuracy: { type: Number },
+      captured_at: { type: Date, default: Date.now },
+      login_timestamp: { type: Date }
+    }],
+    permission_granted: { type: Boolean, default: false }
+  },
+
   // Timestamps
   created_at: {
     type: Date,

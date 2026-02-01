@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminService, ClientDashboardData } from '../services/adminService';
+import AWBLink from '../components/AWBLink';
 import './AdminClientDashboard.css';
 
 const formatCurrency = (amount: number) => {
@@ -330,7 +331,7 @@ const AdminClientDashboard: React.FC = () => {
                   <div className="activity-main">
                     <span className="activity-id">{order.order_id}</span>
                     {order.awb_number && (
-                      <span className="activity-awb">AWB: {order.awb_number}</span>
+                      <AWBLink awb={order.awb_number} showPrefix className="activity-awb" />
                     )}
                   </div>
                   <div className="activity-meta">

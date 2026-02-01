@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { invoiceService, Invoice, InvoiceFilters } from '../services/invoiceService';
+import { formatDate as formatDateUtil } from '../utils/dateFormat';
 import './InvoiceList.css';
 
 const InvoiceList: React.FC = () => {
@@ -163,17 +164,12 @@ const InvoiceList: React.FC = () => {
   };
 
   // Format date
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
+  const formatDate = (dateString: string) => formatDateUtil(dateString);
 
   // Format date range display
   const formatDateRange = () => {
     if (dateFrom && dateTo) {
-      const from = new Date(dateFrom);
-      const to = new Date(dateTo);
-      return `${from.getDate()} ${from.toLocaleDateString('en-GB', { month: 'short' })} ${from.getFullYear()} to ${to.getDate()} ${to.toLocaleDateString('en-GB', { month: 'short' })} ${to.getFullYear()}`;
+      return `${formatDateUtil(dateFrom)} to ${formatDateUtil(dateTo)}`;
     }
     return 'Select date range';
   };

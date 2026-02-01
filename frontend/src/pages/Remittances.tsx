@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { remittanceService, Remittance } from '../services/remittanceService';
+import { formatDate as formatDateUtil } from '../utils/dateFormat';
 import './Remittances.css';
 
 const Remittances: React.FC = () => {
@@ -72,8 +73,7 @@ const Remittances: React.FC = () => {
 
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    return formatDateUtil(dateString);
   };
 
   const fetchRemittances = useCallback(async () => {
@@ -137,10 +137,7 @@ const Remittances: React.FC = () => {
     setPage(1);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
+  const formatDate = (dateString: string) => formatDateUtil(dateString);
 
   return (
     <Layout>

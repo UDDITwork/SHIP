@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import './Tracking.css';
 import { environmentConfig } from '../config/environment';
+import { formatDate, formatTime, formatDateTime } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 
 // Types for Delhivery tracking response
 interface ScanDetail {
@@ -270,7 +272,7 @@ const Tracking: React.FC = () => {
                 <div className="tracking-results">
                   <div className="results-header">
                     <h3>Tracking Information</h3>
-                    <div className="awb-display">AWB: {trackingData.AWB || 'N/A'}</div>
+                    <div className="awb-display"><AWBLink awb={trackingData.AWB || ''} showPrefix={true} /></div>
                   </div>
 
                   {trackingMeta && (
@@ -309,7 +311,7 @@ const Tracking: React.FC = () => {
                       <span className="label">Last Updated:</span>
                       <span className="value">
                         {trackingData?.Status?.StatusDateTime
-                          ? new Date(trackingData.Status.StatusDateTime).toLocaleString()
+                          ? formatDateTime(trackingData.Status.StatusDateTime)
                           : 'Not Available'}
                       </span>
                     </div>
@@ -328,7 +330,7 @@ const Tracking: React.FC = () => {
                               <th>Location</th>
                               <th>Status</th>
                               <th>Instructions</th>
-                              <th>Status Code</th>
+
                             </tr>
                           </thead>
                           <tbody>
@@ -342,31 +344,7 @@ const Tracking: React.FC = () => {
                               .map((scanItem, index) => {
                                 const scan = scanItem?.ScanDetail || {};
                                 const scanDateTime = scan.ScanDateTime || scan.StatusDateTime || '';
-                                const formatDate = (dateStr: string) => {
-                                  if (!dateStr) return 'N/A';
-                                  try {
-                                    return new Date(dateStr).toLocaleDateString('en-IN', {
-                                      year: 'numeric',
-                                      month: '2-digit',
-                                      day: '2-digit'
-                                    });
-                                  } catch {
-                                    return dateStr;
-                                  }
-                                };
-                                const formatTime = (dateStr: string) => {
-                                  if (!dateStr) return 'N/A';
-                                  try {
-                                    return new Date(dateStr).toLocaleTimeString('en-IN', {
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                      second: '2-digit',
-                                      hour12: true
-                                    });
-                                  } catch {
-                                    return dateStr;
-                                  }
-                                };
+                                // formatDate and formatTime imported from ../utils/dateFormat
                                 return (
                                   <tr key={index} className={index === 0 ? 'latest-scan' : ''}>
                                     <td>{formatDate(scanDateTime)}</td>
@@ -378,7 +356,7 @@ const Tracking: React.FC = () => {
                                       </span>
                                     </td>
                                     <td>{scan.Instructions || 'N/A'}</td>
-                                    <td className="status-code">{scan.StatusCode || 'N/A'}</td>
+
                                   </tr>
                                 );
                               })}

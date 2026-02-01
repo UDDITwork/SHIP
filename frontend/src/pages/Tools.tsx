@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { shippingService, ShippingCalculationRequest } from '../services/shippingService';
 import { apiService } from '../services/api';
+import { formatDateTime } from '../utils/dateFormat';
 import './Tools.css';
 import RateCalculatorIcon from '../ratecalculator/RATECALCULATOR.svg';
 import ListIcon from '../ratecalculator/List.svg';
@@ -121,7 +122,7 @@ const PriceListTab: React.FC<{ userCategory: string; onRefreshUserData: () => vo
 
   const formatTimestamp = (timestamp: number) => {
     try {
-      return new Date(timestamp).toLocaleString();
+      return formatDateTime(new Date(timestamp));
     } catch (err) {
       return '';
     }

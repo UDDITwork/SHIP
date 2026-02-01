@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { adminService } from '../services/adminService';
+import { formatDateTime } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 import './AdminBilling.css';
 
 interface BillingClientRow {
@@ -713,7 +715,7 @@ const AdminBilling: React.FC = () => {
               ) : (
                 filteredTransactions.map((txn) => (
                   <tr key={txn.transaction_id}>
-                    <td>{new Date(txn.transaction_date).toLocaleString()}</td>
+                    <td>{formatDateTime(txn.transaction_date)}</td>
                     <td>
                       <span className={`badge ${txn.transaction_type}`}>
                         {txn.transaction_type === 'credit' ? 'Credit' : 'Debit'}
@@ -727,7 +729,7 @@ const AdminBilling: React.FC = () => {
                     </td>
                     <td>
                       <div className="identifiers-cell">
-                        <span>{txn.awb_number || 'N/A'}</span>
+                        <AWBLink awb={txn.awb_number || ''} />
                         <small>{txn.order_id || '—'}</small>
                       </div>
                     </td>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Bell, X, AlertCircle, Clock, MessageSquare } from 'lucide-react';
 import { adminService } from '../services/adminService';
+import { formatDateTime } from '../utils/dateFormat';
 
 interface Notification {
   _id: string;
@@ -189,7 +190,7 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ onTicketClick }) =>
                             {notification.client_name}
                           </span>
                           <span className="text-xs text-gray-400">
-                            {notification.created_at ? new Date(notification.created_at).toLocaleString() : 'Unknown time'}
+                            {notification.created_at ? formatDateTime(notification.created_at) : 'Unknown time'}
                           </span>
                         </div>
                       </div>

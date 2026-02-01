@@ -650,4 +650,54 @@ router.post('/submit-kyc', auth, async (req, res) => {
   }
 });
 
+// @desc    Save user geolocation
+// @route   POST /api/user/location
+// @access  Private
+router.post('/location', auth, [
+  body('latitude').isFloat({ min: -90, max: 90 }).withMessage('Invalid latitude'),
+  body('longitude').isFloat({ min: -180, max: 180 }).withMessage('Invalid longitude'),
+  body('accuracy').optional().isFloat({ min: 0 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 'error',
+        errors: errors.array()
+      });
+    }
+
+    const { latitude, longitude, accuracy } = req.body;
+    const now = new Date();
+
+    await User.findByIdAndUpdate(req.user._id, {
+      $set: {
+        'geolocation.last_location': {
+          latitude, longitude, accuracy, captured_at: now
+        },
+        'geolocation.permission_granted': true
+      },
+      $push: {
+        'geolocation.location_history': {
+          latitude, longitude, accuracy,
+          captured_at: now,
+          login_timestamp: now
+        }
+      }
+    });
+
+    res.json({
+      status: 'success',
+      message: 'Location saved'
+    });
+
+  } catch (error) {
+    console.error('Save location error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error saving location'
+    });
+  }
+});
+
 module.exports = router;

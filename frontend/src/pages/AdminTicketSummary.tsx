@@ -7,6 +7,7 @@ import {
   AdminTicketSummaryData,
   AdminTicketsResponse
 } from '../services/adminService';
+import AWBLink from '../components/AWBLink';
 import './AdminTicketSummary.css';
 
 type ViewMode = 'summary' | 'master';
@@ -576,7 +577,7 @@ const AdminTicketSummary: React.FC = () => {
                           </td>
                           <td>
                             {ticket.awb_numbers && ticket.awb_numbers.length > 0 ? (
-                              <span className="awb-badge">{ticket.awb_numbers[0]}</span>
+                              <AWBLink awb={ticket.awb_numbers[0]} className="awb-badge" />
                             ) : (
                               <span className="no-awb">-</span>
                             )}

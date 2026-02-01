@@ -186,6 +186,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     localStorage.removeItem('impersonation_session');
+    sessionStorage.removeItem('location_verified');
     // DO NOT clear remembered_email and remembered_password on logout
     // These should persist based on user's Remember Me checkbox choice
   };

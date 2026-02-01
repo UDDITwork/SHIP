@@ -11,6 +11,8 @@ import { orderService, Order } from '../services/orderService';
 import { warehouseService } from '../services/warehouseService';
 import { DataCache } from '../utils/dataCache';
 import { environmentConfig } from '../config/environment';
+import { formatDate, formatDateTime } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 import './Orders.css';
 
 // Simple warehouse interface for dropdown
@@ -684,7 +686,7 @@ const Orders: React.FC = () => {
       const exportData = orders.map(order => ({
         'Order ID': order.orderId,
         'Reference ID': order.referenceId,
-        'Order Date': new Date(order.orderDate).toLocaleDateString(),
+        'Order Date': formatDate(order.orderDate),
         'Customer Name': order.customerName,
         'Customer Phone': order.customerPhone,
         'Customer Address': order.customerAddress,
@@ -700,7 +702,7 @@ const Orders: React.FC = () => {
         'Warehouse': order.warehouse,
         'Status': order.status,
         'AWB Number': order.awb || 'Not Generated',
-        'Created At': new Date(order.createdAt).toLocaleString()
+        'Created At': formatDateTime(order.createdAt)
       }));
 
       if (format === 'csv') {
@@ -773,7 +775,7 @@ const Orders: React.FC = () => {
           </style>
         </head>
         <body>
-          <h1>Orders Export - ${new Date().toLocaleDateString()}</h1>
+          <h1>Orders Export - ${formatDate(new Date())}</h1>
           <table>
             <thead>
               <tr>${headers.map(header => `<th>${header}</th>`).join('')}</tr>
@@ -810,12 +812,7 @@ const Orders: React.FC = () => {
 
   const formatDateForDisplay = (dateString: string) => {
     if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
+    return formatDate(dateString);
   };
 
   const handleDateRangeChange = (from: string, to: string) => {
@@ -1219,7 +1216,7 @@ const Orders: React.FC = () => {
               <div className="details-grid">
                 <div className="detail-item"><strong>Order ID:</strong> {order.orderId}</div>
                 <div className="detail-item"><strong>Reference ID:</strong> {order.referenceId || 'N/A'}</div>
-                <div className="detail-item"><strong>Order Date:</strong> {new Date(order.orderDate).toLocaleDateString()}</div>
+                <div className="detail-item"><strong>Order Date:</strong> {formatDate(order.orderDate)}</div>
                 <div className="detail-item"><strong>Status:</strong> <span className={`status-badge ${order.status}`}>{order.status}</span></div>
                 <div className="detail-item"><strong>AWB Number:</strong> {order.awb || 'Not Generated'}</div>
               </div>
@@ -1270,7 +1267,7 @@ const Orders: React.FC = () => {
                   <>
                     <div className="detail-item"><strong>Pickup Status:</strong> <span className={`status-badge ${order.pickupRequestStatus}`}>{order.pickupRequestStatus}</span></div>
                     {order.pickupRequestDate && (
-                      <div className="detail-item"><strong>Pickup Date:</strong> {new Date(order.pickupRequestDate).toLocaleDateString()}</div>
+                      <div className="detail-item"><strong>Pickup Date:</strong> {formatDate(order.pickupRequestDate)}</div>
                     )}
                     {order.pickupRequestTime && (
                       <div className="detail-item"><strong>Pickup Time:</strong> {order.pickupRequestTime}</div>
@@ -1703,7 +1700,7 @@ const Orders: React.FC = () => {
                         onChange={() => handleSelectOrder(order._id)}
                       />
                     </td>
-                    <td>{order.orderDate ? new Date(order.orderDate).toLocaleDateString() : 'N/A'}</td>
+                    <td>{order.orderDate ? formatDate(order.orderDate) : 'N/A'}</td>
                     <td>
                       <div className="order-details-cell">
                         <div
@@ -1755,8 +1752,7 @@ const Orders: React.FC = () => {
                       <div className="awb-cell">
                         {order.awb ? (
                           <div className="awb-number">
-                            <span className="awb-label">AWB:</span>
-                            <span className="awb-value">{order.awb}</span>
+                            <AWBLink awb={order.awb} orderId={order.orderId} showPrefix={true} />
                             {/* Cancellation indicator - check both cancellation_status and cancellation_response */}
                             {(order.delhivery_data?.cancellation_status === 'cancelled' || 
                               order.delhivery_data?.cancellation_response?.status === true ||
@@ -1806,7 +1802,7 @@ const Orders: React.FC = () => {
                               </span>
                               {order.pickupRequestDate && (
                                 <div className="pickup-date">
-                                  {new Date(order.pickupRequestDate).toLocaleDateString()}
+                                  {formatDate(order.pickupRequestDate)}
                                 </div>
                               )}
                               {order.pickupRequestTime && (

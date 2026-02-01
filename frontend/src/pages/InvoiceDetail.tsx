@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { invoiceService, InvoiceDetail as InvoiceDetailType } from '../services/invoiceService';
+import { formatDate as formatDateUtil } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 import './InvoiceDetail.css';
 
 const InvoiceDetail: React.FC = () => {
@@ -90,10 +92,7 @@ const InvoiceDetail: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  };
+  const formatDate = (dateString: string) => formatDateUtil(dateString);
 
   const getStatusBadgeClass = (status: string) => {
     switch (status) {
@@ -385,7 +384,7 @@ const InvoiceDetail: React.FC = () => {
               <tbody>
                 {invoice.shipment_charges.map((charge, index) => (
                   <tr key={index}>
-                    <td>{charge.awb_number}</td>
+                    <td><AWBLink awb={charge.awb_number} /></td>
                     <td>{charge.internal_order_id}</td>
                     <td>{charge.order_date ? formatDate(charge.order_date) : 'N/A'}</td>
                     <td>{charge.delivery_date ? formatDate(charge.delivery_date) : 'N/A'}</td>

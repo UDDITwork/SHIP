@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { adminService, Staff, StaffPermissions } from '../services/adminService';
+import { formatDate } from '../utils/dateFormat';
 import './AdminStaffManagement.css';
 
 const DEFAULT_PERMISSIONS: StaffPermissions = {
@@ -333,7 +334,7 @@ const AdminStaffManagement: React.FC = () => {
                         {staff.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td>{new Date(staff.createdAt).toLocaleDateString('en-GB')}</td>
+                    <td>{formatDate(staff.createdAt)}</td>
                     <td>
                       <div className="action-buttons">
                         <button

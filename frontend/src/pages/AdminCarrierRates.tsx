@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminService, Carrier, RateCard } from '../services/adminService';
+import { formatDate } from '../utils/dateFormat';
 import {
   ArrowLeft,
   Save,
@@ -258,7 +259,7 @@ const AdminCarrierRates: React.FC = () => {
             )}
             {currentRate?.effective_from && (
               <span className="effective-date">
-                Effective: {new Date(currentRate.effective_from).toLocaleDateString('en-GB')}
+                Effective: {formatDate(currentRate.effective_from)}
               </span>
             )}
           </div>
@@ -480,9 +481,9 @@ const AdminCarrierRates: React.FC = () => {
                       {rate.is_current && <span className="current-badge">Current</span>}
                     </div>
                     <div className="history-dates">
-                      <span>From: {rate.effective_from ? new Date(rate.effective_from).toLocaleDateString('en-GB') : 'N/A'}</span>
+                      <span>From: {rate.effective_from ? formatDate(rate.effective_from) : 'N/A'}</span>
                       {rate.effective_to && (
-                        <span>To: {new Date(rate.effective_to).toLocaleDateString('en-GB')}</span>
+                        <span>To: {formatDate(rate.effective_to)}</span>
                       )}
                     </div>
                   </div>

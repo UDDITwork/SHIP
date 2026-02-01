@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { remittanceService, RemittanceDetail as RemittanceDetailType } from '../services/remittanceService';
+import { formatDate as formatDateUtil } from '../utils/dateFormat';
+import AWBLink from '../components/AWBLink';
 import './RemittanceDetail.css';
 
 const RemittanceDetail: React.FC = () => {
@@ -58,10 +60,7 @@ const RemittanceDetail: React.FC = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
+  const formatDate = (dateString: string) => formatDateUtil(dateString);
 
   if (loading) {
     return (
@@ -214,12 +213,7 @@ const RemittanceDetail: React.FC = () => {
                     filteredOrders.map((order, index) => (
                       <tr key={index}>
                         <td>
-                          <button
-                            className="awb-link"
-                            onClick={() => navigate(`/orders?search=${order.awb_number}&search_type=awb`)}
-                          >
-                            {order.awb_number}
-                          </button>
+                          <AWBLink awb={order.awb_number} />
                         </td>
                         <td>₹ {order.amount_collected.toFixed(2)}</td>
                       </tr>
