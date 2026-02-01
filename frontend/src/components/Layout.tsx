@@ -26,7 +26,6 @@ import scaleIcon from '../SIDEBARVECTORS/scale.svg';
 import invoiceIcon from '../SIDEBARVECTORS/invoice.svg';
 import profileIcon from '../SIDEBARVECTORS/profile.svg';
 import labelIcon from '../SIDEBARVECTORS/label.svg';
-import toolsWrenchIcon from '../SIDEBARVECTORS/tools-wrench.svg';
 import billingWalletIcon from '../SIDEBARVECTORS/billing-wallet.svg';
 
 interface LayoutProps {
@@ -59,7 +58,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     const path = location.pathname;
 
     // Check which parent menu should be expanded based on current path
-    const shouldExpandTools = path === '/tools' || path === '/rate-calculator' || path === '/packages' || path === '/weight-discrepancies';
+    const shouldExpandTools = path === '/tools' || path === '/packages' || path === '/weight-discrepancies';
     const shouldExpandBilling = path === '/billing' || path === '/invoices' || path === '/remittances' || path.startsWith('/remittances/');
     const shouldExpandSettings = path === '/settings' || path.startsWith('/settings/');
 
@@ -445,8 +444,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       label: 'Tools',
       svgIcon: vectorIcon,
       children: [
-        { path: '/tools', icon: '🔧', label: 'Tools', svgIcon: toolsWrenchIcon },
-        { path: '/rate-calculator', icon: '🧮', label: 'Rate Calculator', svgIcon: calculatorIcon },
+        { path: '/tools', icon: '🧮', label: 'Rate Calculator', svgIcon: calculatorIcon },
         { path: '/packages', icon: '📦', label: 'Packages', svgIcon: packageIcon },
         { path: '/weight-discrepancies', icon: '⚖️', label: 'Weight Discrepancies', svgIcon: scaleIcon },
       ]

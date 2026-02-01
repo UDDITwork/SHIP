@@ -284,7 +284,7 @@
 }
 
 .calculate-btn {
-  background: #21476E;
+  background: #002B59;
   color: white;
   border: none;
   padding: 9px 20px; /* Reduced from 10px 24px */
@@ -296,7 +296,7 @@
 }
 
 .calculate-btn:hover:not(:disabled) {
-  background: #1a3856;
+  background: #F68723;
 }
 
 .calculate-btn:disabled {

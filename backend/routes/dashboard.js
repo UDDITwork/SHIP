@@ -72,80 +72,74 @@ router.get('/overview', auth, async (req, res) => {
       $lte: endDate.toDate()
     };
 
-    // Get orders in date range
-    const rangeOrders = await Order.countDocuments({
-      user_id: userId,
-      order_date: orderDateFilter
-    });
-
     // Get previous period for comparison (same duration before start date)
     const periodDuration = endDate.diff(startDate, 'days');
     const previousStartDate = moment(startDate).subtract(periodDuration + 1, 'days');
     const previousEndDate = moment(startDate).subtract(1, 'days').endOf('day');
 
-    const previousRangeOrders = await Order.countDocuments({
-      user_id: userId,
-      order_date: {
-        $gte: previousStartDate.toDate(),
-        $lte: previousEndDate.toDate()
-      }
-    });
-
-    // Calculate revenue in date range
-    const rangeRevenue = await Order.aggregate([
-      {
-        $match: {
-          user_id: userId,
-          order_date: orderDateFilter,
-          'status': { $ne: 'cancelled' }
+    // Run all 6 queries in parallel for maximum speed
+    const [rangeOrders, previousRangeOrders, rangeRevenue, previousRangeRevenue, avgShippingCost, user] = await Promise.all([
+      Order.countDocuments({
+        user_id: userId,
+        order_date: orderDateFilter
+      }),
+      Order.countDocuments({
+        user_id: userId,
+        order_date: {
+          $gte: previousStartDate.toDate(),
+          $lte: previousEndDate.toDate()
         }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$payment_info.order_value' }
+      }),
+      Order.aggregate([
+        {
+          $match: {
+            user_id: userId,
+            order_date: orderDateFilter,
+            status: { $ne: 'cancelled' }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$payment_info.order_value' }
+          }
         }
-      }
+      ]),
+      Order.aggregate([
+        {
+          $match: {
+            user_id: userId,
+            order_date: {
+              $gte: previousStartDate.toDate(),
+              $lte: previousEndDate.toDate()
+            },
+            status: { $ne: 'cancelled' }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: '$payment_info.order_value' }
+          }
+        }
+      ]),
+      Order.aggregate([
+        {
+          $match: {
+            user_id: userId,
+            order_date: orderDateFilter,
+            'payment_info.shipping_charges': { $gt: 0 }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            average: { $avg: '$payment_info.shipping_charges' }
+          }
+        }
+      ]),
+      User.findById(userId).select('wallet_balance').lean()
     ]);
-
-    const previousRangeRevenue = await Order.aggregate([
-      {
-        $match: {
-          user_id: userId,
-          order_date: {
-            $gte: previousStartDate.toDate(),
-            $lte: previousEndDate.toDate()
-          },
-          'status': { $ne: 'cancelled' }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          total: { $sum: '$payment_info.order_value' }
-        }
-      }
-    ]);
-
-    // Calculate average shipping cost for date range
-    const avgShippingCost = await Order.aggregate([
-      {
-        $match: {
-          user_id: userId,
-          order_date: orderDateFilter,
-          'payment_info.shipping_charges': { $gt: 0 }
-        }
-      },
-      {
-        $group: {
-          _id: null,
-          average: { $avg: '$payment_info.shipping_charges' }
-        }
-      }
-    ]);
-
-    // Get current wallet balance
-    const user = await User.findById(userId).select('wallet_balance');
 
     const responseData = {
       todays_orders: {
@@ -452,7 +446,7 @@ router.get('/cod-status', auth, async (req, res) => {
       user_id: userId,
       transaction_category: 'cod_remittance',
       status: 'completed'
-    }).sort({ transaction_date: -1 });
+    }).sort({ transaction_date: -1 }).lean();
 
     // Get next COD available (delivered but not remitted)
     const nextCODAvailable = await Order.aggregate([
@@ -540,7 +534,8 @@ router.get('/wallet-transactions', auth, async (req, res) => {
     const transactions = await Transaction.find(transactionQuery)
     .sort({ transaction_date: -1 })
     .limit(limit)
-    .select('transaction_id transaction_type transaction_category amount description transaction_date balance_info.closing_balance');
+    .select('transaction_id transaction_type transaction_category amount description transaction_date balance_info.closing_balance')
+    .lean();
 
     const responseTime = Date.now() - startTime;
     logger.info('Wallet transactions completed successfully', {
@@ -584,8 +579,19 @@ router.get('/shipment-distribution', auth, async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // Apply date filter if provided
+    let dateMatch = {};
+    if (req.query.date_from && req.query.date_to) {
+      dateMatch = {
+        order_date: {
+          $gte: moment(req.query.date_from).startOf('day').toDate(),
+          $lte: moment(req.query.date_to).endOf('day').toDate()
+        }
+      };
+    }
+
     const distribution = await Order.aggregate([
-      { $match: { user_id: userId } },
+      { $match: { user_id: userId, ...dateMatch } },
       {
         $group: {
           _id: '$status',

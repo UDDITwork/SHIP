@@ -2,21 +2,22 @@
   background: none;
   border: none;
   padding: 0;
-  color: #2563eb;
+  color: #002B59;
   text-decoration: underline;
+  text-underline-offset: 2px;
   cursor: pointer;
-  font-size: inherit;
+  font-size: 14px;
   font-family: inherit;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .awb-link-btn:hover {
-  color: #1d4ed8;
-  text-decoration-thickness: 2px;
+  color: #009EAF;
 }
 
 .awb-link-prefix {
-  color: #6b7280;
+  color: #002B59;
   text-decoration: none;
   font-weight: 400;
+  opacity: 0.6;
 }

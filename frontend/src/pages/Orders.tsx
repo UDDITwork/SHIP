@@ -13,6 +13,7 @@ import { DataCache } from '../utils/dataCache';
 import { environmentConfig } from '../config/environment';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
 import AWBLink from '../components/AWBLink';
+import { Inbox, Calendar, X, Plus } from 'lucide-react';
 import './Orders.css';
 
 // Simple warehouse interface for dropdown
@@ -1428,7 +1429,7 @@ const Orders: React.FC = () => {
               className="calendar-btn"
               onClick={() => setShowDatePicker(!showDatePicker)}
             >
-              📅 {filters.dateFrom ? formatDateForDisplay(filters.dateFrom) : 'Select Date Range'}
+              <Calendar size={14} /> {filters.dateFrom ? formatDateForDisplay(filters.dateFrom) : 'Select Date Range'}
               {filters.dateTo && ` to ${formatDateForDisplay(filters.dateTo)}`}
               {!filters.dateFrom && !filters.dateTo && ' (Last 30 days)'}
             </button>
@@ -1440,7 +1441,7 @@ const Orders: React.FC = () => {
                     className="close-btn"
                     onClick={() => setShowDatePicker(false)}
                   >
-                    ✕
+                    <X size={16} />
                   </button>
                 </div>
                 <div className="date-presets">
@@ -1574,7 +1575,7 @@ const Orders: React.FC = () => {
                     className="close-filters-btn"
                     onClick={() => setShowMoreFilters(false)}
                   >
-                    ✕
+                    <X size={16} />
                   </button>
                 </div>
                 
@@ -1711,11 +1712,11 @@ const Orders: React.FC = () => {
                 <tr>
                   <td colSpan={99} className="no-data-cell">
                     <div className="no-orders">
-                      <div className="no-orders-icon">—</div>
+                      <div className="no-orders-icon"><Inbox size={48} strokeWidth={1.5} /></div>
                       <h3>No orders found</h3>
                       <p>Create your first order to get started</p>
                       <button className="create-order-btn" onClick={handleAddOrder}>
-                        ➕ Create Order
+                        <Plus size={16} /> Create Order
                       </button>
                     </div>
                   </td>
@@ -2015,12 +2016,12 @@ const Orders: React.FC = () => {
           <div className="modal-overlay">
             <div className="modal-content">
               <div className="modal-header">
-                <h3>📥 Bulk Import Orders</h3>
+                <h3>Bulk Import Orders</h3>
                 <button 
                   className="close-btn"
                   onClick={handleBulkImportClose}
                 >
-                  ✕
+                  <X size={16} />
                 </button>
               </div>
               <div className="modal-body">
@@ -2097,7 +2098,7 @@ const Orders: React.FC = () => {
                     disabled={isBulkImportLoading}
                   />
                   <div className="upload-text">
-                    {isBulkImportLoading ? '🔄 Uploading and validating…' : '📁 Click to select file or drag and drop'}
+                    {isBulkImportLoading ? 'Uploading and validating…' : 'Click to select file or drag and drop'}
                   </div>
                 </div>
 
@@ -2109,7 +2110,7 @@ const Orders: React.FC = () => {
 
                 {isBulkImportLoading && (
                   <div className="bulk-import-loading">
-                    🚚 Creating orders… Please keep this window open.
+                    Creating orders… Please keep this window open.
                   </div>
                 )}
 
@@ -2182,7 +2183,7 @@ const Orders: React.FC = () => {
                 className="close-btn"
                 onClick={() => setIsNotificationsOpen(false)}
               >
-                ✕
+                <X size={16} />
               </button>
             </div>
             <div className="notifications-list">

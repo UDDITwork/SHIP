@@ -4,6 +4,7 @@ import { userService, type User } from '../services/userService';
 import { DataCache } from '../utils/dataCache';
 import { environmentConfig } from '../config/environment';
 import { formatDateTime } from '../utils/dateFormat';
+import { Pencil, Loader, Eye, EyeOff } from 'lucide-react';
 import './AccountSettings.css';
 
 interface EditMode {
@@ -798,7 +799,7 @@ const AccountSettings: React.FC = () => {
               disabled={uploadingAvatar}
               title="Edit profile photo"
             >
-              {uploadingAvatar ? '⏳' : '✏️'}
+              {uploadingAvatar ? <Loader size={14} /> : <Pencil size={14} />}
             </button>
             <input
               ref={avatarInputRef}
@@ -846,7 +847,7 @@ const AccountSettings: React.FC = () => {
         {/* User Details Card */}
         <div className="settings-card">
           <div className="card-header">
-            <h3>👤 User Details</h3>
+            <h3>User Details</h3>
             <button
               className="edit-btn"
               onClick={() => toggleEditMode('userDetails')}
@@ -956,7 +957,7 @@ const AccountSettings: React.FC = () => {
         {/* Address Card */}
         <div className="settings-card">
           <div className="card-header">
-            <h3>📍 Address</h3>
+            <h3>Address</h3>
             <button
               className="edit-btn"
               onClick={() => toggleEditMode('address')}
@@ -1043,7 +1044,7 @@ const AccountSettings: React.FC = () => {
         {/* Bank Details Card */}
         <div className="settings-card">
           <div className="card-header">
-            <h3>🏦 Bank Details</h3>
+            <h3>Bank Details</h3>
             <button
               className="edit-btn"
               onClick={() => toggleEditMode('bankDetails')}
@@ -1129,7 +1130,7 @@ const AccountSettings: React.FC = () => {
         {/* Documents Card */}
         <div className="settings-card">
           <div className="card-header">
-            <h3>📄 Documents</h3>
+            <h3>Documents</h3>
           </div>
           <div className="card-body">
             <table className="documents-table">
@@ -1189,9 +1190,9 @@ const AccountSettings: React.FC = () => {
         <div className={`settings-card kyc-status-card ${user?.kyc_status?.status || 'pending'}`}>
           <div className="card-header">
             <h3>
-              {user?.kyc_status?.status === 'verified' ? '✅ KYC Verified' : 
-               user?.kyc_status?.status === 'rejected' ? '❌ KYC Rejected' : 
-               '⏳ KYC Pending Verification'}
+              {user?.kyc_status?.status === 'verified' ? 'KYC Verified' :
+               user?.kyc_status?.status === 'rejected' ? 'KYC Rejected' :
+               'KYC Pending Verification'}
             </h3>
             {user?.kyc_status?.status === 'verified' && (
               <div className="kyc-verified-badge">
@@ -1205,9 +1206,9 @@ const AccountSettings: React.FC = () => {
               <div className="kyc-info">
                 <label>KYC Status:</label>
                 <span className={`status-badge ${user?.kyc_status?.status || 'pending'}`}>
-                  {user?.kyc_status?.status === 'verified' ? 'Verified ✅' : 
-                   user?.kyc_status?.status === 'rejected' ? 'Rejected ❌' : 
-                   'Pending ⏳'}
+                  {user?.kyc_status?.status === 'verified' ? 'Verified' :
+                   user?.kyc_status?.status === 'rejected' ? 'Rejected' :
+                   'Pending'}
                 </span>
               </div>
               {user?.kyc_status?.verified_date && (
@@ -1218,17 +1219,17 @@ const AccountSettings: React.FC = () => {
               )}
               {user?.kyc_status?.status === 'pending' && (
                 <div className="kyc-pending-notice">
-                  <p>📋 Your KYC documents are under review. Our admin team will verify your documents and update your status soon.</p>
+                  <p>Your KYC documents are under review. Our admin team will verify your documents and update your status soon.</p>
                 </div>
               )}
               {user?.kyc_status?.status === 'rejected' && (
                 <div className="kyc-rejected-notice">
-                  <p>⚠️ Your KYC verification was rejected. Please check your documents and re-upload if necessary.</p>
+                  <p>Your KYC verification was rejected. Please check your documents and re-upload if necessary.</p>
                 </div>
               )}
               {user?.kyc_status?.status === 'verified' && (
                 <div className="kyc-verified-notice">
-                  <p>🎉 Congratulations! Your KYC has been successfully verified. You now have full access to all platform features.</p>
+                  <p>Congratulations! Your KYC has been successfully verified. You now have full access to all platform features.</p>
                 </div>
               )}
             </div>
@@ -1238,17 +1239,17 @@ const AccountSettings: React.FC = () => {
         {/* API Details Card */}
         <div className="settings-card">
           <div className="card-header">
-            <h3>🔐 API Details</h3>
+            <h3>API Details</h3>
           </div>
           <div className="card-body">
             <div className="api-info">
               <div className="api-item">
                 <label>Check latest version of API documentation:</label>
-                <button className="api-btn">📄 View Docs</button>
+                <button className="api-btn">View Docs</button>
               </div>
               <div className="api-item">
                 <label>PDF version of API documentation:</label>
-                <button className="api-btn">📥 Download</button>
+                <button className="api-btn">Download</button>
               </div>
               <div className="api-item">
                 <label>Private Key:</label>
@@ -1265,7 +1266,7 @@ const AccountSettings: React.FC = () => {
         {/* Reset Password Card */}
         <div className="settings-card">
           <div className="card-header">
-            <h3>🔒 Reset Password</h3>
+            <h3>Reset Password</h3>
           </div>
           <div className="card-body">
             {!showPasswordReset ? (
@@ -1301,7 +1302,7 @@ const AccountSettings: React.FC = () => {
                       className="toggle-password"
                       onClick={() => setShowPassword(!showPassword)}
                     >
-                      👁️
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>
                   </div>
                 </div>

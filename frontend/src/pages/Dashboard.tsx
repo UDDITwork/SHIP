@@ -111,10 +111,16 @@ const Dashboard: React.FC = () => {
   const dateIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const datePickerRef = useRef<HTMLDivElement>(null);
   const dashboardDataRef = useRef<DashboardData | null>(null);
+  const dateFilterRef = useRef(dateFilter);
+  const [isDateFiltering, setIsDateFiltering] = useState(false);
 
   useEffect(() => {
     dashboardDataRef.current = dashboardData;
   }, [dashboardData]);
+
+  useEffect(() => {
+    dateFilterRef.current = dateFilter;
+  }, [dateFilter]);
 
   // Fetch fresh wallet balance DIRECTLY from MongoDB (no WebSocket dependency)
   // This function is called from multiple places and always fetches fresh data
@@ -157,7 +163,7 @@ const Dashboard: React.FC = () => {
 
   // Fetch all dashboard data DIRECTLY from MongoDB via REST APIs (no WebSocket dependency)
   // This ensures dashboard data is always accurate and not affected by WebSocket connections
-  const fetchAllDashboardData = useCallback(async (showLoading: boolean = false, overrideRange?: { startDate: string; endDate: string }) => {
+  const fetchAllDashboardData = useCallback(async (showLoading: boolean = false, overrideRange: { startDate: string; endDate: string }) => {
     // Try to load from cache first - show data immediately, no freezing
     const cachedDashboard = DataCache.get<DashboardData>('dashboard');
     const cachedNdr = DataCache.get<any>('ndrStatus');
@@ -172,28 +178,23 @@ const Dashboard: React.FC = () => {
       setCodStatus(cachedCod);
       setShipmentDistribution(cachedDistribution);
       setTransactions(cachedTransactions || []);
-      setLoading(false); // Don't block UI with loading state
+      setLoading(false);
     } else if (showLoading) {
-      setLoading(true); // Only show loading on first load if no cache
+      setLoading(true);
+    }
+
+    // Show progress bar for background refreshes
+    if (!showLoading) {
+      setIsDateFiltering(true);
     }
 
     try {
-      // Fetch fresh data in background - doesn't block UI
-      // Stagger requests slightly (100ms apart) to avoid rate limiting when multiple requests fire at once
-      const staggerRequest = async (requestFn: () => Promise<any>, delayMs: number): Promise<any> => {
-        if (delayMs > 0) {
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-        }
-        return requestFn();
-      };
-
       // Build date filter query parameters
-      const startDate = overrideRange?.startDate ?? dateFilter.startDate;
-      const endDate = overrideRange?.endDate ?? dateFilter.endDate;
+      const startDate = overrideRange.startDate;
+      const endDate = overrideRange.endDate;
       const dateParams = `date_from=${startDate}&date_to=${endDate}`;
-      
-      // Start all requests with staggered delays (0ms, 800ms, 1600ms, 2400ms, 3200ms, 4000ms)
-      // Increased delays to prevent hitting rate limits - requests spread over 4 seconds
+
+      // Fire all 6 requests simultaneously — no staggering
       const [
         dashboardResponse,
         shipmentResponse,
@@ -202,12 +203,12 @@ const Dashboard: React.FC = () => {
         distributionResponse,
         transactionsResponse
       ] = await Promise.all([
-        staggerRequest(() => apiService.get<{ status: string; data: any }>(`/dashboard/overview?${dateParams}`), 0),
-        staggerRequest(() => apiService.get<{ status: string; data: any }>(`/dashboard/shipment-status?${dateParams}`), 800),
-        staggerRequest(() => apiService.get<{ status: string; data: any }>(`/dashboard/ndr-status?${dateParams}`), 1600),
-        staggerRequest(() => apiService.get<{ status: string; data: any }>(`/dashboard/cod-status?${dateParams}`), 2400),
-        staggerRequest(() => apiService.get<{ status: string; data: any }>(`/dashboard/shipment-distribution?${dateParams}`), 3200),
-        staggerRequest(() => apiService.get<{ status: string; data: any[] }>(`/dashboard/wallet-transactions?limit=5&${dateParams}`), 4000)
+        apiService.get<{ status: string; data: any }>(`/dashboard/overview?${dateParams}`),
+        apiService.get<{ status: string; data: any }>(`/dashboard/shipment-status?${dateParams}`),
+        apiService.get<{ status: string; data: any }>(`/dashboard/ndr-status?${dateParams}`),
+        apiService.get<{ status: string; data: any }>(`/dashboard/cod-status?${dateParams}`),
+        apiService.get<{ status: string; data: any }>(`/dashboard/shipment-distribution?${dateParams}`),
+        apiService.get<{ status: string; data: any[] }>(`/dashboard/wallet-transactions?limit=5&${dateParams}`)
       ]);
 
       // Map the data
@@ -290,9 +291,11 @@ const Dashboard: React.FC = () => {
       }
       // Don't throw - app continues with cached data
     } finally {
-      setLoading(false); // Always unblock UI
+      setLoading(false);
+      setIsDateFiltering(false);
     }
-  }, [dateFilter.startDate, dateFilter.endDate]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     // Try to load wallet balance from cache first (instant display)
@@ -302,7 +305,7 @@ const Dashboard: React.FC = () => {
     }
 
     // Initial data fetch - show cached data immediately if available
-    fetchAllDashboardData(true); // true = show loading only if no cache
+    fetchAllDashboardData(true, defaultRange);
     
     // Fetch wallet balance immediately on mount (direct from MongoDB, no WebSocket)
     fetchWalletBalanceFromMongoDB();
@@ -316,11 +319,9 @@ const Dashboard: React.FC = () => {
     }, 60000); // Every 60 seconds (1 minute) to avoid rate limiting
 
     refreshIntervalRef.current = setInterval(() => {
-      console.log('🔄 Auto-refreshing dashboard data...');
-      fetchAllDashboardData(false); // false = don't show loading, refresh in background
-      // Also refresh wallet balance directly from MongoDB
+      fetchAllDashboardData(false, dateFilterRef.current);
       fetchWalletBalanceFromMongoDB();
-    }, 120000); // Every 120 seconds (2 minutes) for full dashboard refresh to avoid rate limiting
+    }, 120000);
 
     return () => {
       if (refreshIntervalRef.current) {
@@ -328,7 +329,8 @@ const Dashboard: React.FC = () => {
       }
       clearInterval(walletRefreshInterval);
     };
-  }, [fetchAllDashboardData, dateFilter.startDate, dateFilter.endDate]); // Refetch when date filter changes
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Mount-only — date changes handled by handleDateFilterChange
 
   const handleRecharge = () => {
     navigate('/billing');
@@ -479,6 +481,13 @@ const Dashboard: React.FC = () => {
     <Layout>
       <div className="dashboard-container">
         {/* Show subtle loading indicator only if no data exists */}
+        {/* Date filter loading progress bar */}
+        {isDateFiltering && (
+          <div className="date-filter-loading">
+            <div className="date-filter-loading-bar"></div>
+          </div>
+        )}
+
         {loading && !hasData && (
           <div style={{
             position: 'fixed',

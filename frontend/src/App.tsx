@@ -34,7 +34,6 @@ import About from './pages/About';
 import Tracking from './pages/Tracking';
 import TrackingDetail from './pages/TrackingDetail';
 import PublicRateCalculator from './pages/PublicRateCalculator';
-import RateCalculator from './pages/RateCalculator';
 import Channel from './pages/Channel';
 import AccountSettings from './pages/AccountSettings';
 import ManageLabel from './pages/ManageLabel';
@@ -315,14 +314,6 @@ function App() {
               element={
                 <ProtectedRoute>
                   <ManageLabel />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/rate-calculator"
-              element={
-                <ProtectedRoute>
-                  <RateCalculator />
                 </ProtectedRoute>
               }
             />

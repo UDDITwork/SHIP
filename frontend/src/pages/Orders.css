@@ -5,7 +5,7 @@
 .awb-cell {
   padding: 8px;
   text-align: center;
-  min-width: 120px;
+  min-width: 150px;
 }
 
 .awb-number {
@@ -13,33 +13,36 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 8px;
+  padding: 8px 10px;
   background-color: #f8f9fa;
   border-radius: 6px;
   border: 1px solid #e9ecef;
 }
 
 .awb-label {
-  font-size: 11px;
-  color: #6c757d;
+  font-size: 12px;
+  color: #002B59;
   font-weight: 500;
+  opacity: 0.6;
 }
 
 .awb-value {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #002B59;
-  font-family: 'Courier New', monospace;
-  letter-spacing: 0.5px;
+  font-family: inherit;
+  letter-spacing: 0.3px;
 }
 
 .copy-awb-btn {
   background: none;
   border: none;
   cursor: pointer;
-  font-size: 12px;
-  padding: 2px 4px;
+  font-size: 13px;
+  padding: 2px 6px;
   border-radius: 3px;
+  color: #002B59;
+  font-weight: 500;
   transition: background-color 0.2s ease;
 }
 
@@ -276,33 +279,26 @@
     position: relative;
   }
 
-  .date-filter   .calendar-btn {
-    padding: 6px 14px;
+  .date-filter .calendar-btn {
+    padding: 8px 16px;
     background-color: #FFFFFF;
     color: #002B59;
     border: 2px solid #002B59;
-    border-radius: 20px !important;
-    border-top-left-radius: 20px !important;
-    border-top-right-radius: 20px !important;
-    border-bottom-left-radius: 20px !important;
-    border-bottom-right-radius: 20px !important;
-    font-size: 12px;
+    border-radius: 20px;
+    font-size: 13px;
     font-weight: 500;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
   }
   
-  .calendar-btn:hover {
+  .date-filter .calendar-btn:hover {
     background-color: #002B59;
     color: #FFFFFF;
-    border-radius: 20px !important;
-    border-top-left-radius: 20px !important;
-    border-top-right-radius: 20px !important;
-    border-bottom-left-radius: 20px !important;
-    border-bottom-right-radius: 20px !important;
+    border-color: #002B59;
   }
 
   /* Date Picker Dropdown */
@@ -1476,8 +1472,8 @@
   }
   
   .no-orders-icon {
-    font-size: 64px;
-    opacity: 0.5;
+    color: #002B59;
+    opacity: 0.35;
   }
   
   .no-orders h3 {
@@ -1494,7 +1490,7 @@
   
   .create-order-btn {
     padding: 12px 30px;
-    background-color: #1F4068;
+    background-color: #002B59;
     color: #FFFFFF; /* make button text white */
     border: none;
     border-radius: 8px;
@@ -1508,7 +1504,7 @@
   }
   
   .create-order-btn:hover {
-    background-color: #E07612;
+    background-color: #F68723;
     color: #FFFFFF; /* keep text white on hover */
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(246, 135, 35, 0.3);

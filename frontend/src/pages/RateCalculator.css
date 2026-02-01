@@ -123,7 +123,7 @@
 .calculate-btn {
   flex: 1;
   padding: 14px 24px;
-  background: #f26522;
+  background: #F68723;
   color: #fff;
   border: none;
   border-radius: 8px;
@@ -134,7 +134,7 @@
 }
 
 .calculate-btn:hover:not(:disabled) {
-  background: #e55a1c;
+  background: #002B59;
 }
 
 .calculate-btn:disabled {

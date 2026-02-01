@@ -710,6 +710,7 @@ orderSchema.index({ order_type: 1, status: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'billing_info.billing_status': 1, 'billing_info.billing_cycle_id': 1 });
 orderSchema.index({ 'billing_info.zone': 1 });
+orderSchema.index({ user_id: 1, order_date: -1, status: 1 });
 
 // Virtual for total products count
 orderSchema.virtual('total_products').get(function() {

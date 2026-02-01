@@ -295,6 +295,7 @@ ndrSchema.index({ 'ndr_status.current_status': 1 });
 ndrSchema.index({ 'customer_info.phone': 1 });
 ndrSchema.index({ ndr_date: -1 });
 ndrSchema.index({ 'metrics.days_in_ndr': 1 });
+ndrSchema.index({ user_id: 1, created_at: -1 });
 
 // Pre-save middleware
 ndrSchema.pre('save', function(next) {
