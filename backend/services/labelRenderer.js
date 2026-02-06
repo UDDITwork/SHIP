@@ -271,6 +271,10 @@ class LabelRenderer {
       const shippingCharges = order?.payment_info?.shipping_charges || 0;
       const totalAmount = order?.payment_info?.total_amount || (orderValue + shippingCharges);
 
+      // Routing code & eWaybill
+      const sortCode = order?.delhivery_data?.sort_code || pkg?.sort_code || pkg?.Sort_code || '';
+      const ewaybillNo = order?.ewaybill_number || pkg?.Ewb || pkg?.ewaybill || '';
+
       // Origin/Seller info
       const originName = pkg.Origin || order?.pickup_address?.name || 'N/A';
       const originAddress = pkg.Sadd || order?.pickup_address?.full_address || 'N/A';
@@ -392,7 +396,7 @@ class LabelRenderer {
     }
     .ship-to-city {
       font-size: 7.5px;
-      color: #0066cc;
+      color: #009EAF;
     }
     .ship-to-phone {
       font-size: 7.5px;
@@ -423,12 +427,93 @@ class LabelRenderer {
       font-weight: bold;
     }
 
-    /* Section 2: Courier & Payment Info Row */
-    .label-section-courier {
+    /* Section 2: COD/Order Info (left) + Order ID Barcode (right) */
+    .label-section-order-info {
       display: grid;
       grid-template-columns: 1fr 1fr;
       border-bottom: 1px solid #000;
-      min-height: 60px;
+    }
+    .payment-details-section {
+      padding: 6px 8px;
+      border-right: 1px solid #000;
+    }
+    .payment-badge {
+      font-size: 16px;
+      font-weight: bold;
+      letter-spacing: 2px;
+      margin-bottom: 2px;
+    }
+    .payment-badge.cod {
+      color: #cc0000;
+    }
+    .payment-badge.prepaid {
+      color: #002B59;
+    }
+    .cod-value {
+      font-size: 9px;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+    .order-detail-row {
+      font-size: 7.5px;
+      margin-bottom: 1px;
+    }
+    .order-detail-row span {
+      color: #009EAF;
+      font-weight: bold;
+    }
+    .order-info-section {
+      padding: 6px 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+    .order-id-row {
+      font-size: 8px;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .order-id-row span {
+      font-weight: bold;
+    }
+    .order-barcode {
+      width: 47.625mm;
+      max-width: 100%;
+      height: 10.583mm;
+      margin-bottom: 2px;
+    }
+    .order-barcode img {
+      height: 10.583mm;
+      width: 100%;
+      max-width: 47.625mm;
+      object-fit: contain;
+    }
+    .reference-id {
+      font-size: 7px;
+      margin-bottom: 2px;
+      text-align: center;
+    }
+    .reference-id span {
+      font-weight: bold;
+    }
+
+    /* Section 3: Shipment Details (left) + Courier/AWB (right) */
+    .label-section-shipment {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      border-bottom: 1px solid #000;
+    }
+    .shipment-details-section {
+      padding: 6px 8px;
+      border-right: 1px solid #000;
+      font-size: 8px;
+    }
+    .shipment-detail-row {
+      margin-bottom: 2px;
+    }
+    .shipment-detail-row strong {
+      font-weight: bold;
     }
     .courier-section {
       padding: 6px 8px;
@@ -458,118 +543,14 @@ class LabelRenderer {
     .awb-number span {
       font-weight: normal;
     }
-    .payment-info-section {
-      padding: 6px 8px;
-      font-size: 7.5px;
-    }
-    .payment-info-row {
-      margin-bottom: 1px;
-      display: flex;
-    }
-    .payment-info-label {
-      color: #0066cc;
-      min-width: 70px;
-    }
-    .payment-info-value {
-      font-weight: normal;
-    }
 
-    /* Section 3: Shipped By & Order Info Row */
-    .label-section-shipped {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
+    /* Section 4: Routing Code + Product Table */
+    .routing-code-row {
+      padding: 3px 8px;
+      font-size: 8px;
+      font-weight: bold;
       border-bottom: 1px solid #000;
-      min-height: 80px;
     }
-    .shipped-by-section {
-      padding: 6px 8px;
-    }
-    .shipped-by-label {
-      font-weight: bold;
-      font-size: 8px;
-      margin-bottom: 2px;
-    }
-    .shipped-by-label span {
-      font-weight: normal;
-      color: #0066cc;
-      font-size: 7px;
-    }
-    .shipped-by-company {
-      font-weight: bold;
-      font-size: 8px;
-      margin-bottom: 1px;
-    }
-    .shipped-by-gstin {
-      font-size: 7px;
-      margin-bottom: 1px;
-    }
-    .shipped-by-gstin span {
-      font-weight: bold;
-    }
-    .shipped-by-name {
-      font-size: 7.5px;
-      margin-bottom: 1px;
-    }
-    .shipped-by-address {
-      font-size: 7px;
-      line-height: 1.2;
-      margin-bottom: 1px;
-    }
-    .shipped-by-city {
-      font-size: 7px;
-      color: #0066cc;
-    }
-    .shipped-by-phone {
-      font-size: 7.5px;
-      margin-top: 2px;
-    }
-    .order-info-section {
-      padding: 6px 8px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .order-id-row {
-      font-size: 8px;
-      margin-bottom: 4px;
-      text-align: center;
-    }
-    .order-id-label {
-      font-weight: bold;
-    }
-    .order-barcode {
-      width: 47.625mm;
-      max-width: 100%;
-      height: 10.583mm;
-      margin-bottom: 2px;
-    }
-    .order-barcode img {
-      height: 10.583mm;
-      width: 100%;
-      max-width: 47.625mm;
-      object-fit: contain;
-    }
-    .reference-id {
-      font-size: 7px;
-      margin-bottom: 4px;
-    }
-    .reference-id span {
-      font-weight: bold;
-    }
-    .payment-badge {
-      font-size: 14px;
-      font-weight: bold;
-      text-align: center;
-      letter-spacing: 2px;
-    }
-    .payment-badge.prepaid {
-      color: #0066cc;
-    }
-    .payment-badge.cod {
-      color: #cc0000;
-    }
-
-    /* Section 4: Product Table */
     .label-section-products {
       padding: 4px 8px;
       border-bottom: 1px solid #000;
@@ -580,7 +561,7 @@ class LabelRenderer {
       font-size: 7.5px;
     }
     .products-table th {
-      background: #1a3a5c;
+      background: #002B59;
       color: white;
       padding: 3px 4px;
       text-align: left;
@@ -610,7 +591,48 @@ class LabelRenderer {
       padding: 2px 4px;
     }
 
-    /* Section 5: Footer */
+    /* Section 5: Shipped By (full width) */
+    .label-section-shipped {
+      padding: 6px 8px;
+      border-bottom: 1px solid #000;
+    }
+    .shipped-by-label {
+      font-weight: bold;
+      font-size: 8px;
+      margin-bottom: 2px;
+    }
+    .shipped-by-label span {
+      font-weight: normal;
+      color: #009EAF;
+      font-size: 7px;
+    }
+    .shipped-by-company {
+      font-weight: bold;
+      font-size: 8px;
+      margin-bottom: 1px;
+    }
+    .shipped-by-name {
+      font-size: 7.5px;
+      margin-bottom: 1px;
+    }
+    .shipped-by-address {
+      font-size: 7px;
+      line-height: 1.2;
+      margin-bottom: 1px;
+    }
+    .shipped-by-city {
+      font-size: 7px;
+      color: #009EAF;
+    }
+    .shipped-by-detail {
+      font-size: 7.5px;
+      margin-top: 1px;
+    }
+    .shipped-by-detail strong {
+      font-weight: bold;
+    }
+
+    /* Section 6: Footer */
     .label-section-footer {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -665,48 +687,42 @@ class LabelRenderer {
       </div>
     </div>
 
-    <!-- Section 2: Payment Info (left) & Courier/AWB Barcode (right) -->
-    <div class="label-section-courier">
-      <div class="payment-info-section">
-        ${showComponent('dimensions') ? `<div class="payment-info-row"><span class="payment-info-label">Dimensions:</span><span class="payment-info-value">${dimensions}</span></div>` : ''}
-        ${showComponent('weight') ? `<div class="payment-info-row"><span class="payment-info-label">Weight:</span><span class="payment-info-value">${weight}Kg</span></div>` : ''}
-        ${showComponent('payment_type') ? `<div class="payment-info-row"><span class="payment-info-label">Payment:</span><span class="payment-info-value">${paymentMode}</span></div>` : ''}
-        ${showComponent('invoice_number') ? `<div class="payment-info-row"><span class="payment-info-label">Invoice No:</span><span class="payment-info-value">${invoiceRef}</span></div>` : ''}
-        ${showComponent('invoice_date') ? `<div class="payment-info-row"><span class="payment-info-label">Invoice Date:</span><span class="payment-info-value">${formatDate(invoiceDate)}</span></div>` : ''}
-      </div>
-      <div class="courier-section">
-        <div class="courier-name">Courier: <span>${courierName}</span></div>
-        <div class="awb-barcode">
-          ${barcodeImage ? `<img src="${barcodeImage}" alt="AWB Barcode">` : '<div style="height:22mm;width:100%;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
-        </div>
-        <div class="awb-number">AWB: <span>${awb}</span></div>
-      </div>
-    </div>
-
-    <!-- Section 3: Shipped By & Order Info Row -->
-    <div class="label-section-shipped">
-      <div class="shipped-by-section">
-        <div class="shipped-by-label">Shipped By: <span>(if undelivered, return to)</span></div>
-        ${showComponent('company_name') ? `<div class="shipped-by-company">${companyName}</div>` : ''}
-        ${showComponent('company_gstin') && companyGstin ? `<div class="shipped-by-gstin"><span>GSTIN:</span> ${companyGstin}</div>` : ''}
-        <div class="shipped-by-name">${sellerName}</div>
-        ${showComponent('pickup_address') ? `
-          <div class="shipped-by-address">${originAddress}</div>
-          <div class="shipped-by-city">${originState}, ${originPincode}, India</div>
-        ` : ''}
-        ${showComponent('company_phone') && companyPhone ? `<div class="shipped-by-phone"><strong>Mobile Number:</strong><br/>${companyPhone}</div>` : ''}
+    <!-- Section 2: COD/Order Info (left) + Order ID Barcode (right) -->
+    <div class="label-section-order-info">
+      <div class="payment-details-section">
+        <div class="payment-badge ${paymentMode.toLowerCase()}">${paymentMode.toUpperCase()}</div>
+        ${paymentMode.toUpperCase() === 'COD' && codAmount ? `<div class="cod-value">COD Value: ${formatCurrency(codAmount)}</div>` : ''}
+        ${showComponent('invoice_date') ? `<div class="order-detail-row"><span>Order Date:</span> ${formatDate(invoiceDate)}</div>` : ''}
+        ${showComponent('invoice_number') ? `<div class="order-detail-row"><span>Invoice No.:</span> ${invoiceRef}</div>` : ''}
+        <div class="order-detail-row"><span>Invoice Value:</span> ${formatCurrency(orderValue)}</div>
       </div>
       <div class="order-info-section">
-        <div class="order-id-row"><span class="order-id-label">Order ID:</span> ${orderId}</div>
+        <div class="order-id-row"><span>Order ID:</span> ${orderId}</div>
         <div class="order-barcode">
           ${barcodeImage ? `<img src="${barcodeImage}" alt="Order Barcode">` : '<div style="height:10.583mm;width:47.625mm;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
         </div>
-        <div class="reference-id"><span>Reference ID:</span> ${referenceId}</div>
-        <div class="payment-badge ${paymentMode.toLowerCase()}">${paymentMode.toUpperCase()}</div>
+        <div class="reference-id"><span>Ref ID:</span> ${referenceId}</div>
       </div>
     </div>
 
-    <!-- Section 4: Product Table -->
+    <!-- Section 3: Shipment Details (left) + Courier/AWB (right) -->
+    <div class="label-section-shipment">
+      <div class="shipment-details-section">
+        ${showComponent('dimensions') ? `<div class="shipment-detail-row"><strong>Dimensions:</strong> ${dimensions}</div>` : ''}
+        ${showComponent('weight') ? `<div class="shipment-detail-row"><strong>Weight:</strong> ${weight}Kg</div>` : ''}
+        <div class="shipment-detail-row"><strong>eWaybill No.:</strong> ${ewaybillNo || '-'}</div>
+      </div>
+      <div class="courier-section">
+        <div class="courier-name"><strong>Courier:</strong> <span>${courierName}</span></div>
+        <div class="awb-barcode">
+          ${barcodeImage ? `<img src="${barcodeImage}" alt="AWB Barcode">` : '<div style="height:22mm;width:100%;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
+        </div>
+        <div class="awb-number"><strong>AWB:</strong> <span>${awb}</span></div>
+      </div>
+    </div>
+
+    <!-- Section 4: Routing Code + Product Table -->
+    ${sortCode ? `<div class="routing-code-row">Routing Code - ${sortCode}</div>` : ''}
     <div class="label-section-products">
       <table class="products-table">
         <thead>
@@ -732,7 +748,20 @@ class LabelRenderer {
       ${(showComponent('amount_prepaid') || showComponent('amount_cod')) ? `<div class="total-row">Total: ${formatCurrency(totalAmount)}</div>` : ''}
     </div>
 
-    <!-- Section 5: Footer -->
+    <!-- Section 5: Shipped By (full width) -->
+    <div class="label-section-shipped">
+      <div class="shipped-by-label">Shipped By: <span>(if undelivered, return to)</span></div>
+      ${showComponent('company_name') ? `<div class="shipped-by-company">${companyName}</div>` : ''}
+      <div class="shipped-by-name">${sellerName}</div>
+      ${showComponent('pickup_address') ? `
+        <div class="shipped-by-address">${originAddress}</div>
+        <div class="shipped-by-city">${originState}, ${originPincode}, India</div>
+      ` : ''}
+      <div class="shipped-by-detail"><strong>GST No.:</strong> ${companyGstin || '-'}</div>
+      <div class="shipped-by-detail"><strong>Phone No.:</strong> ${companyPhone || '-'}</div>
+    </div>
+
+    <!-- Section 6: Footer -->
     <div class="label-section-footer">
       <div class="footer-disclaimer">
         <p>1) Shipsarthi is not liable for product issues, delays, loss, or damage, and all claims are governed by the carrier's policies and decisions.</p>
@@ -741,7 +770,7 @@ class LabelRenderer {
       </div>
       <div class="footer-branding">
         <div class="footer-branding-label">Powered by:</div>
-        <img src="https://shipsarthi.com/shipsarthi-logo.png" class="footer-branding-logo" alt="Shipsarthi" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" /><span style="display:none;font-weight:bold;font-size:9px;color:#1a3a5c;">Shipsarthi</span>
+        <img src="https://shipsarthi.com/shipsarthi-logo.png" class="footer-branding-logo" alt="Shipsarthi" onerror="this.style.display='none';this.nextElementSibling.style.display='block';" /><span style="display:none;font-weight:bold;font-size:9px;color:#002B59;">Shipsarthi</span>
       </div>
     </div>
 
@@ -949,11 +978,6 @@ class LabelRenderer {
       flex-direction: column !important;
     }
 
-    /* Product section grows to fill remaining label height */
-    .label-slot .label-section-products {
-      flex: 1 !important;
-    }
-
     /* Constrain non-barcode images within labels */
     .label-slot img {
       max-width: 100% !important;
@@ -987,13 +1011,13 @@ class LabelRenderer {
     }
 
     ${(format === '4in1' || format === '4 In One') ? `
-    /* 4-in-1: AWB barcode 47mm x 10mm per client spec */
+    /* 4-in-1: AWB barcode 47mm x 16mm — increased from 10mm for scanner clarity */
     .label-slot .awb-barcode {
-      height: 10mm !important;
+      height: 16mm !important;
       width: 47mm !important;
     }
     .label-slot .awb-barcode img {
-      height: 10mm !important;
+      height: 16mm !important;
       width: 47mm !important;
       object-fit: fill !important;
     }
