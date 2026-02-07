@@ -361,7 +361,7 @@ class LabelRenderer {
     /* Label Container - Dynamic size based on format */
     .label-container {
       width: ${labelWidth};
-      min-height: auto;
+      height: ${labelFormat.height};
       border: 1px solid #000;
       display: flex;
       flex-direction: column;
@@ -591,10 +591,12 @@ class LabelRenderer {
       padding: 2px 4px;
     }
 
-    /* Section 5: Shipped By (full width) */
+    /* Section 5: Shipped By (full width) — pushed to bottom */
     .label-section-shipped {
       padding: 6px 8px;
       border-bottom: 1px solid #000;
+      margin-top: auto;
+      border-top: 1px solid #000;
     }
     .shipped-by-label {
       font-weight: bold;
