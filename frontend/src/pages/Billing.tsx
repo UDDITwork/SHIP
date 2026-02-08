@@ -88,8 +88,12 @@ const Billing: React.FC = () => {
 
   // Search and Filters
   const [searchAWB, setSearchAWB] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  const [dateFrom, setDateFrom] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 7);
+    return d.toISOString().split('T')[0];
+  });
+  const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
   const [transactionType, setTransactionType] = useState('all');
 
   // Tabs
@@ -105,6 +109,9 @@ const Billing: React.FC = () => {
 
   // Cache for transaction requests keyed by parameters
   const transactionCacheRef = useRef<TransactionCache>({});
+
+  // Monotonic counter to discard stale API responses when calls race
+  const fetchIdRef = useRef(0);
 
   // Stable refs for polling (avoids recreating intervals when callbacks change)
   const fetchTransactionsRef = useRef<(opts?: { forceRefresh?: boolean }) => Promise<void>>(null as any);
@@ -150,6 +157,8 @@ const Billing: React.FC = () => {
 
   // Fetch wallet transactions
   const fetchTransactions = useCallback(async ({ forceRefresh = false }: { forceRefresh?: boolean } = {}) => {
+    const id = ++fetchIdRef.current;
+
     try {
       const params = new URLSearchParams();
       params.append('page', page.toString());
@@ -172,6 +181,7 @@ const Billing: React.FC = () => {
       const isCacheValid = cachedEntry && (Date.now() - cachedEntry.timestamp < CACHE_TTL_MS);
 
       if (!forceRefresh && isCacheValid) {
+        if (id !== fetchIdRef.current) return;
         applyTransactionData(cachedEntry.data);
         setLoading(false);
         return;
@@ -187,6 +197,9 @@ const Billing: React.FC = () => {
       }
 
       const response = await apiService.get<WalletTransactionsResponse>(`/billing/wallet-transactions?${paramsString}`);
+
+      // Discard stale response — a newer call has been made
+      if (id !== fetchIdRef.current) return;
 
       const fetchedTransactions: WalletTransaction[] = response?.data?.transactions || [];
       const sanitizedTransactions = activeTab === 'recharges'
@@ -217,9 +230,12 @@ const Billing: React.FC = () => {
 
       applyTransactionData(cacheData);
     } catch (error) {
-      console.error('❌ Error fetching transactions from MongoDB:', error);
+      if (id !== fetchIdRef.current) return;
+      console.error('Error fetching transactions:', error);
     } finally {
-      setLoading(false);
+      if (id === fetchIdRef.current) {
+        setLoading(false);
+      }
     }
   }, [activeTab, page, limit, dateFrom, dateTo, transactionType, applyTransactionData]);
 
@@ -353,12 +369,12 @@ const Billing: React.FC = () => {
   useEffect(() => { fetchTransactionsRef.current = fetchTransactions; }, [fetchTransactions]);
   useEffect(() => { fetchWalletBalanceRef.current = fetchWalletBalance; }, [fetchWalletBalance]);
 
-  // One-time mount: initial fetch + payment redirect
+  // One-time mount: payment redirect + wallet balance only
+  // Transaction fetch is handled by the filter-change effect below
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     handlePaymentRedirect();
     fetchWalletBalance();
-    fetchTransactions({ forceRefresh: true });
   }, []);
 
   // Stable polling intervals — never recreated
@@ -390,21 +406,6 @@ const Billing: React.FC = () => {
     if (!weight) return 'N/A';
     return `${Math.round(weight)} g`;
   };
-
-  // Get default date range (last 7 days)
-  const getDefaultDateRange = () => {
-    const today = new Date();
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(today.getDate() - 7);
-
-    setDateFrom(sevenDaysAgo.toISOString().split('T')[0]);
-    setDateTo(today.toISOString().split('T')[0]);
-  };
-
-  // Set default date range on mount
-  useEffect(() => {
-    getDefaultDateRange();
-  }, []);
 
   // Filter transactions by AWB search
   const filteredTransactions = searchAWB
@@ -545,13 +546,13 @@ const Billing: React.FC = () => {
         <div className="billing-tabs">
           <button
             className={`tab-btn ${activeTab === 'transactions' ? 'active' : ''}`}
-            onClick={() => setActiveTab('transactions')}
+            onClick={() => { setActiveTab('transactions'); setPage(1); }}
           >
             Transactions
           </button>
           <button
             className={`tab-btn ${activeTab === 'recharges' ? 'active' : ''}`}
-            onClick={() => setActiveTab('recharges')}
+            onClick={() => { setActiveTab('recharges'); setPage(1); }}
           >
             Recharges
           </button>
