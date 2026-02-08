@@ -730,14 +730,14 @@
 .sidebar-child.active {
   background-color: #FFFFFF !important;
   color: #F68723 !important;
-  /* Full pill shape for child items too */
-  border-radius: 25px !important;
+  /* Left-rounded pill — stays within sidebar bounds */
+  border-radius: 25px 0 0 25px !important;
   margin-left: 0 !important;
-  margin-right: -20px !important;
-  padding-right: 38px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-right: 0 !important;
+  padding-right: 18px !important;
+  box-shadow: none;
   position: relative;
-  z-index: 100;
+  z-index: 2;
 }
 
 /* 3rd-level: Subgroup container (e.g. Autofill) */
@@ -750,6 +750,12 @@
   align-items: center;
   justify-content: flex-start;
   cursor: pointer;
+}
+
+/* Subgroup toggle when a child is active — subtle highlight, not full white */
+.sidebar-subgroup-toggle.active-parent {
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #FFFFFF !important;
 }
 
 /* 3rd-level children container */
@@ -786,12 +792,13 @@
 .sidebar-subchild.active {
   background-color: #FFFFFF !important;
   color: #F68723 !important;
-  border-radius: 25px !important;
-  margin-right: -20px !important;
-  padding-right: 38px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  /* Left-rounded pill — stays within sidebar bounds */
+  border-radius: 25px 0 0 25px !important;
+  margin-right: 0 !important;
+  padding-right: 18px !important;
+  box-shadow: none;
   position: relative;
-  z-index: 100;
+  z-index: 2;
 }
 
 .sidebar-child.active .sidebar-icon img {
@@ -986,6 +993,11 @@
 
   .layout-main {
     padding: 16px;
+    margin-left: 0; /* No overlap on mobile — sidebar is fixed */
+  }
+
+  .layout-main::before {
+    left: 0; /* Full-width white background on mobile */
   }
 
   .content-wrapper {

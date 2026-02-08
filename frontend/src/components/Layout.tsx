@@ -779,7 +779,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                           <div key={child.id} className="sidebar-subgroup">
                             <div
                               className={`sidebar-item sidebar-child sidebar-subgroup-toggle ${
-                                child.children.some(sc => sc.path && (location.pathname === sc.path || location.pathname.startsWith(sc.path + '/'))) ? 'active' : ''
+                                child.children.some(sc => sc.path && (location.pathname === sc.path || location.pathname.startsWith(sc.path + '/'))) ? 'active-parent' : ''
                               } ${expandedMenus[child.id!] ? 'expanded' : ''}`}
                               onClick={() => {
                                 setExpandedMenus(prev => ({

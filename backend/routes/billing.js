@@ -129,14 +129,18 @@ router.get('/wallet-transactions', auth, async (req, res) => {
             Transaction.countDocuments(filterQuery)
         ]);
 
-        // Calculate wallet summary
+        // Calculate wallet summary — use same date filter as transaction list
+        const summaryMatch = { user_id: req.user._id, status: 'completed' };
+        if (filterQuery.transaction_date) {
+            summaryMatch.transaction_date = filterQuery.transaction_date;
+        }
         const [credits, debits] = await Promise.all([
             Transaction.aggregate([
-                { $match: { user_id: req.user._id, transaction_type: 'credit', status: 'completed' } },
+                { $match: { ...summaryMatch, transaction_type: 'credit' } },
                 { $group: { _id: null, total: { $sum: '$amount' } } }
             ]),
             Transaction.aggregate([
-                { $match: { user_id: req.user._id, transaction_type: 'debit', status: 'completed' } },
+                { $match: { ...summaryMatch, transaction_type: 'debit' } },
                 { $group: { _id: null, total: { $sum: '$amount' } } }
             ])
         ]);
