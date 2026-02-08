@@ -601,8 +601,8 @@
 .sidebar-active-curve {
   position: absolute;
   left: 250px; /* sidebar width — anchor at the sidebar/content boundary */
-  width: 0;
-  background: transparent;
+  width: 25px; /* White strip extends pill 25px into content area */
+  background: #FFFFFF; /* Merges seamlessly with pill and content */
   z-index: 11; /* above sidebar (10) and content (1) */
   pointer-events: none;
 }
