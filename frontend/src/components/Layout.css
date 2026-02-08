@@ -595,34 +595,41 @@
 }
 
 /* Concave curve overlay — rendered in .layout-body, outside sidebar overflow.
-   Creates the inverse-rounded-corner effect at the active item's right edge. */
+   Creates the inverse-rounded-corner effect at the active item's right edge.
+   Technique: orange pseudo-elements with border-radius on the corner facing the
+   white content area. The rounded corner "scoops out" the orange, revealing the
+   white background behind and creating the classic concave / inverse-radius look. */
 .sidebar-active-curve {
   position: absolute;
   left: 250px; /* sidebar width */
-  width: 25px;
+  width: 20px;
   background: #FFFFFF;
   z-index: 11; /* above sidebar (10), above content bg */
   pointer-events: none;
 }
 
+/* Top concave curve — orange block above, with bottom-right corner rounded */
 .sidebar-active-curve::before {
   content: '';
   position: absolute;
   bottom: 100%;
   left: 0;
-  width: 25px;
-  height: 25px;
-  background: radial-gradient(circle at 0% 100%, #F68723 25px, #FFFFFF 25px);
+  width: 20px;
+  height: 20px;
+  background: #F68723;
+  border-bottom-right-radius: 20px;
 }
 
+/* Bottom concave curve — orange block below, with top-right corner rounded */
 .sidebar-active-curve::after {
   content: '';
   position: absolute;
   top: 100%;
   left: 0;
-  width: 25px;
-  height: 25px;
-  background: radial-gradient(circle at 0% 0%, #F68723 25px, #FFFFFF 25px);
+  width: 20px;
+  height: 20px;
+  background: #F68723;
+  border-top-right-radius: 20px;
 }
 
 .sidebar-icon {
@@ -813,8 +820,8 @@
   /* Transparent background - let sidebar curves show through */
   background-color: transparent;
   padding: 20px 24px;
-  padding-left: 64px; /* Extra left padding for content */
-  margin-left: -40px; /* Pull under sidebar to create overlap zone */
+  padding-left: 44px; /* Extra left padding for content (20px curve zone + 24px) */
+  margin-left: -20px; /* Pull under sidebar by curve width to create overlap zone */
   position: relative;
   z-index: 1;
   border-left: none;
@@ -828,7 +835,7 @@
   content: '';
   position: absolute;
   top: 0;
-  left: 40px; /* Start 40px from left to leave space for curves */
+  left: 20px; /* Start after 20px curve zone */
   right: 0;
   bottom: 0;
   background-color: #FFFFFF;
@@ -911,6 +918,21 @@
 
   .sidebar-active-curve {
     left: 220px;
+    width: 18px;
+  }
+
+  .sidebar-active-curve::before,
+  .sidebar-active-curve::after {
+    width: 18px;
+    height: 18px;
+  }
+
+  .sidebar-active-curve::before {
+    border-bottom-right-radius: 18px;
+  }
+
+  .sidebar-active-curve::after {
+    border-top-right-radius: 18px;
   }
 
   .wallet-section {
@@ -1022,7 +1044,7 @@
   }
 
   .sidebar-active-curve {
-    left: 240px;
+    display: none; /* Hide on mobile — sidebar is a fixed overlay, no concave transition needed */
   }
 }
 
