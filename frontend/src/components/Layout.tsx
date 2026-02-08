@@ -52,8 +52,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [wsConnected, setWsConnected] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
-  const bodyRef = useRef<HTMLDivElement>(null);
-  const [curvePosition, setCurvePosition] = useState<{ top: number; height: number } | null>(null);
 
   // Keep parent menu expanded when on a child route
   useEffect(() => {
@@ -76,42 +74,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }
   }, [location.pathname]);
 
-  // Track active sidebar item position for concave curve overlay
-  useEffect(() => {
-    const updateCurvePosition = () => {
-      const body = bodyRef.current;
-      if (!body) return;
-
-      // Find top-level active item (not child items which use full-radius pills)
-      const activeItem = body.querySelector(
-        '.sidebar-item.active:not(.sidebar-child)'
-      ) as HTMLElement | null;
-
-      if (!activeItem) {
-        setCurvePosition(null);
-        return;
-      }
-
-      const bodyRect = body.getBoundingClientRect();
-      const itemRect = activeItem.getBoundingClientRect();
-      setCurvePosition({
-        top: itemRect.top - bodyRect.top,
-        height: itemRect.height,
-      });
-    };
-
-    // Small delay to ensure DOM has settled after route change
-    const raf = requestAnimationFrame(updateCurvePosition);
-
-    // Sync on sidebar scroll
-    const sidebar = bodyRef.current?.querySelector('.layout-sidebar');
-    sidebar?.addEventListener('scroll', updateCurvePosition);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      sidebar?.removeEventListener('scroll', updateCurvePosition);
-    };
-  }, [location.pathname, expandedMenus, isSidebarOpen]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -706,15 +668,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      <div className="layout-body" ref={bodyRef}>
-        {/* Concave curve overlay — positioned outside sidebar overflow container */}
-        {curvePosition && isSidebarOpen && (
-          <div
-            className="sidebar-active-curve"
-            style={{ top: curvePosition.top, height: curvePosition.height }}
-          />
-        )}
-
+      <div className="layout-body">
         {/* Floating Hamburger - appears on page when sidebar is closed */}
         {!isSidebarOpen && (
           <button

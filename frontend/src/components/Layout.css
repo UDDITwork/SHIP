@@ -577,8 +577,7 @@
 }
 
 /* ACTIVE STATE - WHITE PILL WITH ROUNDED LEFT CORNERS
-   Concave curves are rendered by a separate overlay element (.sidebar-active-curve)
-   positioned in .layout-body to avoid sidebar overflow clipping */
+   Concave curves rendered via ::before/::after pseudo-elements */
 .sidebar-item.active {
   background-color: #FFFFFF;
   color: #F68723 !important;
@@ -594,42 +593,30 @@
   box-shadow: none;
 }
 
-/* Concave curve overlay — positioned at sidebar edge in .layout-body.
-   Anchor element for ::before/::after pseudo-elements that paint the
-   concave (inverse-radius) curves. Width is 0 — it's just a positioning
-   anchor. The curves overlay on top of the content area's white bg. */
-.sidebar-active-curve {
-  position: absolute;
-  left: 250px; /* sidebar width — anchor at the sidebar/content boundary */
-  width: 35px; /* White strip extends pill 35px into content area */
-  background: #FFFFFF; /* Merges seamlessly with pill and content */
-  z-index: 11; /* above sidebar (10) and content (1) */
-  pointer-events: none;
-}
-
-/* Top concave curve — orange quarter-circle in the bottom-left quadrant.
-   Extends 25px right and 25px up from the pill's top-right corner.
-   Only the quarter-circle is colored; rest is transparent (no rods). */
-.sidebar-active-curve::before {
+/* Top concave curve — white quarter-circle merging pill into content area */
+.sidebar-item.active:not(.sidebar-child)::before {
   content: '';
   position: absolute;
   bottom: 100%;
-  left: 0;
-  width: 35px;
-  height: 35px;
-  background: radial-gradient(circle 35px at 0% 100%, #F68723 34px, transparent 35px);
+  right: 0;
+  width: 25px;
+  height: 25px;
+  background: radial-gradient(circle at 100% 100%, #FFFFFF 25px, transparent 25px);
+  pointer-events: none;
+  z-index: 2;
 }
 
-/* Bottom concave curve — orange quarter-circle in the top-left quadrant.
-   Extends 25px right and 25px down from the pill's bottom-right corner. */
-.sidebar-active-curve::after {
+/* Bottom concave curve — mirrors top curve below the active pill */
+.sidebar-item.active:not(.sidebar-child)::after {
   content: '';
   position: absolute;
   top: 100%;
-  left: 0;
-  width: 35px;
-  height: 35px;
-  background: radial-gradient(circle 35px at 0% 0%, #F68723 34px, transparent 35px);
+  right: 0;
+  width: 25px;
+  height: 25px;
+  background: radial-gradient(circle at 100% 0%, #FFFFFF 25px, transparent 25px);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .sidebar-icon {
@@ -820,7 +807,7 @@
   overflow-x: hidden;
   background-color: #FFFFFF;
   padding: 20px 24px;
-  padding-left: 42px; /* Clear the 35px curve zone + 7px breathing room */
+  padding-left: 24px;
   margin-left: 0;
   position: relative;
   z-index: 1;
@@ -904,22 +891,16 @@
     border-radius: 32px 0 0 32px;
   }
 
-  .sidebar-active-curve {
-    left: 220px;
+  .sidebar-item.active:not(.sidebar-child)::before {
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle at 100% 100%, #FFFFFF 20px, transparent 20px);
   }
 
-  .sidebar-active-curve::before,
-  .sidebar-active-curve::after {
-    width: 28px;
-    height: 28px;
-  }
-
-  .sidebar-active-curve::before {
-    background: radial-gradient(circle 28px at 0% 100%, #F68723 27px, transparent 28px);
-  }
-
-  .sidebar-active-curve::after {
-    background: radial-gradient(circle 28px at 0% 0%, #F68723 27px, transparent 28px);
+  .sidebar-item.active:not(.sidebar-child)::after {
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle at 100% 0%, #FFFFFF 20px, transparent 20px);
   }
 
   .wallet-section {
@@ -1026,9 +1007,6 @@
     margin-right: 0;
   }
 
-  .sidebar-active-curve {
-    display: none; /* Hide on mobile — sidebar is a fixed overlay, no concave transition needed */
-  }
 }
 
 @media (max-width: 480px) {
