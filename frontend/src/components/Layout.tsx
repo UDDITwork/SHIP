@@ -52,13 +52,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [wsConnected, setWsConnected] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const [curvePosition, setCurvePosition] = useState<{ top: number; height: number } | null>(null);
 
   // Keep parent menu expanded when on a child route
   useEffect(() => {
     const path = location.pathname;
 
     // Check which parent menu should be expanded based on current path
-    const shouldExpandTools = path === '/tools' || path === '/packages' || path === '/weight-discrepancies';
+    const shouldExpandTools = path === '/tools' || path.startsWith('/autofill') || path === '/weight-discrepancies';
+    const shouldExpandAutofill = path.startsWith('/autofill');
     const shouldExpandBilling = path === '/billing' || path === '/invoices' || path === '/remittances' || path.startsWith('/remittances/');
     const shouldExpandSettings = path === '/settings' || path.startsWith('/settings/');
 
@@ -66,11 +69,49 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     if (shouldExpandTools || shouldExpandBilling || shouldExpandSettings) {
       setExpandedMenus({
         tools: shouldExpandTools,
+        autofill: shouldExpandAutofill,
         billing: shouldExpandBilling,
         settings: shouldExpandSettings,
       });
     }
   }, [location.pathname]);
+
+  // Track active sidebar item position for concave curve overlay
+  useEffect(() => {
+    const updateCurvePosition = () => {
+      const body = bodyRef.current;
+      if (!body) return;
+
+      // Find top-level active item (not child items which use full-radius pills)
+      const activeItem = body.querySelector(
+        '.sidebar-item.active:not(.sidebar-child)'
+      ) as HTMLElement | null;
+
+      if (!activeItem) {
+        setCurvePosition(null);
+        return;
+      }
+
+      const bodyRect = body.getBoundingClientRect();
+      const itemRect = activeItem.getBoundingClientRect();
+      setCurvePosition({
+        top: itemRect.top - bodyRect.top,
+        height: itemRect.height,
+      });
+    };
+
+    // Small delay to ensure DOM has settled after route change
+    const raf = requestAnimationFrame(updateCurvePosition);
+
+    // Sync on sidebar scroll
+    const sidebar = bodyRef.current?.querySelector('.layout-sidebar');
+    sidebar?.addEventListener('scroll', updateCurvePosition);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      sidebar?.removeEventListener('scroll', updateCurvePosition);
+    };
+  }, [location.pathname, expandedMenus, isSidebarOpen]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -445,7 +486,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       svgIcon: vectorIcon,
       children: [
         { path: '/tools', icon: '🧮', label: 'Rate Calculator', svgIcon: calculatorIcon },
-        { path: '/packages', icon: '📦', label: 'Packages', svgIcon: packageIcon },
+        {
+          id: 'autofill',
+          icon: '📦',
+          label: 'Autofill',
+          svgIcon: packageIcon,
+          children: [
+            { path: '/autofill/package', icon: '📦', label: 'Package', svgIcon: null },
+            { path: '/autofill/product', icon: '🏷️', label: 'Product', svgIcon: null },
+          ]
+        },
         { path: '/weight-discrepancies', icon: '⚖️', label: 'Weight Discrepancies', svgIcon: scaleIcon },
       ]
     },
@@ -487,9 +537,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       return location.pathname === item.path || location.pathname.startsWith(item.path + '/');
     }
     if (item.children) {
-      return item.children.some(child =>
-        child.path && (location.pathname === child.path || location.pathname.startsWith(child.path + '/'))
-      );
+      return item.children.some(child => {
+        if (child.path) {
+          return location.pathname === child.path || location.pathname.startsWith(child.path + '/');
+        }
+        // Check 3rd-level children
+        if (child.children) {
+          return child.children.some(subChild =>
+            subChild.path && (location.pathname === subChild.path || location.pathname.startsWith(subChild.path + '/'))
+          );
+        }
+        return false;
+      });
     }
     return false;
   };
@@ -647,7 +706,15 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      <div className="layout-body">
+      <div className="layout-body" ref={bodyRef}>
+        {/* Concave curve overlay — positioned outside sidebar overflow container */}
+        {curvePosition && isSidebarOpen && (
+          <div
+            className="sidebar-active-curve"
+            style={{ top: curvePosition.top, height: curvePosition.height }}
+          />
+        )}
+
         {/* Floating Hamburger - appears on page when sidebar is closed */}
         {!isSidebarOpen && (
           <button
@@ -680,9 +747,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     <div
                       className={`sidebar-item sidebar-parent ${isMenuActive(item) ? 'active-parent' : ''} ${expandedMenus[item.id!] ? 'expanded' : ''}`}
                       onClick={() => {
-                        // Toggle this menu, collapse others
+                        // Toggle this menu, collapse others (preserve autofill state within tools)
                         setExpandedMenus(prev => ({
                           tools: item.id === 'tools' ? !prev.tools : false,
+                          autofill: item.id === 'tools' ? (prev.tools ? false : prev.autofill) : false,
                           billing: item.id === 'billing' ? !prev.billing : false,
                           settings: item.id === 'settings' ? !prev.settings : false,
                         }));
@@ -706,20 +774,62 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     {/* Child menu items */}
                     <div className={`sidebar-children ${expandedMenus[item.id!] ? 'expanded' : ''}`}>
                       {item.children.map((child) => (
-                        <Link
-                          key={child.path}
-                          to={child.path!}
-                          className={`sidebar-item sidebar-child ${location.pathname === child.path || location.pathname.startsWith(child.path + '/') ? 'active' : ''}`}
-                        >
-                          <span className="sidebar-icon">
-                            {child.svgIcon ? (
-                              <img src={child.svgIcon} alt={child.label} style={{ width: '22px', height: '22px' }} />
-                            ) : (
-                              child.icon
-                            )}
-                          </span>
-                          <span className="sidebar-label">{child.label}</span>
-                        </Link>
+                        child.children ? (
+                          /* 3rd-level: Collapsible sub-group (e.g. Autofill → Package/Product) */
+                          <div key={child.id} className="sidebar-subgroup">
+                            <div
+                              className={`sidebar-item sidebar-child sidebar-subgroup-toggle ${
+                                child.children.some(sc => sc.path && (location.pathname === sc.path || location.pathname.startsWith(sc.path + '/'))) ? 'active' : ''
+                              } ${expandedMenus[child.id!] ? 'expanded' : ''}`}
+                              onClick={() => {
+                                setExpandedMenus(prev => ({
+                                  ...prev,
+                                  [child.id!]: !prev[child.id!]
+                                }));
+                              }}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              <span className="sidebar-icon">
+                                {child.svgIcon ? (
+                                  <img src={child.svgIcon} alt={child.label} style={{ width: '22px', height: '22px' }} />
+                                ) : (
+                                  child.icon
+                                )}
+                              </span>
+                              <span className="sidebar-label">{child.label}</span>
+                              <span className={`sidebar-arrow ${expandedMenus[child.id!] ? 'expanded' : ''}`}>
+                                &#9660;
+                              </span>
+                            </div>
+                            <div className={`sidebar-subchildren ${expandedMenus[child.id!] ? 'expanded' : ''}`}>
+                              {child.children.map((subChild) => (
+                                <Link
+                                  key={subChild.path}
+                                  to={subChild.path!}
+                                  className={`sidebar-item sidebar-subchild ${location.pathname === subChild.path ? 'active' : ''}`}
+                                >
+                                  <span className="sidebar-label">{subChild.label}</span>
+                                </Link>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          /* Regular child link */
+                          <Link
+                            key={child.path}
+                            to={child.path!}
+                            className={`sidebar-item sidebar-child ${location.pathname === child.path || location.pathname.startsWith(child.path + '/') ? 'active' : ''}`}
+                          >
+                            <span className="sidebar-icon">
+                              {child.svgIcon ? (
+                                <img src={child.svgIcon} alt={child.label} style={{ width: '22px', height: '22px' }} />
+                              ) : (
+                                child.icon
+                              )}
+                            </span>
+                            <span className="sidebar-label">{child.label}</span>
+                          </Link>
+                        )
                       ))}
                     </div>
                   </>

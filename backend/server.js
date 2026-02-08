@@ -285,6 +285,7 @@ app.use('/api/customers', require('./routes/customers'));
 app.use('/api/orders', require('./routes/orders'));
 app.use('/api/warehouses', require('./routes/warehouses'));
 app.use('/api/packages', require('./routes/packages'));
+app.use('/api/products', require('./routes/products'));
 app.use('/api/ndr', require('./routes/ndr'));
 app.use('/api/support', require('./routes/support'));
 app.use('/api/tickets', require('./routes/tickets'));

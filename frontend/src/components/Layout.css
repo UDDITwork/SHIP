@@ -576,41 +576,53 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* ACTIVE STATE - WHITE PROTRUDING TAB WITH CONCAVE CURVES (EXACT FIGMA)
-   SVG: 270x148, pill at y=37-111 (74px), concave extension 42px wide
-   Uses pseudo-element for SVG to extend beyond item bounds */
+/* ACTIVE STATE - WHITE PILL WITH ROUNDED LEFT CORNERS
+   Concave curves are rendered by a separate overlay element (.sidebar-active-curve)
+   positioned in .layout-body to avoid sidebar overflow clipping */
 .sidebar-item.active {
-  background-color: transparent !important;
-  color: #F68723 !important; /* Exact Figma orange */
+  background-color: #FFFFFF;
+  color: #F68723 !important;
   font-weight: 600;
   margin-left: 0;
   padding-left: 36px;
   margin-right: 0;
-  /* Remove z-index to avoid creating stacking context - let pseudo-element handle it */
   position: relative;
+  z-index: 2;
   border: none;
   outline: none;
-  border-radius: 0;
+  border-radius: 37px 0 0 37px;
   box-shadow: none;
-  overflow: visible;
 }
 
-/* Pseudo-element creates the SVG background with concave curves */
-.sidebar-item.active::before {
+/* Concave curve overlay — rendered in .layout-body, outside sidebar overflow.
+   Creates the inverse-rounded-corner effect at the active item's right edge. */
+.sidebar-active-curve {
+  position: absolute;
+  left: 250px; /* sidebar width */
+  width: 25px;
+  background: #FFFFFF;
+  z-index: 11; /* above sidebar (10), above content bg */
+  pointer-events: none;
+}
+
+.sidebar-active-curve::before {
   content: '';
   position: absolute;
-  /* SVG: pill is 50% of height (y=37-111 of 148), curves are 25% each */
-  /* Need height: 200% with top: -50% to properly scale curves */
-  top: -50%;
+  bottom: 100%;
   left: 0;
-  width: calc(100% + 60px);
-  height: 200%;
-  background: url('./sidebar-active-bg.svg') no-repeat left center;
-  background-size: 100% 100%;
-  z-index: 50;
-  pointer-events: none;
-  /* DEBUG: uncomment to see pseudo-element bounds */
-  /* border: 2px solid red; */
+  width: 25px;
+  height: 25px;
+  background: radial-gradient(circle at 0% 100%, #F68723 25px, #FFFFFF 25px);
+}
+
+.sidebar-active-curve::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 25px;
+  height: 25px;
+  background: radial-gradient(circle at 0% 0%, #F68723 25px, #FFFFFF 25px);
 }
 
 .sidebar-icon {
@@ -620,7 +632,7 @@
   align-items: center;
   justify-content: center;
   position: relative;
-  z-index: 100; /* Above pseudo-element (z-index: 50) */
+  z-index: 3; /* Above active item background */
 }
 
 /* Vector icon styling - white for inactive, orange for active */
@@ -641,7 +653,7 @@
   overflow: visible;
   flex: 1;
   position: relative;
-  z-index: 100; /* Above pseudo-element (z-index: 50) */
+  z-index: 3; /* Above active item background */
 }
 
 /* Allow longer text in child menu items */
@@ -721,6 +733,60 @@
   /* Full pill shape for child items too */
   border-radius: 25px !important;
   margin-left: 0 !important;
+  margin-right: -20px !important;
+  padding-right: 38px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  position: relative;
+  z-index: 100;
+}
+
+/* 3rd-level: Subgroup container (e.g. Autofill) */
+.sidebar-subgroup {
+  width: 100%;
+}
+
+.sidebar-subgroup-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  cursor: pointer;
+}
+
+/* 3rd-level children container */
+.sidebar-subchildren {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease;
+  margin-left: 16px;
+}
+
+.sidebar-subchildren.expanded {
+  max-height: 200px;
+}
+
+/* 3rd-level child items */
+.sidebar-subchild {
+  padding: 10px 18px 10px 36px !important;
+  font-size: 13px !important;
+  min-height: 38px !important;
+  background-color: transparent !important;
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  border-radius: 25px 0 0 25px !important;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+}
+
+.sidebar-subchild:not(.active):hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.sidebar-subchild.active {
+  background-color: #FFFFFF !important;
+  color: #F68723 !important;
+  border-radius: 25px !important;
   margin-right: -20px !important;
   padding-right: 38px !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
@@ -836,6 +902,10 @@
     border-radius: 32px 0 0 32px;
   }
 
+  .sidebar-active-curve {
+    left: 220px;
+  }
+
   .wallet-section {
     gap: 0;
   }
@@ -935,8 +1005,12 @@
 
   .sidebar-item.active {
     border-radius: 30px 0 0 30px;
-    margin-left: 16px;
+    margin-left: 0;
     margin-right: 0;
+  }
+
+  .sidebar-active-curve {
+    left: 240px;
   }
 }
 

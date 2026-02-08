@@ -19,22 +19,15 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
     name: editingPackage?.name || '',
     description: editingPackage?.description || '',
     package_type: editingPackage?.package_type || 'Single Package (B2C)',
-    category: editingPackage?.category || '',
-    sku: editingPackage?.sku || '',
-    product_name: editingPackage?.product_name || '',
-    hsn_code: editingPackage?.hsn_code || '',
+    product_name: editingPackage?.product_name || 'Package Item',
     dimensions: {
       length: editingPackage?.dimensions?.length?.toString() || '',
       width: editingPackage?.dimensions?.width?.toString() || '',
       height: editingPackage?.dimensions?.height?.toString() || ''
     },
     weight: editingPackage?.weight?.toString() || '',
-    volumetric_weight: editingPackage?.volumetric_weight?.toString() || '',
     number_of_boxes: editingPackage?.number_of_boxes?.toString() || '',
     weight_per_box: editingPackage?.weight_per_box?.toString() || '',
-    unit_price: editingPackage?.unit_price?.toString() || '',
-    discount: editingPackage?.discount?.toString() || '',
-    tax: editingPackage?.tax?.toString() || '',
     tags: editingPackage?.tags?.join(', ') || '',
     notes: editingPackage?.notes || ''
   });
@@ -119,10 +112,6 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
         alert('Package name is required');
         return;
       }
-      if (!formData.product_name.trim()) {
-        alert('Product name is required');
-        return;
-      }
       if (!formData.dimensions.length || !formData.dimensions.width || !formData.dimensions.height) {
         alert('All dimensions are required');
         return;
@@ -160,7 +149,7 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
       const packageData: any = {
         name: formData.name.trim(),
         package_type: formData.package_type,
-        product_name: formData.product_name.trim(),
+        product_name: formData.product_name.trim() || 'Package Item',
         dimensions: {
           length: length,
           width: width,
@@ -173,21 +162,6 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
       if (formData.description.trim()) {
         packageData.description = formData.description.trim();
       }
-      if (formData.category.trim()) {
-        packageData.category = formData.category.trim();
-      }
-      if (formData.sku.trim()) {
-        packageData.sku = formData.sku.trim();
-      }
-      if (formData.hsn_code.trim()) {
-        packageData.hsn_code = formData.hsn_code.trim();
-      }
-      if (formData.volumetric_weight && formData.volumetric_weight.trim() !== '') {
-        const volWeight = parseFloat(formData.volumetric_weight);
-        if (!isNaN(volWeight) && volWeight > 0) {
-          packageData.volumetric_weight = volWeight;
-        }
-      }
       if (formData.number_of_boxes && formData.number_of_boxes.trim() !== '') {
         const numBoxes = parseInt(formData.number_of_boxes);
         if (!isNaN(numBoxes) && numBoxes > 0) {
@@ -198,24 +172,6 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
         const weightPerBox = parseFloat(formData.weight_per_box);
         if (!isNaN(weightPerBox) && weightPerBox > 0) {
           packageData.weight_per_box = weightPerBox;
-        }
-      }
-      if (formData.unit_price && formData.unit_price.trim() !== '') {
-        const unitPrice = parseFloat(formData.unit_price);
-        if (!isNaN(unitPrice) && unitPrice >= 0) {
-          packageData.unit_price = unitPrice;
-        }
-      }
-      if (formData.discount && formData.discount.trim() !== '') {
-        const discount = parseFloat(formData.discount);
-        if (!isNaN(discount) && discount >= 0) {
-          packageData.discount = discount;
-        }
-      }
-      if (formData.tax && formData.tax.trim() !== '') {
-        const tax = parseFloat(formData.tax);
-        if (!isNaN(tax) && tax >= 0) {
-          packageData.tax = tax;
         }
       }
       if (formData.notes.trim()) {
@@ -267,18 +223,11 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
           name: '',
           description: '',
           package_type: 'Single Package (B2C)',
-          category: '',
-          sku: '',
-          product_name: '',
-          hsn_code: '',
+          product_name: 'Package Item',
           dimensions: { length: '', width: '', height: '' },
           weight: '',
-          volumetric_weight: '',
           number_of_boxes: '',
           weight_per_box: '',
-          unit_price: '',
-          discount: '',
-          tax: '',
           tags: '',
           notes: ''
         });
@@ -388,65 +337,6 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
               </div>
             </div>
 
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="product_name">Product Name *</label>
-                <input
-                  type="text"
-                  id="product_name"
-                  name="product_name"
-                  value={formData.product_name}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="e.g., Smartphone"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="category">Category</label>
-                <select
-                  id="category"
-                  name="category"
-                  value={formData.category}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Category</option>
-                  <option value="Electronics">Electronics</option>
-                  <option value="Clothing">Clothing</option>
-                  <option value="Books">Books</option>
-                  <option value="Home">Home</option>
-                  <option value="Sports">Sports</option>
-                  <option value="General">General</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="sku">SKU</label>
-                <input
-                  type="text"
-                  id="sku"
-                  name="sku"
-                  value={formData.sku}
-                  onChange={handleInputChange}
-                  placeholder="e.g., SKU-001"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="hsn_code">HSN Code</label>
-                <input
-                  type="text"
-                  id="hsn_code"
-                  name="hsn_code"
-                  value={formData.hsn_code}
-                  onChange={handleInputChange}
-                  placeholder="e.g., 8517"
-                />
-              </div>
-            </div>
-
             <div className="form-group">
               <label htmlFor="description">Description</label>
               <textarea
@@ -526,19 +416,7 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
                 />
               </div>
 
-              <div className="form-group">
-                <label htmlFor="volumetric_weight">Volumetric Weight (kg)</label>
-                <input
-                  type="number"
-                  id="volumetric_weight"
-                  name="volumetric_weight"
-                  value={formData.volumetric_weight}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.1"
-                  placeholder="0.0"
-                />
-              </div>
+              <div className="form-group" />
             </div>
 
             {(formData.package_type.includes('Multiple')) && (
@@ -571,55 +449,6 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
                 </div>
               </div>
             )}
-          </div>
-
-          <div className="form-section">
-            <h3>Pricing (Optional)</h3>
-            
-            <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="unit_price">Unit Price (₹)</label>
-                <input
-                  type="number"
-                  id="unit_price"
-                  name="unit_price"
-                  value={formData.unit_price}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="discount">Discount (%)</label>
-                <input
-                  type="number"
-                  id="discount"
-                  name="discount"
-                  value={formData.discount}
-                  onChange={handleInputChange}
-                  min="0"
-                  max="100"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="tax">Tax (%)</label>
-                <input
-                  type="number"
-                  id="tax"
-                  name="tax"
-                  value={formData.tax}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
           </div>
 
           <div className="form-section">

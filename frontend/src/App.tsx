@@ -12,7 +12,8 @@ import Dashboard from './pages/Dashboard';
 import Profile from './pages/Profile';
 import Orders from './pages/Orders';
 import OrderDetails from './pages/OrderDetails';
-import Packages from './pages/Packages';
+import AutofillPackage from './pages/AutofillPackage';
+import AutofillProduct from './pages/AutofillProduct';
 import NDR from './pages/NDR';
 import Support from './pages/Support';
 import TicketDetail from './pages/TicketDetail';
@@ -141,14 +142,24 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/packages" 
+            <Route
+              path="/autofill/package"
               element={
                 <ProtectedRoute>
-                  <Packages />
+                  <AutofillPackage />
                 </ProtectedRoute>
-              } 
+              }
             />
+            <Route
+              path="/autofill/product"
+              element={
+                <ProtectedRoute>
+                  <AutofillProduct />
+                </ProtectedRoute>
+              }
+            />
+            {/* Backward compatibility redirect */}
+            <Route path="/packages" element={<Navigate to="/autofill/package" replace />} />
             <Route 
               path="/ndr" 
               element={

@@ -47,6 +47,18 @@ interface Package {
   weight_per_box?: number;
 }
 
+interface SavedProduct {
+  _id: string;
+  name: string;
+  product_name: string;
+  unit_price: number;
+  tax: number;
+  discount: number;
+  hsn_code?: string;
+  category?: string;
+  sku?: string;
+}
+
 // Box entry for Multi-Package B2C
 interface BoxEntry {
   id: number;
@@ -69,7 +81,9 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
+  const [savedProducts, setSavedProducts] = useState<SavedProduct[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+  const [selectedSavedProduct, setSelectedSavedProduct] = useState<SavedProduct | null>(null);
   const [orderId, setOrderId] = useState<string>(generateOrderId());
   const [showManualAddress, setShowManualAddress] = useState(false);
   const [warehouseError, setWarehouseError] = useState('');
@@ -202,10 +216,11 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     shipping_mode: 'Surface'
   });
 
-  // Fetch warehouses and packages on component mount
+  // Fetch warehouses, packages, and saved products on component mount
   useEffect(() => {
     fetchWarehouses();
     fetchPackages();
+    fetchSavedProducts();
   }, []);
 
   // Filter warehouses based on search query
@@ -313,6 +328,22 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
       }
     } catch (error) {
       console.error('Error fetching packages:', error);
+    }
+  };
+
+  const fetchSavedProducts = async () => {
+    try {
+      const response = await fetch(`${environmentConfig.apiUrl}/products`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSavedProducts(data.data.products || []);
+      }
+    } catch (error) {
+      console.error('Error fetching saved products:', error);
     }
   };
 
@@ -566,19 +597,26 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
           dimensions: packageItem.dimensions,
           number_of_boxes: packageItem.number_of_boxes || 1,
           weight_per_box: packageItem.weight_per_box || packageItem.weight,
-          product_name: packageItem.product_name,
-          hsn_code: packageItem.hsn_code || '',
-          unit_price: packageItem.unit_price || 0,
-          discount: packageItem.discount || 0,
-          tax: packageItem.tax || 0
-        },
+        }
+      }));
+    }
+  };
+
+  const handleSavedProductSelect = (productId: string) => {
+    const product = savedProducts.find(p => p._id === productId);
+    if (product) {
+      setSelectedSavedProduct(product);
+      setFormData(prev => ({
+        ...prev,
         products: [{
           ...prev.products[0],
-          product_name: packageItem.product_name,
-          hsn_code: packageItem.hsn_code || '',
-          unit_price: packageItem.unit_price || 0,
-          discount: packageItem.discount || 0,
-          tax: packageItem.tax || 0
+          product_name: product.product_name,
+          hsn_code: product.hsn_code || '',
+          unit_price: product.unit_price || 0,
+          discount: product.discount || 0,
+          tax: product.tax || 0,
+          category: product.category || '',
+          sku: product.sku || '',
         }]
       }));
     }
@@ -1759,11 +1797,31 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                   </div>
                 ))}
 
-                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '10px', alignItems: 'center' }}>
                   <button type="button" onClick={handleAddProduct} className="add-product-btn">
                     + Add Product
                   </button>
                 </div>
+
+                {savedProducts.length > 0 && (
+                  <div className="autofill-section">
+                    <div className="or-separator">OR</div>
+                    <div className="form-group">
+                      <label>Select saved product to autofill</label>
+                      <select
+                        value={selectedSavedProduct?._id || ''}
+                        onChange={(e) => handleSavedProductSelect(e.target.value)}
+                      >
+                        <option value="">Select</option>
+                        {savedProducts.map(prod => (
+                          <option key={prod._id} value={prod._id}>
+                            {prod.name} - {prod.product_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
             </div>
 
             {/* Payment & Shipping Section */}
@@ -2099,7 +2157,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                 <div className="autofill-section">
                   <div className="or-separator">OR</div>
                   <div className="form-group">
-                    <label>Select package to autofill dimensions</label>
+                    <label>Select saved package to autofill dimensions</label>
                     <select
                       value={selectedPackage?._id || ''}
                       onChange={(e) => handlePackageSelect(e.target.value)}
