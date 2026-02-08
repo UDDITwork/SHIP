@@ -601,7 +601,7 @@
   right: 0;
   width: 25px;
   height: 25px;
-  background: radial-gradient(circle at 100% 100%, #FFFFFF 25px, transparent 25px);
+  background: radial-gradient(circle at 0% 100%, #FFFFFF 25px, transparent 25px);
   pointer-events: none;
   z-index: 2;
 }
@@ -614,7 +614,7 @@
   right: 0;
   width: 25px;
   height: 25px;
-  background: radial-gradient(circle at 100% 0%, #FFFFFF 25px, transparent 25px);
+  background: radial-gradient(circle at 0% 0%, #FFFFFF 25px, transparent 25px);
   pointer-events: none;
   z-index: 2;
 }
@@ -894,13 +894,13 @@
   .sidebar-item.active:not(.sidebar-child)::before {
     width: 20px;
     height: 20px;
-    background: radial-gradient(circle at 100% 100%, #FFFFFF 20px, transparent 20px);
+    background: radial-gradient(circle at 0% 100%, #FFFFFF 20px, transparent 20px);
   }
 
   .sidebar-item.active:not(.sidebar-child)::after {
     width: 20px;
     height: 20px;
-    background: radial-gradient(circle at 100% 0%, #FFFFFF 20px, transparent 20px);
+    background: radial-gradient(circle at 0% 0%, #FFFFFF 20px, transparent 20px);
   }
 
   .wallet-section {
