@@ -602,7 +602,7 @@
 .sidebar-active-curve {
   position: absolute;
   left: 250px; /* sidebar width */
-  width: 20px;
+  width: 12px;
   background: #FFFFFF;
   z-index: 11; /* above sidebar (10), above content bg */
   pointer-events: none;
@@ -614,10 +614,10 @@
   position: absolute;
   bottom: 100%;
   left: 0;
-  width: 20px;
-  height: 20px;
+  width: 12px;
+  height: 12px;
   background: #F68723;
-  border-bottom-right-radius: 20px;
+  border-bottom-right-radius: 12px;
 }
 
 /* Bottom concave curve — orange block below, with top-right corner rounded */
@@ -626,10 +626,10 @@
   position: absolute;
   top: 100%;
   left: 0;
-  width: 20px;
-  height: 20px;
+  width: 12px;
+  height: 12px;
   background: #F68723;
-  border-top-right-radius: 20px;
+  border-top-right-radius: 12px;
 }
 
 .sidebar-icon {
@@ -820,8 +820,8 @@
   /* Transparent background - let sidebar curves show through */
   background-color: transparent;
   padding: 20px 24px;
-  padding-left: 44px; /* Extra left padding for content (20px curve zone + 24px) */
-  margin-left: -20px; /* Pull under sidebar by curve width to create overlap zone */
+  padding-left: 36px; /* Extra left padding for content (12px curve zone + 24px) */
+  margin-left: -12px; /* Pull under sidebar by curve width to create overlap zone */
   position: relative;
   z-index: 1;
   border-left: none;
@@ -835,7 +835,7 @@
   content: '';
   position: absolute;
   top: 0;
-  left: 20px; /* Start after 20px curve zone */
+  left: 12px; /* Start after 12px curve zone */
   right: 0;
   bottom: 0;
   background-color: #FFFFFF;
@@ -918,21 +918,21 @@
 
   .sidebar-active-curve {
     left: 220px;
-    width: 18px;
+    width: 10px;
   }
 
   .sidebar-active-curve::before,
   .sidebar-active-curve::after {
-    width: 18px;
-    height: 18px;
+    width: 10px;
+    height: 10px;
   }
 
   .sidebar-active-curve::before {
-    border-bottom-right-radius: 18px;
+    border-bottom-right-radius: 10px;
   }
 
   .sidebar-active-curve::after {
-    border-top-right-radius: 18px;
+    border-top-right-radius: 10px;
   }
 
   .wallet-section {
