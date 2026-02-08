@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Wallet, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { apiService } from '../services/api';
@@ -104,6 +105,10 @@ const Billing: React.FC = () => {
 
   // Cache for transaction requests keyed by parameters
   const transactionCacheRef = useRef<TransactionCache>({});
+
+  // Stable refs for polling (avoids recreating intervals when callbacks change)
+  const fetchTransactionsRef = useRef<(opts?: { forceRefresh?: boolean }) => Promise<void>>(null as any);
+  const fetchWalletBalanceRef = useRef<() => Promise<void>>(null as any);
 
   const applyTransactionData = useCallback((data: CachedTransactionData) => {
     setTransactions(data.transactions);
@@ -344,32 +349,36 @@ const Billing: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    // Check for payment redirect first
-    handlePaymentRedirect();
+  // Keep refs in sync with latest callback versions
+  useEffect(() => { fetchTransactionsRef.current = fetchTransactions; }, [fetchTransactions]);
+  useEffect(() => { fetchWalletBalanceRef.current = fetchWalletBalance; }, [fetchWalletBalance]);
 
-    // Initial fetches
+  // One-time mount: initial fetch + payment redirect
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    handlePaymentRedirect();
     fetchWalletBalance();
     fetchTransactions({ forceRefresh: true });
+  }, []);
 
-    // Poll wallet balance from MongoDB every 60 seconds (no WebSocket dependency)
+  // Stable polling intervals — never recreated
+  useEffect(() => {
     const balanceInterval = setInterval(() => {
-      fetchWalletBalance();
+      fetchWalletBalanceRef.current();
     }, 60000);
 
-    // Poll transactions on a cadence independent of WebSockets
     const transactionInterval = setInterval(() => {
-      fetchTransactions({ forceRefresh: true });
+      fetchTransactionsRef.current({ forceRefresh: true });
     }, CACHE_TTL_MS);
 
     return () => {
       clearInterval(balanceInterval);
       clearInterval(transactionInterval);
     };
-  }, [fetchWalletBalance, fetchTransactions, handlePaymentRedirect]);
+  }, []);
 
+  // Refresh transactions when filters/page/tab change
   useEffect(() => {
-    // Refresh transactions when filters/page change or tab changes
     fetchTransactions();
   }, [fetchTransactions]);
 
@@ -408,7 +417,7 @@ const Billing: React.FC = () => {
         {/* Wallet Summary Cards */}
         <div className="wallet-summary-cards">
           <div className="summary-card current-balance">
-            <div className="summary-card-icon">💰</div>
+            <div className="summary-card-icon"><Wallet size={22} color="#002B59" /></div>
             <div className="summary-card-content">
               <div className="summary-card-label">Current Balance</div>
               <div className="summary-card-value green">₹{summary.current_balance.toFixed(2)}</div>
@@ -416,7 +425,7 @@ const Billing: React.FC = () => {
           </div>
 
           <div className="summary-card total-credits">
-            <div className="summary-card-icon">💵</div>
+            <div className="summary-card-icon"><ArrowDownCircle size={22} color="#002B59" /></div>
             <div className="summary-card-content">
               <div className="summary-card-label">Total Credit</div>
               <div className="summary-card-value">₹{summary.total_credits.toFixed(2)}</div>
@@ -424,7 +433,7 @@ const Billing: React.FC = () => {
           </div>
 
           <div className="summary-card total-debits">
-            <div className="summary-card-icon">💸</div>
+            <div className="summary-card-icon"><ArrowUpCircle size={22} color="#002B59" /></div>
             <div className="summary-card-content">
               <div className="summary-card-label">Total Debit</div>
               <div className="summary-card-value">₹{summary.total_debits.toFixed(2)}</div>
@@ -629,7 +638,7 @@ const Billing: React.FC = () => {
                   <tr>
                     <td colSpan={9} className="no-data-cell">
                       <div className="no-transactions">
-                        <div className="no-transactions-icon">💰</div>
+                        <div className="no-transactions-icon"><Wallet size={32} color="#002B59" /></div>
                         <h3>No transactions found</h3>
                         <p>Your wallet transaction history will appear here</p>
                       </div>
