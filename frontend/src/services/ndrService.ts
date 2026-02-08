@@ -15,13 +15,24 @@ export interface NDROrder {
     state: string;
     pincode: string;
   };
+  products?: Array<{
+    product_name: string;
+    quantity: number;
+    selling_price?: number;
+    sku?: string;
+  }>;
+  payment_info?: {
+    payment_mode: string;
+    total_amount?: number;
+    cod_amount?: number;
+  };
   ndr_info: {
     is_ndr: boolean;
     ndr_reason: string;
     nsl_code: string;
     ndr_attempts: number;
     last_ndr_date: string;
-    resolution_action?: string;
+    resolution_action?: string | null;
     next_attempt_date?: string;
     action_history: Array<{
       action: string;

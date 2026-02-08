@@ -298,6 +298,36 @@ class WebhookService {
                 order.delivered_date = new Date();
               }
 
+              // Handle NDR — populate Order.ndr_info when delivery fails
+              if (mappedStatus === 'ndr') {
+                if (!order.ndr_info) {
+                  order.ndr_info = {};
+                }
+                order.ndr_info.is_ndr = true;
+                order.ndr_info.ndr_attempts = (order.ndr_info.ndr_attempts || 0) + 1;
+                order.ndr_info.last_ndr_date = new Date();
+                order.ndr_info.ndr_reason = statusData?.Instructions || statusData?.Status || 'Delivery failed';
+                if (shipment.NSLCode) {
+                  order.ndr_info.nsl_code = shipment.NSLCode;
+                }
+                order.ndr_info.next_attempt_date = order.ndr_info.ndr_attempts < 3
+                  ? new Date(Date.now() + 24 * 60 * 60 * 1000) // next day
+                  : null;
+                // Reset resolution_action so it shows in "Action Required" tab
+                order.ndr_info.resolution_action = null;
+                if (!order.ndr_info.action_history) {
+                  order.ndr_info.action_history = [];
+                }
+
+                logger.info('📋 NDR detected — Order.ndr_info updated', {
+                  orderId: order.order_id,
+                  waybill,
+                  nslCode: shipment.NSLCode,
+                  attempts: order.ndr_info.ndr_attempts,
+                  reason: order.ndr_info.ndr_reason
+                });
+              }
+
               // Update Delhivery data
               if (!order.delhivery_data) {
                 order.delhivery_data = {};
@@ -374,6 +404,10 @@ class WebhookService {
                 } else if (mappedStatus === 'rto') {
                   trackingOrder.is_tracking_active = false;
                   trackingOrder.rto_at = new Date();
+                } else if (mappedStatus === 'ndr') {
+                  trackingOrder.ndr_attempts = (trackingOrder.ndr_attempts || 0) + 1;
+                  trackingOrder.last_ndr_date = new Date();
+                  trackingOrder.ndr_reason = statusData?.Instructions || statusData?.Status || 'Delivery failed';
                 } else if (mappedStatus === 'lost') {
                   trackingOrder.is_tracking_active = false;
                 }

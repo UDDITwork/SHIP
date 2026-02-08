@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { ndrService, NDROrder, NDRFilters, NDRStats, NDRActionData, BulkNDRActionData } from '../services/ndrService';
 import { formatDate } from '../utils/dateFormat';
@@ -8,13 +9,18 @@ import './NDR.css';
 type NDRStatus = 'action_required' | 'action_taken' | 'delivered' | 'rto' | 'all';
 
 const NDR: React.FC = () => {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<NDRStatus>('action_required');
   const [ndrOrders, setNdrOrders] = useState<NDROrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  // Dynamic date range — current month
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const dateRange = {
-    from: '28-05-2025',
-    to: '28-06-2025'
+    from: formatDate(firstDay.toISOString()),
+    to: formatDate(lastDay.toISOString())
   };
 
   // Tab counts
@@ -358,12 +364,21 @@ const NDR: React.FC = () => {
                     </td>
                     <td>
                       <div className="product-details-cell">
-                        Product Details
+                        {order.products && order.products.length > 0 ? (
+                          order.products.map((product, idx) => (
+                            <div key={idx}>
+                              <span className="product-name">{product.product_name}</span>
+                              {product.quantity > 1 && <span className="product-qty"> x{product.quantity}</span>}
+                            </div>
+                          ))
+                        ) : (
+                          <span className="no-data">-</span>
+                        )}
                       </div>
                     </td>
                     <td>
-                      <span className={`payment-mode cod`}>
-                        COD
+                      <span className={`payment-mode ${(order.payment_info?.payment_mode || 'COD').toLowerCase()}`}>
+                        {order.payment_info?.payment_mode || 'COD'}
                       </span>
                     </td>
                     <td>
@@ -421,8 +436,12 @@ const NDR: React.FC = () => {
                             )}
                           </>
                         )}
-                        <button className="action-btn view-btn" title="View Details">
-                          👁️ View
+                        <button
+                          className="action-btn view-btn"
+                          title="View Details"
+                          onClick={() => navigate(`/orders/${order._id}`)}
+                        >
+                          View
                         </button>
                       </div>
                     </td>

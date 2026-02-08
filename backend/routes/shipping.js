@@ -3,7 +3,7 @@ const router = express.Router();
 const { auth } = require('../middleware/auth');
 const delhiveryService = require('../services/delhiveryService');
 const Order = require('../models/Order');
-const NDR = require('../models/NDR');
+
 const { body, validationResult } = require('express-validator');
 const RateCardService = require('../services/rateCardService');
 const logger = require('../utils/logger');
@@ -779,12 +779,9 @@ router.post('/initiate-rto/:waybill',
                     comment: req.body.reason
                 });
 
-                const ndr = await NDR.findOne({ waybill: req.params.waybill });
-                if (ndr) {
-                    ndr.rto_initiated = true;
-                    ndr.rto_date = new Date();
-                    ndr.rto_reason = req.body.reason;
-                    await ndr.save();
+                // Update NDR info on the order (Order.ndr_info is the single source of truth)
+                if (order.ndr_info && order.ndr_info.is_ndr) {
+                    order.ndr_info.resolution_action = 'rto';
                 }
 
                 await order.save();

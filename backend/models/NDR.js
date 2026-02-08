@@ -1,3 +1,8 @@
+// NOTE: This standalone NDR model is NOT actively used.
+// The single source of truth for NDR data is Order.ndr_info (embedded in Order model).
+// All NDR routes, webhooks, and frontend read/write Order.ndr_info.
+// This model is kept for potential future use (customer comms, agent assignment, etc).
+
 const mongoose = require('mongoose');
 
 const ndrSchema = new mongoose.Schema({

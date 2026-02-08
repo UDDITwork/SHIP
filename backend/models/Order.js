@@ -427,14 +427,24 @@ const ndrSchema = new mongoose.Schema({
   ndr_reason: {
     type: String
   },
+  nsl_code: {
+    type: String
+  },
   next_attempt_date: {
     type: Date
   },
   resolution_action: {
     type: String,
-    enum: ['reattempt', 'rto', 'hold', 'delivered'],
-    default: 'reattempt'
-  }
+    enum: [null, 'reattempt', 'rto', 'hold', 'delivered'],
+    default: null
+  },
+  action_history: [{
+    action: { type: String },
+    timestamp: { type: Date, default: Date.now },
+    upl_id: { type: String },
+    status: { type: String },
+    remarks: { type: String }
+  }]
 }, { _id: false });
 
 // Main Order Schema

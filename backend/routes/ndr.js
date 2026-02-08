@@ -50,10 +50,12 @@ router.get('/', auth, [
     if (req.query.status && req.query.status !== 'all') {
       switch (req.query.status) {
         case 'action_required':
-          filterQuery['ndr_info.resolution_action'] = { $in: [null, 'reattempt'] };
+          // Orders where no action has been submitted yet
+          filterQuery['ndr_info.resolution_action'] = null;
           filterQuery.status = 'ndr';
           break;
         case 'action_taken':
+          // Orders where an action (reattempt/rto) was submitted to Delhivery
           filterQuery['ndr_info.resolution_action'] = { $ne: null };
           filterQuery.status = 'ndr';
           break;
@@ -443,7 +445,7 @@ router.get('/statistics/counts', auth, async (req, res) => {
       action_required: await Order.countDocuments({
         user_id: userId,
         'ndr_info.is_ndr': true,
-        'ndr_info.resolution_action': { $in: [null, 'reattempt'] },
+        'ndr_info.resolution_action': null,
         status: 'ndr'
       }),
       action_taken: await Order.countDocuments({

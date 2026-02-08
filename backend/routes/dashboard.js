@@ -2,7 +2,7 @@ const express = require('express');
 const moment = require('moment');
 const { auth } = require('../middleware/auth');
 const Order = require('../models/Order');
-const NDR = require('../models/NDR');
+
 const SupportTicket = require('../models/Support');
 const Transaction = require('../models/Transaction');
 const User = require('../models/User');
@@ -324,11 +324,29 @@ router.get('/ndr-status', auth, async (req, res) => {
       };
     }
 
-    const ndrStats = await NDR.aggregate([
-      { $match: { user_id: userId, ...dateFilter } },
+    // Query Order.ndr_info (single source of truth for NDR data)
+    const ndrDateFilter = {};
+    if (req.query.date_from && req.query.date_to) {
+      ndrDateFilter['ndr_info.last_ndr_date'] = {
+        $gte: moment(req.query.date_from).startOf('day').toDate(),
+        $lte: moment(req.query.date_to).endOf('day').toDate()
+      };
+    }
+
+    const ndrStats = await Order.aggregate([
+      {
+        $match: {
+          user_id: userId,
+          'ndr_info.is_ndr': true,
+          ...ndrDateFilter
+        }
+      },
       {
         $group: {
-          _id: '$ndr_status.current_status',
+          _id: {
+            status: '$status',
+            resolution_action: '$ndr_info.resolution_action'
+          },
           count: { $sum: 1 }
         }
       }
@@ -336,37 +354,23 @@ router.get('/ndr-status', auth, async (req, res) => {
 
     const ndrCounts = {
       total_ndr: 0,
-      new_reattempt: 0,
-      buyer_reattempt: 0,
+      action_required: 0,
+      action_taken: 0,
       ndr_delivered: 0,
-      ndr_undelivered: 0,
-      rto_transit: 0,
-      rto_delivered: 0
+      rto: 0
     };
 
     ndrStats.forEach(stat => {
-      switch (stat._id) {
-        case 'new_ndr':
-          ndrCounts.new_reattempt += stat.count;
-          break;
-        case 'reattempt_scheduled':
-        case 'customer_response_pending':
-          ndrCounts.buyer_reattempt += stat.count;
-          break;
-        case 'delivered':
-          ndrCounts.ndr_delivered += stat.count;
-          break;
-        case 'closed':
-          ndrCounts.ndr_undelivered += stat.count;
-          break;
-        case 'rto_in_transit':
-          ndrCounts.rto_transit += stat.count;
-          break;
-        case 'rto_delivered':
-          ndrCounts.rto_delivered += stat.count;
-          break;
-      }
       ndrCounts.total_ndr += stat.count;
+      if (stat._id.status === 'delivered') {
+        ndrCounts.ndr_delivered += stat.count;
+      } else if (stat._id.status === 'rto') {
+        ndrCounts.rto += stat.count;
+      } else if (stat._id.resolution_action === null) {
+        ndrCounts.action_required += stat.count;
+      } else {
+        ndrCounts.action_taken += stat.count;
+      }
     });
 
     const responseTime = Date.now() - startTime;
@@ -749,13 +753,14 @@ router.get('/recent-activity', auth, async (req, res) => {
     .select('order_id customer_info.buyer_name status created_at payment_info.order_value')
     .lean();
 
-    // Get recent NDRs
-    const recentNDRs = await NDR.find({
-      user_id: userId
+    // Get recent NDR orders (from Order.ndr_info — single source of truth)
+    const recentNDRs = await Order.find({
+      user_id: userId,
+      'ndr_info.is_ndr': true
     })
-    .sort({ created_at: -1 })
+    .sort({ 'ndr_info.last_ndr_date': -1 })
     .limit(limit)
-    .select('awb_number customer_info.name ndr_reason ndr_date ndr_status.current_status')
+    .select('order_id delhivery_data.waybill customer_info.buyer_name ndr_info.ndr_reason ndr_info.last_ndr_date ndr_info.resolution_action')
     .lean();
 
     // Get recent transactions
