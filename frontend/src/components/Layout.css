@@ -594,42 +594,42 @@
   box-shadow: none;
 }
 
-/* Concave curve overlay — rendered in .layout-body, outside sidebar overflow.
-   Creates the inverse-rounded-corner effect at the active item's right edge.
-   Technique: orange pseudo-elements with border-radius on the corner facing the
-   white content area. The rounded corner "scoops out" the orange, revealing the
-   white background behind and creating the classic concave / inverse-radius look. */
+/* Concave curve overlay — positioned at sidebar edge in .layout-body.
+   Anchor element for ::before/::after pseudo-elements that paint the
+   concave (inverse-radius) curves. Width is 0 — it's just a positioning
+   anchor. The curves overlay on top of the content area's white bg. */
 .sidebar-active-curve {
   position: absolute;
-  left: 250px; /* sidebar width */
-  width: 12px;
-  background: #FFFFFF;
-  z-index: 11; /* above sidebar (10), above content bg */
+  left: 250px; /* sidebar width — anchor at the sidebar/content boundary */
+  width: 0;
+  background: transparent;
+  z-index: 11; /* above sidebar (10) and content (1) */
   pointer-events: none;
 }
 
-/* Top concave curve — orange block above, with bottom-right corner rounded */
+/* Top concave curve — orange quarter-circle in the bottom-left quadrant.
+   Extends 25px right and 25px up from the pill's top-right corner.
+   Only the quarter-circle is colored; rest is transparent (no rods). */
 .sidebar-active-curve::before {
   content: '';
   position: absolute;
   bottom: 100%;
   left: 0;
-  width: 12px;
-  height: 12px;
-  background: #F68723;
-  border-bottom-right-radius: 12px;
+  width: 25px;
+  height: 25px;
+  background: radial-gradient(circle 25px at 0% 100%, #F68723 24px, transparent 25px);
 }
 
-/* Bottom concave curve — orange block below, with top-right corner rounded */
+/* Bottom concave curve — orange quarter-circle in the top-left quadrant.
+   Extends 25px right and 25px down from the pill's bottom-right corner. */
 .sidebar-active-curve::after {
   content: '';
   position: absolute;
   top: 100%;
   left: 0;
-  width: 12px;
-  height: 12px;
-  background: #F68723;
-  border-top-right-radius: 12px;
+  width: 25px;
+  height: 25px;
+  background: radial-gradient(circle 25px at 0% 0%, #F68723 24px, transparent 25px);
 }
 
 .sidebar-icon {
@@ -812,34 +812,22 @@
   filter: brightness(0) saturate(100%) invert(55%) sepia(95%) saturate(600%) hue-rotate(360deg) brightness(100%) !important;
 }
 
-/* Main Content */
+/* Main Content — no gap between sidebar and content.
+   White bg starts flush at sidebar edge. Concave curves overlay on top. */
 .layout-main {
   flex: 1;
   overflow-y: auto;
-  overflow-x: visible;
-  /* Transparent background - let sidebar curves show through */
-  background-color: transparent;
+  overflow-x: hidden;
+  background-color: #FFFFFF;
   padding: 20px 24px;
-  padding-left: 36px; /* Extra left padding for content (12px curve zone + 24px) */
-  margin-left: -12px; /* Pull under sidebar by curve width to create overlap zone */
+  padding-left: 32px; /* Clear the 25px curve zone + 7px breathing room */
+  margin-left: 0;
   position: relative;
   z-index: 1;
   border-left: none;
   min-height: 0;
   flex-basis: 0;
   max-height: 100%;
-}
-
-/* White background via pseudo-element, starting after curve zone */
-.layout-main::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 12px; /* Start after 12px curve zone */
-  right: 0;
-  bottom: 0;
-  background-color: #FFFFFF;
-  z-index: -1;
 }
 
 .content-wrapper {
@@ -918,21 +906,20 @@
 
   .sidebar-active-curve {
     left: 220px;
-    width: 10px;
   }
 
   .sidebar-active-curve::before,
   .sidebar-active-curve::after {
-    width: 10px;
-    height: 10px;
+    width: 20px;
+    height: 20px;
   }
 
   .sidebar-active-curve::before {
-    border-bottom-right-radius: 10px;
+    background: radial-gradient(circle 20px at 0% 100%, #F68723 19px, transparent 20px);
   }
 
   .sidebar-active-curve::after {
-    border-top-right-radius: 10px;
+    background: radial-gradient(circle 20px at 0% 0%, #F68723 19px, transparent 20px);
   }
 
   .wallet-section {
@@ -1015,11 +1002,7 @@
 
   .layout-main {
     padding: 16px;
-    margin-left: 0; /* No overlap on mobile — sidebar is fixed */
-  }
-
-  .layout-main::before {
-    left: 0; /* Full-width white background on mobile */
+    margin-left: 0;
   }
 
   .content-wrapper {
