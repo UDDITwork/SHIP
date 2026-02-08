@@ -601,7 +601,7 @@
 .sidebar-active-curve {
   position: absolute;
   left: 250px; /* sidebar width — anchor at the sidebar/content boundary */
-  width: 25px; /* White strip extends pill 25px into content area */
+  width: 35px; /* White strip extends pill 35px into content area */
   background: #FFFFFF; /* Merges seamlessly with pill and content */
   z-index: 11; /* above sidebar (10) and content (1) */
   pointer-events: none;
@@ -615,9 +615,9 @@
   position: absolute;
   bottom: 100%;
   left: 0;
-  width: 25px;
-  height: 25px;
-  background: radial-gradient(circle 25px at 0% 100%, #F68723 24px, transparent 25px);
+  width: 35px;
+  height: 35px;
+  background: radial-gradient(circle 35px at 0% 100%, #F68723 34px, transparent 35px);
 }
 
 /* Bottom concave curve — orange quarter-circle in the top-left quadrant.
@@ -627,9 +627,9 @@
   position: absolute;
   top: 100%;
   left: 0;
-  width: 25px;
-  height: 25px;
-  background: radial-gradient(circle 25px at 0% 0%, #F68723 24px, transparent 25px);
+  width: 35px;
+  height: 35px;
+  background: radial-gradient(circle 35px at 0% 0%, #F68723 34px, transparent 35px);
 }
 
 .sidebar-icon {
@@ -820,7 +820,7 @@
   overflow-x: hidden;
   background-color: #FFFFFF;
   padding: 20px 24px;
-  padding-left: 32px; /* Clear the 25px curve zone + 7px breathing room */
+  padding-left: 42px; /* Clear the 35px curve zone + 7px breathing room */
   margin-left: 0;
   position: relative;
   z-index: 1;
@@ -910,16 +910,16 @@
 
   .sidebar-active-curve::before,
   .sidebar-active-curve::after {
-    width: 20px;
-    height: 20px;
+    width: 28px;
+    height: 28px;
   }
 
   .sidebar-active-curve::before {
-    background: radial-gradient(circle 20px at 0% 100%, #F68723 19px, transparent 20px);
+    background: radial-gradient(circle 28px at 0% 100%, #F68723 27px, transparent 28px);
   }
 
   .sidebar-active-curve::after {
-    background: radial-gradient(circle 20px at 0% 0%, #F68723 19px, transparent 20px);
+    background: radial-gradient(circle 28px at 0% 0%, #F68723 27px, transparent 28px);
   }
 
   .wallet-section {
