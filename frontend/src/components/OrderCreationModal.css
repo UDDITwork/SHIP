@@ -836,6 +836,33 @@ select.error {
   border: 1px solid #e9ecef;
 }
 
+/* Per-product autofill dropdown */
+.product-autofill-select {
+  margin-bottom: 4px;
+}
+
+.product-autofill-select select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  font-size: 13px;
+  background: #f8f9fa;
+  color: #495057;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.product-autofill-select select:hover {
+  border-color: #002B59;
+}
+
+.product-autofill-select select:focus {
+  border-color: #002B59;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0, 43, 89, 0.1);
+}
+
 /* Buttons */
 .add-product-btn {
   background: #009EAF;

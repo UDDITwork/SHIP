@@ -83,7 +83,6 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
   const [packages, setPackages] = useState<Package[]>([]);
   const [savedProducts, setSavedProducts] = useState<SavedProduct[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
-  const [selectedSavedProduct, setSelectedSavedProduct] = useState<SavedProduct | null>(null);
   const [orderId, setOrderId] = useState<string>(generateOrderId());
   const [showManualAddress, setShowManualAddress] = useState(false);
   const [warehouseError, setWarehouseError] = useState('');
@@ -602,22 +601,26 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     }
   };
 
-  const handleSavedProductSelect = (productId: string) => {
+  const handleSavedProductFill = (index: number, productId: string) => {
+    if (!productId) return;
     const product = savedProducts.find(p => p._id === productId);
     if (product) {
-      setSelectedSavedProduct(product);
       setFormData(prev => ({
         ...prev,
-        products: [{
-          ...prev.products[0],
-          product_name: product.product_name,
-          hsn_code: product.hsn_code || '',
-          unit_price: product.unit_price || 0,
-          discount: product.discount || 0,
-          tax: product.tax || 0,
-          category: product.category || '',
-          sku: product.sku || '',
-        }]
+        products: prev.products.map((p, i) =>
+          i === index
+            ? {
+                ...p,
+                product_name: product.product_name,
+                hsn_code: product.hsn_code || '',
+                unit_price: product.unit_price || 0,
+                discount: product.discount || 0,
+                tax: product.tax || 0,
+                category: product.category || '',
+                sku: product.sku || '',
+              }
+            : p
+        )
       }));
     }
   };
@@ -1684,6 +1687,23 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                       )}
                     </div>
 
+                    {/* Saved product autofill dropdown — per product */}
+                    <div className="form-group product-autofill-select">
+                      <label>Select Saved Product</label>
+                      <select
+                        value=""
+                        onChange={(e) => handleSavedProductFill(index, e.target.value)}
+                      >
+                        <option value="">-- Select saved product to autofill --</option>
+                        {savedProducts.map(prod => (
+                          <option key={prod._id} value={prod._id}>
+                            {prod.name} - {prod.product_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="or-separator">OR</div>
+
                     <div className="form-row">
                       <div className="form-group">
                         <label>Product Name *</label>
@@ -1802,26 +1822,6 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     + Add Product
                   </button>
                 </div>
-
-                {savedProducts.length > 0 && (
-                  <div className="autofill-section">
-                    <div className="or-separator">OR</div>
-                    <div className="form-group">
-                      <label>Select saved product to autofill</label>
-                      <select
-                        value={selectedSavedProduct?._id || ''}
-                        onChange={(e) => handleSavedProductSelect(e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {savedProducts.map(prod => (
-                          <option key={prod._id} value={prod._id}>
-                            {prod.name} - {prod.product_name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
             </div>
 
             {/* Payment & Shipping Section */}
