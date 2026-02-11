@@ -38,9 +38,9 @@ const detectEnvironment = (): EnvironmentConfig => {
     // Production API URL priority: REACT_APP_PRODUCTION_API_URL > REACT_APP_API_URL > default
     apiUrl = process.env.REACT_APP_PRODUCTION_API_URL ||
              process.env.REACT_APP_API_URL ||
-             'https://ship-389896580103.asia-south1.run.app/api';
+             'https://shipsarthisolutions-751713877703.europe-west1.run.app/api';
     // Production WebSocket URL
-    wsUrl = process.env.REACT_APP_WS_URL || 'wss://ship-389896580103.asia-south1.run.app';
+    wsUrl = process.env.REACT_APP_WS_URL || 'wss://shipsarthisolutions-751713877703.europe-west1.run.app';
   } else {
     // Development API URL priority: REACT_APP_API_URL > default
     apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
