@@ -576,47 +576,60 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-/* ACTIVE STATE - WHITE PILL WITH ROUNDED LEFT CORNERS
-   Concave curves rendered via ::before/::after pseudo-elements */
+/* ACTIVE STATE - CREAM PILL WITH EXACT FIGMA SHAPE
+   Uses SVG clip-path for precise concave curves */
 .sidebar-item.active {
-  background-color: #FFFFFF;
+  background-color: #FCE1C8; /* Cream color from Figma */
   color: #F68723 !important;
   font-weight: 600;
   margin-left: 0;
   padding-left: 36px;
-  margin-right: 0;
+  margin-right: -42px; /* Extend 42px into content area */
   position: relative;
-  z-index: 2;
+  z-index: 100; /* Above content area */
   border: none;
   outline: none;
-  border-radius: 37px 0 0 37px;
+  /* Use SVG clip-path for exact Figma shape */
+  clip-path: url(#sidebar-active-shape);
   box-shadow: none;
 }
 
-/* Top concave curve — white quarter-circle merging pill into content area */
-.sidebar-item.active:not(.sidebar-child)::before {
-  content: '';
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  width: 25px;
-  height: 25px;
-  background: radial-gradient(circle at 0% 100%, #FFFFFF 25px, transparent 25px);
-  pointer-events: none;
-  z-index: 2;
-}
+/* SVG clip-path definition (add to HTML or inline) */
+/* This creates the exact shape from Figma Component 3/4:
+   - Main pill: 186px with 37px left radius
+   - Extension: 42px with concave cubic bezier curves */
 
-/* Bottom concave curve — mirrors top curve below the active pill */
-.sidebar-item.active:not(.sidebar-child)::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  right: 0;
-  width: 25px;
-  height: 25px;
-  background: radial-gradient(circle at 0% 0%, #FFFFFF 25px, transparent 25px);
-  pointer-events: none;
-  z-index: 2;
+/* Fallback for browsers without clip-path support */
+@supports not (clip-path: url(#sidebar-active-shape)) {
+  .sidebar-item.active {
+    border-radius: 37px 0 0 37px;
+    margin-right: 0;
+  }
+
+  /* Fallback concave curves using radial gradients */
+  .sidebar-item.active:not(.sidebar-child)::before {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    right: 0;
+    width: 37px;
+    height: 37px;
+    background: radial-gradient(circle at 0% 100%, transparent 0, transparent 37px, #FCE1C8 37px);
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .sidebar-item.active:not(.sidebar-child)::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 0;
+    width: 37px;
+    height: 37px;
+    background: radial-gradient(circle at 0% 0%, transparent 0, transparent 37px, #FCE1C8 37px);
+    pointer-events: none;
+    z-index: 2;
+  }
 }
 
 .sidebar-icon {
@@ -799,15 +812,14 @@
   filter: brightness(0) saturate(100%) invert(55%) sepia(95%) saturate(600%) hue-rotate(360deg) brightness(100%) !important;
 }
 
-/* Main Content — no gap between sidebar and content.
-   White bg starts flush at sidebar edge. Concave curves overlay on top. */
+/* Main Content — accommodates 42px active tab extension */
 .layout-main {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   background-color: #FFFFFF;
   padding: 20px 24px;
-  padding-left: 24px;
+  padding-left: 66px; /* 24px base + 42px for active tab extension */
   margin-left: 0;
   position: relative;
   z-index: 1;

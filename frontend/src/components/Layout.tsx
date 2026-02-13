@@ -517,6 +517,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="layout-container">
+      {/* SVG Clip Path Definition for Active Sidebar Item - Exact Figma Shape */}
+      <svg width="0" height="0" style={{ position: 'absolute' }}>
+        <defs>
+          <clipPath id="sidebar-active-shape" clipPathUnits="userSpaceOnUse">
+            {/* Main rectangle with 37px left radius (186px × 74px) */}
+            <path d="M 0 37 C 0 16.5655 16.5655 0 37 0 H 186 V 74 H 37 C 16.5655 74 0 57.4345 0 37 Z" />
+            {/* Extension with concave curves (42px × 74px from x=186) */}
+            <path d="M 228 74 C 228 63.782 221.435 50 191 50 H 186 V 24 H 191 C 221.435 24 228 10.218 228 0 V 74 Z" />
+          </clipPath>
+        </defs>
+      </svg>
+
       {/* Top Header */}
       <header className="layout-header">
         <div className="header-left">
