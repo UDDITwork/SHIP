@@ -116,7 +116,7 @@ router.get('/profile', auth, async (req, res) => {
 // Update user profile
 router.put('/profile', auth, async (req, res) => {
   try {
-    const { company_name, your_name, phone_number, gstin, address } = req.body;
+    const { company_name, your_name, phone_number, gstin, address, bank_details } = req.body;
     
     // Use _id instead of id for better compatibility
     const userId = req.user._id || req.user.id;
@@ -127,13 +127,57 @@ router.put('/profile', auth, async (req, res) => {
       body: req.body,
       timestamp: new Date().toISOString()
     });
-    
-    const updateData = {};
-    if (company_name) updateData.company_name = company_name;
-    if (your_name) updateData.your_name = your_name;
-    if (phone_number) updateData.phone_number = phone_number;
-    if (gstin) updateData.gstin = gstin;
-    if (address) updateData.address = address;
+
+    // Fetch user to check KYC status
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      logger.warn('❌ USER NOT FOUND', { userId });
+      return res.status(404).json({
+        status: 'error',
+        message: 'User not found'
+      });
+    }
+
+    // KYC field locking - prevent editing if KYC is verified
+    let updateData = {};
+    if (existingUser.kyc_status?.status === 'verified') {
+      // These fields are locked post-KYC verification
+      const lockedFields = ['company_name', 'your_name', 'gstin', 'phone_number', 'email', 'bank_details'];
+      const attemptedChanges = [];
+
+      if (company_name && company_name !== existingUser.company_name) attemptedChanges.push('company_name');
+      if (your_name && your_name !== existingUser.your_name) attemptedChanges.push('your_name');
+      if (gstin && gstin !== existingUser.gstin) attemptedChanges.push('gstin');
+      if (phone_number && phone_number !== existingUser.phone_number) attemptedChanges.push('phone_number');
+
+      // Deep equality check for bank_details object
+      if (bank_details && JSON.stringify(bank_details) !== JSON.stringify(existingUser.bank_details || {})) {
+        attemptedChanges.push('bank_details');
+      }
+
+      if (attemptedChanges.length > 0) {
+        logger.warn('🔒 KYC VERIFIED - FIELD UPDATE BLOCKED', {
+          userId,
+          attemptedChanges
+        });
+        return res.status(403).json({
+          success: false,
+          message: 'Your KYC has been approved. Profile details cannot be edited. Please contact admin or raise a support ticket.',
+          locked_fields: attemptedChanges
+        });
+      }
+
+      // Only address updates allowed for verified users
+      if (address) updateData.address = address;
+    } else {
+      // KYC not verified - allow all updates
+      if (company_name) updateData.company_name = company_name;
+      if (your_name) updateData.your_name = your_name;
+      if (phone_number) updateData.phone_number = phone_number;
+      if (gstin) updateData.gstin = gstin;
+      if (address) updateData.address = address;
+      if (bank_details) updateData.bank_details = bank_details;
+    }
     
     logger.debug('🔄 UPDATE DATA TO SAVE', updateData);
 
@@ -144,10 +188,10 @@ router.put('/profile', auth, async (req, res) => {
     ).select('-password -api_details.private_key');
 
     if (!user) {
-      logger.warn('❌ USER NOT FOUND', { userId });
+      logger.warn('❌ USER NOT FOUND AFTER UPDATE', { userId });
       return res.status(404).json({
         status: 'error',
-        message: 'User not found'
+        message: 'User not found or was deleted'
       });
     }
 

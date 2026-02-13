@@ -4,7 +4,16 @@ const bcrypt = require('bcryptjs');
 const documentSchema = new mongoose.Schema({
   document_type: {
     type: String,
-    enum: ['gst_certificate', 'photo_selfie', 'pan_card', 'aadhaar_card'],
+    enum: [
+      'gst_certificate',  // GST Certificate / Company Incorporated Document
+      'photo',            // Photo / Selfie (new format)
+      'photo_selfie',     // Photo / Selfie (backward compatibility)
+      'pan',              // PAN Card (new format)
+      'pan_card',         // PAN Card (backward compatibility)
+      'aadhar',           // Aadhar Card (new format)
+      'aadhaar_card',     // Aadhar Card (backward compatibility - note double 'a')
+      'bank_statement'    // Cheque / Bank Statement
+    ],
     required: true
   },
   document_status: {
@@ -155,7 +164,35 @@ const userSchema = new mongoose.Schema({
       default: 'pending'
     },
     verified_date: Date,
-    verification_notes: String
+    verification_notes: String,
+    // Staff who approved/rejected KYC (for audit trail)
+    verified_by_staff_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Staff',
+      default: null
+    },
+    verified_by_staff_name: {
+      type: String,
+      default: null
+    },
+    // Verification history (track all KYC actions)
+    verification_history: [{
+      action: {
+        type: String,
+        enum: ['verified', 'rejected', 'note_sent'],
+        required: true
+      },
+      staff_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Staff'
+      },
+      staff_name: String,
+      notes: String,
+      timestamp: {
+        type: Date,
+        default: Date.now
+      }
+    }]
   },
 
   // API Configuration
@@ -175,6 +212,34 @@ const userSchema = new mongoose.Schema({
 
   // Document Management
   documents: [documentSchema],
+
+  // Profile Field Locking (KYC-based restrictions)
+  profile_locked_fields: {
+    company_name: {
+      type: Boolean,
+      default: false
+    },
+    your_name: {
+      type: Boolean,
+      default: false
+    },
+    gstin: {
+      type: Boolean,
+      default: false
+    },
+    phone_number: {
+      type: Boolean,
+      default: false
+    },
+    email: {
+      type: Boolean,
+      default: false
+    },
+    bank_details: {
+      type: Boolean,
+      default: false
+    }
+  },
 
   // Account Status
   account_status: {
@@ -315,6 +380,14 @@ userSchema.index({ phone_number: 1 });
 userSchema.index({ client_id: 1 });
 userSchema.index({ 'api_details.public_key': 1 });
 userSchema.index({ user_category: 1 });
+
+// Virtual Fields
+// can_create_shipments: Check if user can create shipments based on KYC status and account status
+userSchema.virtual('can_create_shipments').get(function() {
+  // User cannot create shipments if KYC is rejected or account is not active
+  return this.kyc_status.status !== 'rejected' &&
+         (this.account_status === 'active' || this.account_status === 'pending_verification');
+});
 
 // Pre-save middleware to generate client_id
 userSchema.pre('save', async function(next) {

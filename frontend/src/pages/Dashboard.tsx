@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
-import { DashboardData } from '../services/userService';
+import { DashboardData, User } from '../services/userService';
 import { walletService, WalletBalance } from '../services/walletService';
 import { apiService } from '../services/api';
 import { DataCache } from '../utils/dataCache';
 import { formatDate } from '../utils/dateFormat';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Pie } from 'react-chartjs-2';
+import { AlertTriangle } from 'lucide-react';
 import CartIcon from '../dashboardvectors/Cart.svg';
 import WalletIcon from '../dashboardvectors/Wallet.svg';
 import TruckIcon from '../dashboardvectors/Truck.svg';
@@ -106,6 +107,7 @@ const Dashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [walletBalance, setWalletBalance] = useState<WalletBalance>({ balance: 0, currency: 'INR' });
   const [isBalanceUpdating, setIsBalanceUpdating] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
   
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const dateIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -304,9 +306,24 @@ const Dashboard: React.FC = () => {
       setWalletBalance(cachedBalance);
     }
 
+    // Load user from cache or localStorage for KYC status check
+    const cachedUser = DataCache.get<User>('userProfile');
+    if (cachedUser) {
+      setUser(cachedUser);
+    } else {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error('Failed to parse stored user:', e);
+        }
+      }
+    }
+
     // Initial data fetch - show cached data immediately if available
     fetchAllDashboardData(true, defaultRange);
-    
+
     // Fetch wallet balance immediately on mount (direct from MongoDB, no WebSocket)
     fetchWalletBalanceFromMongoDB();
 
@@ -485,6 +502,68 @@ const Dashboard: React.FC = () => {
         {isDateFiltering && (
           <div className="date-filter-loading">
             <div className="date-filter-loading-bar"></div>
+          </div>
+        )}
+
+        {/* KYC Rejected Alert Banner */}
+        {user?.kyc_status?.status === 'rejected' && (
+          <div style={{
+            backgroundColor: '#fef2f2',
+            border: '1px solid #dc2626',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '20px',
+            display: 'flex',
+            gap: '12px',
+            alignItems: 'flex-start'
+          }}>
+            <AlertTriangle size={24} color="#dc2626" style={{ flexShrink: 0, marginTop: '2px' }} />
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: 600, color: '#991b1b' }}>
+                Your KYC has been rejected
+              </h4>
+              <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#7f1d1d' }}>
+                You cannot create shipments until KYC is verified.
+                {user.kyc_status.verification_notes && (
+                  <>
+                    <br />
+                    <strong>Reason:</strong> {user.kyc_status.verification_notes}
+                  </>
+                )}
+              </p>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
+                <button
+                  onClick={() => navigate('/account-settings')}
+                  style={{
+                    fontSize: '14px',
+                    backgroundColor: '#dc2626',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                >
+                  Re-upload Documents
+                </button>
+                <button
+                  onClick={() => navigate('/support')}
+                  style={{
+                    fontSize: '14px',
+                    backgroundColor: 'white',
+                    color: '#dc2626',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #dc2626',
+                    cursor: 'pointer',
+                    fontWeight: 600
+                  }}
+                >
+                  Contact Support
+                </button>
+              </div>
+            </div>
           </div>
         )}
 

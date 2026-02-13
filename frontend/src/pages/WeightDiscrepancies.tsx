@@ -70,6 +70,11 @@ const WeightDiscrepancies: React.FC = () => {
   const [raisingIssue, setRaisingIssue] = useState<string | null>(null);
   const [ticketMessage, setTicketMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Dispute modal state
+  const [showDisputeModal, setShowDisputeModal] = useState(false);
+  const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<WeightDiscrepancy | null>(null);
+  const [disputeDescription, setDisputeDescription] = useState('');
+
   const fetchDiscrepancies = useCallback(async () => {
     setLoading(true);
     try {
@@ -115,7 +120,29 @@ const WeightDiscrepancies: React.FC = () => {
 
   const formatDate = (dateString: string) => formatDateSmart(dateString);
 
-  const handleRaiseDispute = async (discrepancy: WeightDiscrepancy) => {
+  const openDisputeModal = (discrepancy: WeightDiscrepancy) => {
+    setSelectedDiscrepancy(discrepancy);
+    setDisputeDescription('');
+    setShowDisputeModal(true);
+  };
+
+  const closeDisputeModal = () => {
+    setShowDisputeModal(false);
+    setSelectedDiscrepancy(null);
+    setDisputeDescription('');
+  };
+
+  const handleRaiseDispute = async () => {
+    if (!selectedDiscrepancy) return;
+
+    // Validate description length
+    if (!disputeDescription || disputeDescription.trim().length < 10) {
+      setTicketMessage({ type: 'error', text: 'Please provide a detailed description (minimum 10 characters)' });
+      setTimeout(() => setTicketMessage(null), 5000);
+      return;
+    }
+
+    const discrepancy = selectedDiscrepancy;
     setRaisingIssue(discrepancy._id);
     setTicketMessage(null);
 
@@ -134,7 +161,7 @@ const WeightDiscrepancies: React.FC = () => {
         throw new Error(error.message || 'Failed to raise dispute');
       }
 
-      // Then create the support ticket as before
+      // Then create the support ticket with user-provided description
       const description = `Weight Discrepancy Dispute for AWB: ${discrepancy.awb_number}
 
 Order ID: ${discrepancy.order_id?.order_id || 'N/A'}
@@ -150,7 +177,8 @@ Weight Details:
 Deduction Amount: ₹${discrepancy.deduction_amount.toFixed(2)}
 Transaction ID: ${discrepancy.transaction_id?.transaction_id || 'N/A'}
 
-I would like to dispute this weight discrepancy and the associated deduction. Please review and resolve this issue.`;
+Dispute Reason:
+${disputeDescription.trim()}`;
 
       await ticketService.createTicket({
         category: 'shipment_dispute',
@@ -159,6 +187,7 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
       });
 
       setTicketMessage({ type: 'success', text: 'Dispute raised successfully! Ticket created and sent to admin.' });
+      closeDisputeModal(); // Close modal on success
       fetchDiscrepancies(); // Refresh to show updated status
 
       // Clear message after 5 seconds
@@ -184,7 +213,7 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
       return (
         <button
           className="raise-issue-btn"
-          onClick={() => handleRaiseDispute(discrepancy)}
+          onClick={() => openDisputeModal(discrepancy)}
           disabled={raisingIssue === discrepancy._id}
           title="Raise dispute for this weight discrepancy"
         >
@@ -395,6 +424,61 @@ I would like to dispute this weight discrepancy and the associated deduction. Pl
               >
                 →
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Dispute Modal */}
+        {showDisputeModal && selectedDiscrepancy && (
+          <div className="modal-overlay" onClick={closeDisputeModal}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+              <div className="modal-header">
+                <h2>Raise Weight Discrepancy Dispute</h2>
+                <button className="modal-close" onClick={closeDisputeModal}>×</button>
+              </div>
+
+              <div className="modal-body">
+                <div className="dispute-info">
+                  <p><strong>AWB:</strong> {selectedDiscrepancy.awb_number}</p>
+                  <p><strong>Order ID:</strong> {selectedDiscrepancy.order_id?.order_id || 'N/A'}</p>
+                  <p><strong>Weight Discrepancy:</strong> {selectedDiscrepancy.weight_discrepancy.toFixed(2)} g</p>
+                  <p><strong>Deduction:</strong> ₹{selectedDiscrepancy.deduction_amount.toFixed(2)}</p>
+                </div>
+
+                <div className="form-group">
+                  <label htmlFor="dispute-description">
+                    Dispute Description <span className="required">*</span>
+                  </label>
+                  <textarea
+                    id="dispute-description"
+                    value={disputeDescription}
+                    onChange={(e) => setDisputeDescription(e.target.value)}
+                    placeholder="Please provide a detailed explanation of why you are disputing this weight discrepancy. Include any evidence or information that supports your claim."
+                    className={`dispute-textarea ${disputeDescription.trim().length > 0 && disputeDescription.trim().length < 10 ? 'error' : ''}`}
+                    rows={5}
+                  />
+                  <div className="char-counter">
+                    <span className={disputeDescription.trim().length < 10 ? 'text-danger' : 'text-success'}>
+                      {disputeDescription.trim().length} characters
+                    </span>
+                    <span className="text-muted"> (minimum 10 required)</span>
+                  </div>
+                  <p className="help-text">
+                    You can attach images/videos via the support ticket that will be automatically created.
+                  </p>
+                </div>
+              </div>
+
+              <div className="modal-footer">
+                <button className="btn-secondary" onClick={closeDisputeModal}>Cancel</button>
+                <button
+                  className="btn-primary"
+                  onClick={handleRaiseDispute}
+                  disabled={raisingIssue !== null || disputeDescription.trim().length < 10}
+                >
+                  {raisingIssue ? 'Submitting...' : 'Submit Dispute'}
+                </button>
+              </div>
             </div>
           </div>
         )}

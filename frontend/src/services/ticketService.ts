@@ -8,7 +8,7 @@ export interface Ticket {
   description?: string;
   awb_numbers?: string[];
   comment?: string;
-  status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed' | 'escalated';
+  status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'escalated';
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   attachments?: Array<{
     _id?: string;
@@ -46,7 +46,6 @@ export interface Ticket {
 export interface TicketStatusCounts {
   open: number;
   in_progress: number;
-  waiting_customer: number;
   resolved: number;
   closed: number;
   escalated: number;
@@ -79,7 +78,7 @@ export interface TicketStats {
 }
 
 export interface TicketFilters {
-  status?: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed' | 'escalated' | 'all';
+  status?: 'open' | 'in_progress' | 'resolved' | 'closed' | 'escalated' | 'all';
   category?: string;
   search?: string;
   page?: number;

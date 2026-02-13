@@ -106,8 +106,6 @@ const AdminTicketModal: React.FC<AdminTicketModalProps> = ({
         return <AlertCircle className="w-4 h-4 text-blue-500" />;
       case 'in_progress':
         return <Clock className="w-4 h-4 text-yellow-500" />;
-      case 'waiting_customer':
-        return <Clock className="w-4 h-4 text-orange-500" />;
       case 'resolved':
         return <CheckCircle className="w-4 h-4 text-green-500" />;
       case 'closed':
@@ -125,8 +123,6 @@ const AdminTicketModal: React.FC<AdminTicketModalProps> = ({
         return 'bg-blue-100 text-blue-800';
       case 'in_progress':
         return 'bg-yellow-100 text-yellow-800';
-      case 'waiting_customer':
-        return 'bg-orange-100 text-orange-800';
       case 'resolved':
         return 'bg-green-100 text-green-800';
       case 'closed':

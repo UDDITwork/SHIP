@@ -299,6 +299,7 @@ app.use('/api/webhooks', require('./routes/webhooks'));
 app.use('/api/enquiry', require('./routes/enquiry'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/weight-discrepancies', require('./routes/weightDiscrepancies'));
+app.use('/api/notifications', require('./routes/notifications'));
 
 // Error Handling Middleware
 app.use((err, req, res, next) => {

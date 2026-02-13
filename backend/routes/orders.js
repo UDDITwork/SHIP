@@ -2104,7 +2104,7 @@ router.post('/', auth, [
     let warehouse = null;
     let pickupAddress = {};
 
-    if (req.body.pickup_address.warehouse_id) {
+    if (req.body.pickup_address?.warehouse_id) {
       // Use existing warehouse
       warehouse = await Warehouse.findOne({
         _id: req.body.pickup_address.warehouse_id,
@@ -2152,6 +2152,13 @@ router.post('/', auth, [
       };
     } else {
       // Use manually entered warehouse details
+      if (!req.body.pickup_address) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Pickup address information is required'
+        });
+      }
+
       // Validate manual address fields
       const requiredManualFields = ['name', 'full_address', 'city', 'state', 'pincode', 'phone'];
       const missingManualFields = requiredManualFields.filter(field => {
@@ -2252,7 +2259,9 @@ router.post('/', auth, [
         weight: req.body.package_info.weight,
         dimensions: req.body.package_info.dimensions,
         number_of_boxes: req.body.package_info.number_of_boxes || 1,
-        weight_per_box: req.body.package_info.weight_per_box,
+        weight_per_box: (req.body.package_info.weight_per_box && req.body.package_info.weight_per_box > 0)
+          ? req.body.package_info.weight_per_box
+          : (req.body.package_info.weight / (req.body.package_info.number_of_boxes || 1)),
         rov_type: req.body.package_info.rov_type,
         rov_owner: req.body.package_info.rov_owner,
         weight_photo_url: req.body.package_info.weight_photo_url,
@@ -2778,14 +2787,63 @@ router.post('/', auth, [
   } catch (error) {
     console.log('💥 ORDER CREATION ERROR', {
       orderId,
-      error: error.message,
+      errorName: error.name,
+      errorMessage: error.message,
+      errorCode: error.code,
+      validationErrors: error.errors,
+      keyPattern: error.keyPattern,
+      keyValue: error.keyValue,
       stack: error.stack,
       timestamp: new Date().toISOString()
     });
+
+    // Handle specific error types with detailed messages
+    let statusCode = 500;
+    let errorMessage = 'Server error creating order';
+    let errorDetails = {};
+
+    if (error.name === 'ValidationError') {
+      statusCode = 400;
+      errorMessage = 'Order validation failed';
+      errorDetails = {
+        validationErrors: Object.keys(error.errors).map(field => ({
+          field,
+          message: error.errors[field].message,
+          value: error.errors[field].value,
+          kind: error.errors[field].kind
+        }))
+      };
+    } else if (error.code === 11000) {
+      statusCode = 409;
+      errorMessage = 'Duplicate order detected - this order may already exist';
+      const field = Object.keys(error.keyPattern || {})[0];
+      errorDetails = {
+        duplicateField: field,
+        duplicateValue: error.keyValue?.[field],
+        hint: 'An order with this identifier already exists in the database'
+      };
+    } else if (error.name === 'MongoError' || error.name === 'MongoServerError') {
+      statusCode = 503;
+      errorMessage = 'Database error occurred';
+      errorDetails = {
+        code: error.code,
+        codeName: error.codeName
+      };
+    } else if (error.message && error.message.includes('Cast to')) {
+      statusCode = 400;
+      errorMessage = 'Invalid data type in order fields';
+      errorDetails = {
+        hint: 'One or more fields have incorrect data types',
+        error: error.message
+      };
+    }
+
     console.error('Create order error:', error);
-    res.status(500).json({
+    res.status(statusCode).json({
       status: 'error',
-      message: 'Server error creating order'
+      message: errorMessage,
+      error: error.message,
+      details: errorDetails
     });
   }
 });

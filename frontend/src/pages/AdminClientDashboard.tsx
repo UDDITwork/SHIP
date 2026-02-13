@@ -112,6 +112,9 @@ const AdminClientDashboard: React.FC = () => {
           </div>
         </div>
         <div className="header-right">
+          <button className="btn-primary" onClick={() => navigate(`/admin/clients/${clientId}/kyc`)}>
+            View KYC Documents
+          </button>
           <button className="btn-primary" onClick={() => navigate(`/admin/clients/${clientId}/tickets`)}>
             View Tickets
           </button>

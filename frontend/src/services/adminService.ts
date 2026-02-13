@@ -185,7 +185,6 @@ export interface ClientDashboardData {
   tickets: {
     open: number;
     in_progress: number;
-    waiting_customer: number;
     escalated: number;
     resolved: number;
     closed: number;
@@ -358,7 +357,7 @@ export interface AdminTicket {
   category: string;
   subject: string;
   description: string;
-  status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed' | 'escalated';
+  status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'escalated';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
   updated_at: string;
@@ -440,7 +439,6 @@ export interface AdminTicketSummaryTotals {
   all: number;
   open: number;
   in_progress: number;
-  waiting_customer: number;
   resolved: number;
   closed: number;
   escalated: number;
@@ -464,7 +462,6 @@ export interface AdminTicketSummaryClient {
   statusCounts: {
     open: number;
     in_progress: number;
-    waiting_customer: number;
     resolved: number;
     closed: number;
     escalated: number;
@@ -504,6 +501,38 @@ export interface AdminTicketUpdateResponse {
   success: boolean;
   message: string;
   data?: AdminTicketUpdateData;
+}
+
+export interface TicketMasterFilters {
+  page?: number;
+  limit?: number;
+  status?: string;
+  priority?: string;
+  date_from?: string;
+  date_to?: string;
+  search?: string;
+}
+
+export interface PrioritySummary {
+  urgent: { count: number; sla_breached: number };
+  high: { count: number; sla_breached: number };
+  medium: { count: number; sla_breached: number };
+  low: { count: number; sla_breached: number };
+}
+
+export interface TicketMasterResponse {
+  success: boolean;
+  data: {
+    tickets: AdminTicket[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalTickets: number;
+      hasNext: boolean;
+      hasPrev: boolean;
+    };
+    priority_summary: PrioritySummary;
+  };
 }
 
 export interface AdminDashboardResponse {
@@ -823,6 +852,115 @@ class AdminService {
     return response;
   }
 
+  // KYC Management Methods
+  async getAllKYCDocuments(clientId: string): Promise<{
+    success: boolean;
+    data: {
+      client: {
+        _id: string;
+        client_id: string;
+        company_name: string;
+        your_name: string;
+        email: string;
+        phone_number: string;
+        kyc_status: {
+          status: 'pending' | 'verified' | 'rejected';
+          verified_date?: string;
+          verification_notes?: string;
+          verified_by_staff_name?: string;
+          verification_history: Array<{
+            action: 'verified' | 'rejected' | 'note_sent';
+            staff_id?: string;
+            staff_name?: string;
+            notes?: string;
+            timestamp: string;
+          }>;
+        };
+      };
+      documents: Array<{
+        _id?: string;
+        document_type: string;
+        document_status: string;
+        file_url: string;
+        upload_date: string;
+        verification_date?: string;
+        mimetype?: string;
+        original_filename?: string;
+      }>;
+    };
+  }> {
+    const response = await apiService.get<{
+      success: boolean;
+      data: {
+        client: {
+          _id: string;
+          client_id: string;
+          company_name: string;
+          your_name: string;
+          email: string;
+          phone_number: string;
+          kyc_status: {
+            status: 'pending' | 'verified' | 'rejected';
+            verified_date?: string;
+            verification_notes?: string;
+            verified_by_staff_name?: string;
+            verification_history: Array<{
+              action: 'verified' | 'rejected' | 'note_sent';
+              staff_id?: string;
+              staff_name?: string;
+              notes?: string;
+              timestamp: string;
+            }>;
+          };
+        };
+        documents: Array<{
+          _id?: string;
+          document_type: string;
+          document_status: string;
+          file_url: string;
+          upload_date: string;
+          verification_date?: string;
+          mimetype?: string;
+          original_filename?: string;
+        }>;
+      };
+    }>(`/admin/clients/${clientId}/kyc/documents`, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  async verifyKYC(clientId: string, action: 'verify' | 'reject', notes: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    const response = await apiService.patch<{
+      success: boolean;
+      message: string;
+    }>(`/admin/clients/${clientId}/kyc/verify`, {
+      action,
+      notes
+    }, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  async sendKYCNotes(clientId: string, notes: string): Promise<{
+    success: boolean;
+    message: string;
+  }> {
+    const response = await apiService.post<{
+      success: boolean;
+      message: string;
+    }>(`/admin/clients/${clientId}/kyc/notes`, {
+      notes
+    }, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
   async getTicketSummary(): Promise<AdminTicketSummaryData> {
     const response = await apiService.get<AdminTicketSummaryResponse>('/admin/tickets/summary', {
       headers: this.getAdminHeaders()
@@ -880,6 +1018,23 @@ class AdminService {
     if (params.sort_order) queryParams.append('sort_order', params.sort_order);
 
     const response = await apiService.get<AdminTicketsResponse>(`/admin/tickets?${queryParams.toString()}`, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  async getTicketsMaster(filters: TicketMasterFilters): Promise<TicketMasterResponse> {
+    const queryParams = new URLSearchParams();
+
+    if (filters.page) queryParams.append('page', filters.page.toString());
+    if (filters.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters.status) queryParams.append('status', filters.status);
+    if (filters.priority) queryParams.append('priority', filters.priority);
+    if (filters.date_from) queryParams.append('date_from', filters.date_from);
+    if (filters.date_to) queryParams.append('date_to', filters.date_to);
+    if (filters.search) queryParams.append('search', filters.search);
+
+    const response = await apiService.get<TicketMasterResponse>(`/admin/tickets/master?${queryParams.toString()}`, {
       headers: this.getAdminHeaders()
     });
     return response;
@@ -1966,6 +2121,289 @@ class AdminService {
         headers: this.getAdminHeaders()
       }
     );
+    return response;
+  }
+
+  // ============================================================================
+  // KYC MANAGEMENT METHODS (Iteration 2)
+  // ============================================================================
+
+  /**
+   * Get all KYC documents for a client
+   */
+  async getAllKYCDocuments(clientId: string): Promise<{
+    success: boolean;
+    data: {
+      client: {
+        _id: string;
+        client_id: string;
+        company_name: string;
+        your_name: string;
+        email: string;
+        kyc_status: {
+          status: 'pending' | 'verified' | 'rejected';
+          verified_date?: string;
+          verification_notes?: string;
+          verified_by_staff_name?: string;
+          verification_history?: Array<{
+            action: 'verified' | 'rejected' | 'note_sent';
+            staff_name?: string;
+            notes?: string;
+            timestamp: string;
+          }>;
+        };
+      };
+      documents: Array<{
+        document_type: string;
+        document_status: string;
+        file_url: string;
+        upload_date: string;
+        mimetype?: string;
+        original_filename?: string;
+      }>;
+    };
+  }> {
+    const response = await apiService.get<{
+      success: boolean;
+      data: {
+        client: {
+          _id: string;
+          client_id: string;
+          company_name: string;
+          your_name: string;
+          email: string;
+          kyc_status: {
+            status: 'pending' | 'verified' | 'rejected';
+            verified_date?: string;
+            verification_notes?: string;
+            verified_by_staff_name?: string;
+            verification_history?: Array<{
+              action: 'verified' | 'rejected' | 'note_sent';
+              staff_name?: string;
+              notes?: string;
+              timestamp: string;
+            }>;
+          };
+        };
+        documents: Array<{
+          document_type: string;
+          document_status: string;
+          file_url: string;
+          upload_date: string;
+          mimetype?: string;
+          original_filename?: string;
+        }>;
+      };
+    }>(`/admin/clients/${clientId}/kyc/documents`, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  /**
+   * Verify or reject KYC
+   */
+  async verifyKYC(clientId: string, action: 'verify' | 'reject', notes: string): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      client: AdminClient;
+    };
+  }> {
+    const response = await apiService.patch<{
+      success: boolean;
+      message: string;
+      data: {
+        client: AdminClient;
+      };
+    }>(`/admin/clients/${clientId}/kyc/verify`, {
+      action,
+      notes
+    }, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  /**
+   * Send KYC notes without verifying/rejecting
+   */
+  async sendKYCNotes(clientId: string, notes: string): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      client: AdminClient;
+    };
+  }> {
+    const response = await apiService.post<{
+      success: boolean;
+      message: string;
+      data: {
+        client: AdminClient;
+      };
+    }>(`/admin/clients/${clientId}/kyc/notes`, {
+      notes
+    }, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  /**
+   * Get document view URL for inline preview
+   */
+  getKYCDocumentViewURL(clientId: string, docType: string): string {
+    return `${environmentConfig.apiUrl}/admin/clients/${clientId}/kyc/documents/${docType}/view`;
+  }
+
+  /**
+   * Generate bulk invoices for selected clients
+   */
+  async generateBulkBills(clientIds: string[], billingPeriod: {
+    start_date: string;
+    end_date: string;
+    cycle_number: number;
+    month: number;
+    year: number;
+  }): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      generated: number;
+      failed: number;
+      errors: Array<{
+        client_id: string;
+        error: string;
+      }>;
+    };
+  }> {
+    const response = await apiService.post<{
+      success: boolean;
+      message: string;
+      data: {
+        generated: number;
+        failed: number;
+        errors: Array<{
+          client_id: string;
+          error: string;
+        }>;
+      };
+    }>('/admin/billing/generate-bulk', {
+      client_ids: clientIds,
+      billing_period: billingPeriod
+    }, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  /**
+   * Upload manual invoice PDF for an invoice
+   */
+  async uploadManualInvoice(invoiceId: string, pdfFile: File, notes: string): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      invoice_id: string;
+      manual_invoice_url: string;
+    };
+  }> {
+    const formData = new FormData();
+    formData.append('invoice_pdf', pdfFile);
+    formData.append('adjustment_notes', notes);
+
+    const response = await apiService.patch<{
+      success: boolean;
+      message: string;
+      data: {
+        invoice_id: string;
+        manual_invoice_url: string;
+      };
+    }>(`/admin/billing/invoices/${invoiceId}/manual-upload`, formData, {
+      headers: {
+        ...this.getAdminHeaders(),
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response;
+  }
+
+  /**
+   * Get or generate Excel shipment list for an invoice
+   */
+  async getInvoiceExcel(invoiceId: string): Promise<{
+    success: boolean;
+    message?: string;
+    data: {
+      excel_url: string;
+    };
+  }> {
+    const response = await apiService.get<{
+      success: boolean;
+      message?: string;
+      data: {
+        excel_url: string;
+      };
+    }>(`/admin/billing/invoices/${invoiceId}/excel`, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  /**
+   * Get all invoices with filters
+   */
+  async getAllInvoices(filters: {
+    client_id?: string;
+    date_from?: string;
+    date_to?: string;
+    status?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{
+    success: boolean;
+    data: {
+      invoices: any[];
+      pagination: {
+        current_page: number;
+        total_pages: number;
+        total_count: number;
+        per_page: number;
+      };
+      summary: {
+        total_amount: number;
+        paid_amount: number;
+        pending_amount: number;
+      };
+    };
+  }> {
+    const params = new URLSearchParams();
+    if (filters.client_id) params.append('client_id', filters.client_id);
+    if (filters.date_from) params.append('date_from', filters.date_from);
+    if (filters.date_to) params.append('date_to', filters.date_to);
+    if (filters.status) params.append('status', filters.status);
+    if (filters.page) params.append('page', filters.page.toString());
+    if (filters.limit) params.append('limit', filters.limit.toString());
+
+    const response = await apiService.get<{
+      success: boolean;
+      data: {
+        invoices: any[];
+        pagination: {
+          current_page: number;
+          total_pages: number;
+          total_count: number;
+          per_page: number;
+        };
+        summary: {
+          total_amount: number;
+          paid_amount: number;
+          pending_amount: number;
+        };
+      };
+    }>(`/admin/billing/invoices?${params.toString()}`, {
+      headers: this.getAdminHeaders()
+    });
     return response;
   }
 }

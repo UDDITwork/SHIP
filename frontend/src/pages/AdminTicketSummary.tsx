@@ -17,7 +17,6 @@ type PriorityFilter = AdminTicket['priority'] | 'all';
 const STATUS_ORDER: AdminTicket['status'][] = [
   'open',
   'in_progress',
-  'waiting_customer',
   'escalated',
   'resolved',
   'closed'
@@ -26,7 +25,6 @@ const STATUS_ORDER: AdminTicket['status'][] = [
 const STATUS_CONFIG: Record<AdminTicket['status'], { label: string; icon: string; className: string }> = {
   open: { label: 'Open', icon: 'O', className: 'open' },
   in_progress: { label: 'In Progress', icon: 'IP', className: 'in-progress' },
-  waiting_customer: { label: 'Waiting Customer', icon: 'WC', className: 'waiting' },
   escalated: { label: 'Escalated', icon: 'E', className: 'escalated' },
   resolved: { label: 'Resolved', icon: 'R', className: 'resolved' },
   closed: { label: 'Closed', icon: 'C', className: 'closed' }
@@ -669,7 +667,6 @@ const AdminTicketSummary: React.FC = () => {
                     <th>Client ID</th>
                     <th className="numeric">Open</th>
                     <th className="numeric">In Progress</th>
-                    <th className="numeric">Waiting</th>
                     <th className="numeric">Escalated</th>
                     <th className="numeric">Resolved</th>
                     <th className="numeric">Closed</th>
@@ -681,7 +678,7 @@ const AdminTicketSummary: React.FC = () => {
                 <tbody>
                   {filteredClients.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="empty-state">
+                      <td colSpan={10} className="empty-state">
                         {summary ? 'No matching clients found.' : 'No ticket data available yet.'}
                       </td>
                     </tr>
@@ -703,7 +700,6 @@ const AdminTicketSummary: React.FC = () => {
                         </td>
                         <td className="numeric">{formatNumber(client.statusCounts.open)}</td>
                         <td className="numeric">{formatNumber(client.statusCounts.in_progress)}</td>
-                        <td className="numeric">{formatNumber(client.statusCounts.waiting_customer)}</td>
                         <td className="numeric">{formatNumber(client.statusCounts.escalated)}</td>
                         <td className="numeric">{formatNumber(client.statusCounts.resolved)}</td>
                         <td className="numeric">{formatNumber(client.statusCounts.closed)}</td>

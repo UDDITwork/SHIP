@@ -4,7 +4,7 @@ import { ticketService, Ticket, TicketStatusCounts, TicketFilters } from '../ser
 import AWBLink from '../components/AWBLink';
 import './Support.css';
 
-type TicketStatus = 'open' | 'in_progress' | 'waiting_customer' | 'escalated' | 'resolved' | 'closed' | 'all';
+type TicketStatus = 'open' | 'in_progress' | 'escalated' | 'resolved' | 'closed' | 'all';
 type TicketTab = 'tickets' | 'training';
 
 // Remove duplicate Ticket interface - using from ticketService
@@ -22,7 +22,6 @@ type ClientStatusCounts = TicketStatusCounts & {
 const DEFAULT_STATUS_COUNTS: ClientStatusCounts = {
   open: 0,
   in_progress: 0,
-  waiting_customer: 0,
   resolved: 0,
   closed: 0,
   escalated: 0,
@@ -32,7 +31,6 @@ const DEFAULT_STATUS_COUNTS: ClientStatusCounts = {
 const STATUS_TABS: Array<{ key: TicketStatus; label: string }> = [
   { key: 'open', label: 'Open' },
   { key: 'in_progress', label: 'In Progress' },
-  { key: 'waiting_customer', label: 'Waiting Customer' },
   { key: 'escalated', label: 'Escalated' },
   { key: 'resolved', label: 'Resolved' },
   { key: 'closed', label: 'Closed' },

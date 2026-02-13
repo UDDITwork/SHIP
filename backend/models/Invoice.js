@@ -202,11 +202,22 @@ const invoiceSchema = new mongoose.Schema({
   // Document URLs
   documents: {
     invoice_pdf_url: String,
-    transaction_list_csv_url: String
+    transaction_list_csv_url: String,
+    manual_invoice_url: String,
+    manual_invoice_uploaded_by: String,
+    manual_invoice_uploaded_at: Date,
+    excel_shipment_list_url: String
   },
   // IRN for e-invoicing (GST compliance)
   irn: String,
   irn_date: Date,
+  // Manual adjustments
+  manual_adjustments: {
+    is_manually_adjusted: { type: Boolean, default: false },
+    adjusted_by_staff: String,
+    adjusted_at: Date,
+    adjustment_notes: String
+  },
   // Credit/Debit Notes
   adjustments: [{
     type: { type: String, enum: ['credit_note', 'debit_note'] },

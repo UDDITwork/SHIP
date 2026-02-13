@@ -17,6 +17,7 @@ import AutofillProduct from './pages/AutofillProduct';
 import NDR from './pages/NDR';
 import Support from './pages/Support';
 import TicketDetail from './pages/TicketDetail';
+import Notifications from './pages/Notifications';
 import Tools from './pages/Tools';
 import Billing from './pages/Billing';
 import Remittances from './pages/Remittances';
@@ -50,7 +51,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminClients from './pages/AdminClients';
 import AdminClientTickets from './pages/AdminClientTickets';
-import AdminTicketSummary from './pages/AdminTicketSummary';
+import AdminTickets from './pages/AdminTickets';
 import AdminStaffManagement from './pages/AdminStaffManagement';
 import AdminRateCard from './pages/AdminRateCard';
 import AdminRateCardCategory from './pages/AdminRateCardCategory';
@@ -63,6 +64,7 @@ import AdminClientDashboard from './pages/AdminClientDashboard';
 import AdminNDR from './pages/AdminNDR';
 import AdminCarriers from './pages/AdminCarriers';
 import AdminCarrierRates from './pages/AdminCarrierRates';
+import AdminKYC from './pages/AdminKYC';
 import AdminLayout from './components/AdminLayout';
 
 // Protected Route Component
@@ -176,15 +178,23 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/support/tickets/:id" 
+            <Route
+              path="/support/tickets/:id"
               element={
                 <ProtectedRoute>
                   <TicketDetail />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/tools" 
               element={
                 <ProtectedRoute>
@@ -355,12 +365,20 @@ function App() {
               }
             />
             <Route
-              path="/admin/tickets" 
+              path="/admin/clients/:clientId/kyc"
               element={
                 <AdminLayout>
-                  <AdminTicketSummary />
+                  <AdminKYC />
                 </AdminLayout>
-              } 
+              }
+            />
+            <Route
+              path="/admin/tickets"
+              element={
+                <AdminLayout>
+                  <AdminTickets />
+                </AdminLayout>
+              }
             />
             <Route 
               path="/admin/clients/:clientId/tickets" 

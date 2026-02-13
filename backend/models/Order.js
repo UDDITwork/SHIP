@@ -294,6 +294,29 @@ const delhiverySchema = new mongoose.Schema({
   package_id: {
     type: String
   },
+  upload_wbn: {
+    type: String
+  },
+  status: {
+    type: String
+  },
+  serviceable: {
+    type: Boolean
+  },
+  sort_code: {
+    type: String
+  },
+  remarks: {
+    type: [String],
+    default: []
+  },
+  cod_amount: {
+    type: Number,
+    default: 0
+  },
+  payment: {
+    type: String
+  },
   label_url: {
     type: String
   },
@@ -715,7 +738,8 @@ const orderSchema = new mongoose.Schema({
 // Indexes for better query performance
 orderSchema.index({ user_id: 1, status: 1 });
 orderSchema.index({ user_id: 1, order_date: -1 });
-orderSchema.index({ 'delhivery_data.waybill': 1 });
+// Note: delhivery_data.waybill already has unique index defined in schema (line 291)
+// Removed duplicate: orderSchema.index({ 'delhivery_data.waybill': 1 });
 orderSchema.index({ order_type: 1, status: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'billing_info.billing_status': 1, 'billing_info.billing_cycle_id': 1 });

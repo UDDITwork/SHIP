@@ -13,7 +13,8 @@ import { DataCache } from '../utils/dataCache';
 import { environmentConfig } from '../config/environment';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
 import AWBLink from '../components/AWBLink';
-import { Inbox, Calendar, X, Plus } from 'lucide-react';
+import { Inbox, Calendar, X, Plus, AlertTriangle } from 'lucide-react';
+import { User } from '../services/userService';
 import './Orders.css';
 
 // Simple warehouse interface for dropdown
@@ -62,7 +63,7 @@ const Orders: React.FC = () => {
   const [orderType, setOrderType] = useState<OrderType>('forward');
   const [orders, setOrders] = useState<Order[]>([]);
   const ordersRef = useRef<Order[]>([]);
-  
+
   // Debug orders state changes
   useEffect(() => {
     console.log('📋 ORDERS STATE UPDATED:', {
@@ -75,6 +76,7 @@ const Orders: React.FC = () => {
   }, [orders]);
   const [loading, setLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [user, setUser] = useState<User | null>(null);
 
   // Toast notification state
   const [toasts, setToasts] = useState<Array<{ id: number; message: string; type: 'success' | 'error' | 'info' }>>([]);
@@ -261,6 +263,23 @@ const Orders: React.FC = () => {
       }
     };
     fetchWarehouses();
+  }, []);
+
+  // Load user data for KYC status check
+  useEffect(() => {
+    const cachedUser = DataCache.get<User>('userProfile');
+    if (cachedUser) {
+      setUser(cachedUser);
+    } else {
+      const storedUser = localStorage.getItem('user');
+      if (storedUser) {
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {
+          console.error('Failed to parse stored user:', e);
+        }
+      }
+    }
   }, []);
 
   const applyGlobalSearch = useCallback((query: string, type: OrderSearchType) => {
@@ -598,6 +617,20 @@ const Orders: React.FC = () => {
   };
 
   const handleAddOrder = () => {
+    // Check if KYC is rejected - block shipment creation
+    if (user?.kyc_status?.status === 'rejected') {
+      showConfirm(
+        'Service Unavailable',
+        `Your account is currently restricted due to KYC rejection.\n\n${user.kyc_status.verification_notes ? `Reason: ${user.kyc_status.verification_notes}\n\n` : ''}Please contact support or re-submit KYC documents.`,
+        () => navigate('/account-settings'),
+        {
+          confirmText: 'View KYC Status',
+          cancelText: 'Cancel',
+          variant: 'danger'
+        }
+      );
+      return;
+    }
     setIsAddOrderModalOpen(true);
   };
 

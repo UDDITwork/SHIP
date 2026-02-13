@@ -220,7 +220,7 @@ const Remittances: React.FC = () => {
                   <th>REMITTANCE NUMBER</th>
                   <th>DATE</th>
                   <th>BANK'S TRANSACTION ID</th>
-                  <th>STATE</th>
+                  <th>Status</th>
                   <th>TOTAL REMITTANCE</th>
                 </tr>
               </thead>

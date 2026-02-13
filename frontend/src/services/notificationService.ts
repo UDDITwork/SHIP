@@ -1,4 +1,49 @@
 import { environmentConfig } from '../config/environment';
+import apiService from './api';
+
+// Notification Interface
+export interface Notification {
+  _id: string;
+  recipient_id: string;
+  sender_type: 'admin' | 'staff' | 'system';
+  sender_id?: string;
+  sender_name: string;
+  notification_type:
+    | 'bulk_announcement'
+    | 'client_comment'
+    | 'kyc_update'
+    | 'wallet_recharge'
+    | 'ticket_update'
+    | 'billing_generated'
+    | 'order_update'
+    | 'category_change'
+    | 'general';
+  heading: string;
+  message: string;
+  is_read: boolean;
+  read_at?: string;
+  related_entity?: {
+    entity_type: 'ticket' | 'kyc' | 'invoice' | 'wallet' | 'order' | 'none';
+    entity_id?: string;
+  };
+  bulk_send_id?: string;
+  delivery_status: 'pending' | 'sent' | 'failed';
+  websocket_sent: boolean;
+  created_at: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface NotificationResponse {
+  notifications: Notification[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+  unread_count: number;
+}
 
 class NotificationService {
   private ws: WebSocket | null = null;
@@ -306,6 +351,175 @@ class NotificationService {
         console.error('Error sending WebSocket message:', error);
       }
     }
+  }
+
+  // ========================================
+  // API METHODS (for fetching/managing notifications)
+  // ========================================
+
+  /**
+   * Get notifications for current user
+   * @param page - Page number (default: 1)
+   * @param limit - Items per page (default: 20)
+   * @param unreadOnly - Show only unread notifications (default: false)
+   */
+  async getNotifications(
+    page: number = 1,
+    limit: number = 20,
+    unreadOnly: boolean = false
+  ): Promise<NotificationResponse> {
+    const response = await apiService.get('/notifications', {
+      params: {
+        page,
+        limit,
+        unread_only: unreadOnly
+      }
+    });
+    return response.data.data;
+  }
+
+  /**
+   * Get unread notification count
+   */
+  async getUnreadCount(): Promise<number> {
+    const response = await apiService.get('/notifications/unread-count');
+    return response.data.data.unread_count;
+  }
+
+  /**
+   * Mark a notification as read
+   * @param notificationId - Notification ID
+   */
+  async markAsRead(notificationId: string): Promise<Notification> {
+    const response = await apiService.patch(`/notifications/${notificationId}/read`);
+    return response.data.data;
+  }
+
+  /**
+   * Mark all notifications as read
+   */
+  async markAllAsRead(): Promise<{ modified_count: number }> {
+    const response = await apiService.patch('/notifications/mark-all-read');
+    return response.data.data;
+  }
+
+  /**
+   * Delete a notification
+   * @param notificationId - Notification ID
+   */
+  async deleteNotification(notificationId: string): Promise<void> {
+    await apiService.delete(`/notifications/${notificationId}`);
+  }
+
+  // ========================================
+  // UTILITY METHODS
+  // ========================================
+
+  /**
+   * Get notification icon based on type
+   * @param type - Notification type
+   */
+  getNotificationIcon(type: Notification['notification_type']): string {
+    const iconMap: Record<Notification['notification_type'], string> = {
+      bulk_announcement: '📢',
+      client_comment: '💬',
+      kyc_update: '📋',
+      wallet_recharge: '💰',
+      ticket_update: '🎫',
+      billing_generated: '🧾',
+      order_update: '📦',
+      category_change: '🏷️',
+      general: '🔔'
+    };
+    return iconMap[type] || '🔔';
+  }
+
+  /**
+   * Get notification color based on type
+   * @param type - Notification type
+   */
+  getNotificationColor(type: Notification['notification_type']): string {
+    const colorMap: Record<Notification['notification_type'], string> = {
+      bulk_announcement: '#002B59', // Navy
+      client_comment: '#21B5B5', // Teal
+      kyc_update: '#F68723', // Orange
+      wallet_recharge: '#10b981', // Green
+      ticket_update: '#3b82f6', // Blue
+      billing_generated: '#8b5cf6', // Purple
+      order_update: '#06b6d4', // Cyan
+      category_change: '#f59e0b', // Amber
+      general: '#6b7280' // Gray
+    };
+    return colorMap[type] || '#6b7280';
+  }
+
+  /**
+   * Format relative time (e.g., "2 hours ago")
+   * @param dateString - ISO date string
+   */
+  formatRelativeTime(dateString: string): string {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSecs < 60) {
+      return 'Just now';
+    } else if (diffMins < 60) {
+      return `${diffMins} minute${diffMins > 1 ? 's' : ''} ago`;
+    } else if (diffHours < 24) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffDays < 7) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else {
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+  }
+
+  /**
+   * Get notification priority (for sorting/filtering)
+   * @param notification - Notification object
+   */
+  getNotificationPriority(notification: Notification): number {
+    const priorityMap: Record<Notification['notification_type'], number> = {
+      kyc_update: 1, // Highest priority
+      wallet_recharge: 2,
+      billing_generated: 3,
+      ticket_update: 4,
+      order_update: 5,
+      category_change: 6,
+      client_comment: 7,
+      bulk_announcement: 8,
+      general: 9 // Lowest priority
+    };
+    return priorityMap[notification.notification_type] || 9;
+  }
+
+  /**
+   * Sort notifications by priority and date
+   * @param notifications - Array of notifications
+   */
+  sortNotifications(notifications: Notification[]): Notification[] {
+    return notifications.sort((a, b) => {
+      // Unread first
+      if (a.is_read !== b.is_read) {
+        return a.is_read ? 1 : -1;
+      }
+      // Then by priority
+      const priorityDiff = this.getNotificationPriority(a) - this.getNotificationPriority(b);
+      if (priorityDiff !== 0) {
+        return priorityDiff;
+      }
+      // Finally by date (newest first)
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
   }
 }
 

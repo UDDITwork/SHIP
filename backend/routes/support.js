@@ -12,7 +12,7 @@ const cloudinaryService = require('../services/cloudinaryService');
 const router = express.Router();
 const isDev = process.env.NODE_ENV !== 'production';
 
-const STATUS_KEYS = ['open', 'in_progress', 'waiting_customer', 'resolved', 'closed', 'escalated'];
+const STATUS_KEYS = ['open', 'in_progress', 'resolved', 'closed', 'escalated'];
 
 const formatStatusCounts = (stats = []) => {
   const counts = STATUS_KEYS.reduce((acc, key) => {
@@ -218,7 +218,7 @@ const upload = multer({
 router.get('/', auth, [
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
-  query('status').optional().isIn(['open', 'in_progress', 'waiting_customer', 'resolved', 'closed', 'escalated', 'all']),
+  query('status').optional().isIn(['open', 'in_progress', 'resolved', 'closed', 'escalated', 'all']),
   query('category').optional(),
   query('priority').optional().isIn(['low', 'medium', 'high', 'urgent']),
   query('date_from').optional().isISO8601(),
@@ -811,7 +811,7 @@ router.post('/:id/messages', auth, upload.fields([
 // @route   PATCH /api/support/:id/status
 // @access  Private
 router.patch('/:id/status', auth, [
-  body('status').isIn(['open', 'in_progress', 'waiting_customer', 'resolved', 'closed']).withMessage('Valid status is required'),
+  body('status').isIn(['open', 'in_progress', 'resolved', 'closed']).withMessage('Valid status is required'),
   body('reason').optional().trim()
 ], async (req, res) => {
   try {

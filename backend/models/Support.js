@@ -5,7 +5,7 @@ const CATEGORY_PREFIX_MAP = {
   'pickup_delivery': 'PD',
   'shipment_ndr_rto': 'NR',
   'edit_shipment_info': 'ES',
-  'shipment_dispute': 'SD',
+  'shipment_dispute': 'WT',  // Weight/tracking disputes
   'finance': 'FA',
   'billing_taxation': 'BT',
   'claims': 'CL',
@@ -57,6 +57,11 @@ const fileAttachmentSchema = new mongoose.Schema({
 });
 
 const conversationSchema = new mongoose.Schema({
+  message_id: {
+    type: String,
+    required: true,
+    default: () => new mongoose.Types.ObjectId().toString()
+  },
   message_type: {
     type: String,
     enum: ['user', 'admin', 'system'],
@@ -158,7 +163,7 @@ const supportTicketSchema = new mongoose.Schema({
   // Ticket Status
   status: {
     type: String,
-    enum: ['open', 'in_progress', 'waiting_customer', 'resolved', 'closed', 'escalated'],
+    enum: ['open', 'in_progress', 'resolved', 'closed', 'escalated'],
     default: 'open'
   },
 
@@ -317,7 +322,7 @@ const supportTicketSchema = new mongoose.Schema({
 });
 
 // Indexes
-supportTicketSchema.index({ ticket_id: 1 });
+supportTicketSchema.index({ ticket_id: 1 }, { unique: true });
 supportTicketSchema.index({ user_id: 1 });
 supportTicketSchema.index({ status: 1 });
 supportTicketSchema.index({ category: 1 });
@@ -326,33 +331,32 @@ supportTicketSchema.index({ 'assignment_info.assigned_to': 1 });
 supportTicketSchema.index({ created_at: -1 });
 supportTicketSchema.index({ awb_numbers: 1 });
 
-// Pre-save middleware - Generate ticket ID in format: PREFIX-DDMMYY-SEQUENCE
-// Example: PD-231224-00001 (Pickup & Delivery, 23 Dec 2024, sequence 1)
+// Pre-save middleware - Generate ticket ID in format: PREFIX-SEQUENCE
+// Example: WT-00001 (Weight dispute, sequence 1)
+// Uses atomic counter to prevent race conditions
 supportTicketSchema.pre('validate', async function(next) {
   if (!this.ticket_id) {
     try {
       // Get the category prefix
-      const prefix = CATEGORY_PREFIX_MAP[this.category] || 'OT';
+      const prefix = CATEGORY_PREFIX_MAP[this.category] || 'TK';
 
-      // Get current date in DDMMYY format
-      const now = new Date();
-      const day = now.getDate().toString().padStart(2, '0');
-      const month = (now.getMonth() + 1).toString().padStart(2, '0');
-      const year = now.getFullYear().toString().slice(-2);
-      const dateStr = `${day}${month}${year}`;
-
-      // Atomically increment the counter for this category
+      // Use findOneAndUpdate with atomic increment to prevent race conditions
+      // This ensures that even with concurrent requests, each gets a unique sequence number
       const counter = await TicketCounter.findOneAndUpdate(
-        { category: this.category },
+        { category: prefix }, // Use prefix as unique key for global counter per prefix
         { $inc: { sequence: 1 } },
-        { new: true, upsert: true }
+        {
+          new: true, // Return the updated document
+          upsert: true, // Create if doesn't exist
+          setDefaultsOnInsert: true
+        }
       );
 
       // Format sequence with 5 digits (e.g., 00001)
-      const sequenceStr = counter.sequence.toString().padStart(5, '0');
+      const paddedSequence = String(counter.sequence).padStart(5, '0');
 
-      // Generate ticket ID: PREFIX-DDMMYY-SEQUENCE
-      this.ticket_id = `${prefix}-${dateStr}-${sequenceStr}`;
+      // Generate ticket ID: PREFIX-SEQUENCE
+      this.ticket_id = `${prefix}-${paddedSequence}`;
 
     } catch (error) {
       return next(error);

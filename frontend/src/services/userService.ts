@@ -35,9 +35,19 @@ export interface User {
     upload_date: string;
   }>;
   kyc_status: {
-    status: string;
+    status: 'pending' | 'verified' | 'rejected';
     verified_date?: string;
+    verification_notes?: string;
   };
+  profile_locked_fields?: {
+    company_name?: boolean;
+    your_name?: boolean;
+    gstin?: boolean;
+    phone_number?: boolean;
+    email?: boolean;
+    bank_details?: boolean;
+  };
+  can_create_shipments?: boolean;
   api_details: {
     public_key: string;
     private_key: string;

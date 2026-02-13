@@ -18,12 +18,15 @@ const ShipmentTrackingEvent = require('../models/ShipmentTrackingEvent');
 const Staff = require('../models/Staff');
 const RateCard = require('../models/RateCard');
 const Carrier = require('../models/Carrier');
+const Notification = require('../models/Notification');
+const Invoice = require('../models/Invoice');
 const RateCardService = require('../services/rateCardService');
 const logger = require('../utils/logger');
 const websocketService = require('../services/websocketService');
 const cloudinaryService = require('../services/cloudinaryService');
+const excelService = require('../services/excelService');
 
-const STATUS_KEYS = ['open', 'in_progress', 'waiting_customer', 'resolved', 'closed', 'escalated'];
+const STATUS_KEYS = ['open', 'in_progress', 'resolved', 'closed', 'escalated'];
 const PRIORITY_KEYS = ['urgent', 'high', 'medium', 'low'];
 
 const formatStatusCounts = (stats = []) => {
@@ -819,7 +822,6 @@ router.get('/clients/:id/dashboard', async (req, res) => {
     const ticketCounts = {
       open: 0,
       in_progress: 0,
-      waiting_customer: 0,
       escalated: 0,
       resolved: 0,
       closed: 0,
@@ -1422,6 +1424,136 @@ router.get('/tickets/summary', async (req, res) => {
   }
 });
 
+// @desc    Get master tickets table with priority summary
+// @route   GET /api/admin/tickets/master
+// @access  Admin
+router.get('/tickets/master', async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 25,
+      status = '',
+      priority = '',
+      date_from = '',
+      date_to = '',
+      search = ''
+    } = req.query;
+    const skip = (page - 1) * limit;
+
+    // Build filter query
+    const filterQuery = {};
+
+    if (status && status !== 'all') {
+      filterQuery.status = status;
+    }
+
+    const normalizedPriority = typeof priority === 'string' ? priority.trim().toLowerCase() : '';
+    if (normalizedPriority && normalizedPriority !== 'all') {
+      filterQuery.priority = normalizedPriority;
+    }
+
+    if (date_from || date_to) {
+      filterQuery.created_at = {};
+      if (date_from) {
+        filterQuery.created_at.$gte = new Date(date_from);
+      }
+      if (date_to) {
+        filterQuery.created_at.$lte = new Date(date_to);
+      }
+    }
+
+    // If search is provided, search across multiple fields
+    let tickets;
+    let totalTickets;
+
+    if (search && search.trim()) {
+      const searchRegex = new RegExp(search.trim(), 'i');
+
+      // Find user IDs that match the search
+      const matchingUsers = await User.find({
+        $or: [
+          { company_name: searchRegex },
+          { email: searchRegex },
+          { client_id: searchRegex }
+        ]
+      }).select('_id').lean();
+
+      const userIds = matchingUsers.map(u => u._id);
+
+      // Search in tickets
+      const searchFilter = {
+        ...filterQuery,
+        $or: [
+          { ticket_id: searchRegex },
+          { awb_numbers: searchRegex },
+          { user_id: { $in: userIds } }
+        ]
+      };
+
+      tickets = await SupportTicket.find(searchFilter)
+        .populate('user_id', 'company_name email phone_number client_id')
+        .sort({ created_at: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+      totalTickets = await SupportTicket.countDocuments(searchFilter);
+    } else {
+      tickets = await SupportTicket.find(filterQuery)
+        .populate('user_id', 'company_name email phone_number client_id')
+        .sort({ created_at: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean();
+
+      totalTickets = await SupportTicket.countDocuments(filterQuery);
+    }
+
+    // Calculate priority summary with SLA breach info
+    const prioritySummary = {
+      urgent: { count: 0, sla_breached: 0 },
+      high: { count: 0, sla_breached: 0 },
+      medium: { count: 0, sla_breached: 0 },
+      low: { count: 0, sla_breached: 0 }
+    };
+
+    const allTicketsForSummary = await SupportTicket.find(filterQuery).select('priority sla_info').lean();
+
+    allTicketsForSummary.forEach(ticket => {
+      const priority = ticket.priority || 'medium';
+      if (prioritySummary[priority]) {
+        prioritySummary[priority].count++;
+        if (ticket.sla_info?.breached_sla) {
+          prioritySummary[priority].sla_breached++;
+        }
+      }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        tickets,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(totalTickets / limit),
+          totalTickets,
+          hasNext: page * limit < totalTickets,
+          hasPrev: page > 1
+        },
+        priority_summary: prioritySummary
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching master tickets:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching master tickets',
+      error: error.message
+    });
+  }
+});
+
 // @desc    Get all tickets across all clients (admin dashboard)
 // @route   GET /api/admin/tickets
 // @access  Admin
@@ -1787,12 +1919,6 @@ router.post('/tickets/:id/messages', upload.fields([
     // Add message to conversation with staff tracking and attachments
     await ticket.addMessage('admin', senderName, trimmedMessage || '[Attachment]', attachments, is_internal, staffName);
 
-    // Update ticket status if it was waiting for admin response
-    if (ticket.status === 'waiting_customer') {
-      ticket.status = 'in_progress';
-      await ticket.save();
-    }
-
     // Reload ticket to get populated user_id
     await ticket.populate('user_id', '_id your_name');
 
@@ -1869,7 +1995,7 @@ router.patch('/tickets/:id/status', async (req, res) => {
       });
     }
 
-    const validStatuses = ['open', 'in_progress', 'waiting_customer', 'resolved', 'closed', 'escalated'];
+    const validStatuses = ['open', 'in_progress', 'resolved', 'closed', 'escalated'];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -4275,6 +4401,477 @@ function getMonthName(monthNum) {
   return months[monthNum - 1] || '';
 }
 
+// @desc    Generate bills for multiple clients
+// @route   POST /api/admin/billing/generate-bulk
+// @access  Admin
+router.post('/billing/generate-bulk', adminAuth, async (req, res) => {
+  try {
+    const { client_ids, billing_period } = req.body;
+
+    if (!client_ids || !Array.isArray(client_ids) || client_ids.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'client_ids array is required'
+      });
+    }
+
+    if (!billing_period || !billing_period.start_date || !billing_period.end_date) {
+      return res.status(400).json({
+        success: false,
+        message: 'billing_period with start_date and end_date is required'
+      });
+    }
+
+    const results = {
+      generated: 0,
+      failed: 0,
+      errors: []
+    };
+
+    // Process each client
+    for (const clientId of client_ids) {
+      try {
+        const client = await User.findById(clientId).select('_id client_id company_name email wallet_balance user_category gst_number billing_address');
+
+        if (!client) {
+          results.failed++;
+          results.errors.push({
+            client_id: clientId,
+            error: 'Client not found'
+          });
+          continue;
+        }
+
+        // Get orders for billing period
+        const orders = await Order.find({
+          user_id: client._id,
+          status: { $in: ['delivered', 'rto'] },
+          delivered_date: {
+            $gte: new Date(billing_period.start_date),
+            $lte: new Date(billing_period.end_date)
+          }
+        }).select('order_id awb_number status delivered_date weight zone payment_info pickup_address delivery_address package_info');
+
+        if (orders.length === 0) {
+          results.failed++;
+          results.errors.push({
+            client_id: client.client_id,
+            error: 'No billable orders in period'
+          });
+          continue;
+        }
+
+        // Create new invoice
+        const invoice = new Invoice({
+          user_id: client._id,
+          billing_period: {
+            start_date: new Date(billing_period.start_date),
+            end_date: new Date(billing_period.end_date),
+            cycle_number: billing_period.cycle_number || 1,
+            month: billing_period.month || new Date(billing_period.start_date).getMonth() + 1,
+            year: billing_period.year || new Date(billing_period.start_date).getFullYear()
+          },
+          invoice_date: new Date(),
+          due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+          gst_info: {
+            seller_gstin: '06AAPCS9575E1ZR',
+            buyer_gstin: client.gst_number || '',
+            is_igst: true
+          },
+          billing_address: {
+            company_name: client.company_name,
+            address: client.billing_address?.address || '',
+            city: client.billing_address?.city || '',
+            state: client.billing_address?.state || '',
+            pincode: client.billing_address?.pincode || ''
+          },
+          user_category_snapshot: client.user_category
+        });
+
+        // Add each order as a shipment charge
+        for (const order of orders) {
+          const shipmentData = {
+            awb_number: order.awb_number,
+            order_id: order._id,
+            internal_order_id: order.order_id,
+            order_date: order.created_at,
+            delivery_date: order.delivered_date,
+            shipment_status: order.status,
+            weight: {
+              declared_weight: order.weight?.declared_weight || 0,
+              actual_weight: order.weight?.actual_weight || 0,
+              volumetric_weight: order.weight?.volumetric_weight || 0,
+              charged_weight: order.weight?.charged_weight || order.weight?.actual_weight || 0
+            },
+            zone: order.zone,
+            pickup_pincode: order.pickup_address?.pincode || '',
+            delivery_pincode: order.delivery_address?.pincode || '',
+            charges: {
+              forward_charge: order.payment_info?.forward_charge || 0,
+              rto_charge: order.payment_info?.rto_charge || 0,
+              cod_charge: order.payment_info?.cod_charge || 0,
+              fuel_surcharge: order.payment_info?.fuel_surcharge || 0,
+              weight_discrepancy_charge: order.payment_info?.weight_discrepancy_charge || 0,
+              other_charges: order.payment_info?.other_charges || 0
+            },
+            total_charge: order.payment_info?.shipping_charges || 0,
+            payment_mode: order.package_info?.payment_mode || 'Prepaid',
+            cod_amount: order.package_info?.cod_amount || 0
+          };
+
+          invoice.addShipment(shipmentData);
+        }
+
+        // Finalize and save invoice
+        await invoice.finalize();
+
+        // Generate Excel shipment list
+        try {
+          const excelUrl = await excelService.generateInvoiceShipmentExcel(invoice);
+          invoice.documents.excel_shipment_list_url = excelUrl;
+          await invoice.save();
+        } catch (excelError) {
+          logger.error('Error generating Excel for invoice:', {
+            invoice_id: invoice._id,
+            error: excelError.message
+          });
+        }
+
+        // Create notification
+        const notification = new Notification({
+          user_id: client._id,
+          type: 'billing_generated',
+          title: 'New Invoice Generated',
+          message: `Invoice ${invoice.invoice_number} has been generated for Rs ${invoice.amounts.grand_total.toFixed(2)}`,
+          data: {
+            invoice_id: invoice._id,
+            invoice_number: invoice.invoice_number,
+            amount: invoice.amounts.grand_total
+          }
+        });
+        await notification.save();
+
+        // Send WebSocket notification
+        try {
+          websocketService.sendToUser(client._id.toString(), {
+            type: 'notification',
+            notification: {
+              _id: notification._id,
+              type: notification.type,
+              title: notification.title,
+              message: notification.message,
+              created_at: notification.created_at
+            }
+          });
+        } catch (wsError) {
+          logger.error('Error sending WebSocket notification:', wsError);
+        }
+
+        results.generated++;
+        logger.info('Invoice generated for client', {
+          client_id: client.client_id,
+          invoice_number: invoice.invoice_number,
+          amount: invoice.amounts.grand_total
+        });
+      } catch (clientError) {
+        results.failed++;
+        results.errors.push({
+          client_id: clientId,
+          error: clientError.message
+        });
+        logger.error('Error generating invoice for client:', {
+          client_id: clientId,
+          error: clientError.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Generated ${results.generated} invoices, ${results.failed} failed`,
+      data: results
+    });
+  } catch (error) {
+    logger.error('Bulk invoice generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating bulk invoices',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Upload manual invoice PDF
+// @route   PATCH /api/admin/billing/invoices/:id/manual-upload
+// @access  Admin
+const upload = multer({ storage: multer.memoryStorage() });
+router.patch('/billing/invoices/:id/manual-upload', adminAuth, upload.single('invoice_pdf'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { adjustment_notes } = req.body;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No PDF file uploaded'
+      });
+    }
+
+    // Validate file type
+    if (req.file.mimetype !== 'application/pdf') {
+      return res.status(400).json({
+        success: false,
+        message: 'Only PDF files are allowed'
+      });
+    }
+
+    // Validate file size (10MB max)
+    if (req.file.size > 10 * 1024 * 1024) {
+      return res.status(400).json({
+        success: false,
+        message: 'File size exceeds 10MB limit'
+      });
+    }
+
+    const invoice = await Invoice.findById(id);
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found'
+      });
+    }
+
+    // Upload PDF to Cloudinary
+    const uploadResult = await cloudinaryService.uploadDocument(req.file.buffer, {
+      folder: 'shipsarthi/invoices/manual',
+      mimetype: req.file.mimetype
+    });
+
+    if (!uploadResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to upload PDF'
+      });
+    }
+
+    // Get staff info
+    const staffName = req.staff?.name || req.admin?.email || 'Admin';
+
+    // Update invoice
+    invoice.documents.manual_invoice_url = uploadResult.url;
+    invoice.documents.manual_invoice_uploaded_by = staffName;
+    invoice.documents.manual_invoice_uploaded_at = new Date();
+    invoice.manual_adjustments = {
+      is_manually_adjusted: true,
+      adjusted_by_staff: staffName,
+      adjusted_at: new Date(),
+      adjustment_notes: adjustment_notes || 'Manual invoice uploaded'
+    };
+
+    await invoice.save();
+
+    // Create notification
+    const notification = new Notification({
+      user_id: invoice.user_id,
+      type: 'billing_updated',
+      title: 'Invoice Updated',
+      message: `Manual invoice has been uploaded for ${invoice.invoice_number}`,
+      data: {
+        invoice_id: invoice._id,
+        invoice_number: invoice.invoice_number
+      }
+    });
+    await notification.save();
+
+    // Send WebSocket notification
+    try {
+      websocketService.sendToUser(invoice.user_id.toString(), {
+        type: 'notification',
+        notification: {
+          _id: notification._id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          created_at: notification.created_at
+        }
+      });
+    } catch (wsError) {
+      logger.error('Error sending WebSocket notification:', wsError);
+    }
+
+    logger.info('Manual invoice uploaded', {
+      invoice_id: invoice._id,
+      invoice_number: invoice.invoice_number,
+      uploaded_by: staffName
+    });
+
+    res.json({
+      success: true,
+      message: 'Manual invoice uploaded successfully',
+      data: {
+        invoice_id: invoice._id,
+        manual_invoice_url: invoice.documents.manual_invoice_url
+      }
+    });
+  } catch (error) {
+    logger.error('Manual invoice upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error uploading manual invoice',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get/generate Excel shipment list for invoice
+// @route   GET /api/admin/billing/invoices/:id/excel
+// @access  Admin
+router.get('/billing/invoices/:id/excel', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const invoice = await Invoice.findById(id);
+    if (!invoice) {
+      return res.status(404).json({
+        success: false,
+        message: 'Invoice not found'
+      });
+    }
+
+    // If Excel already exists, return URL
+    if (invoice.documents.excel_shipment_list_url) {
+      return res.json({
+        success: true,
+        data: {
+          excel_url: invoice.documents.excel_shipment_list_url
+        }
+      });
+    }
+
+    // Generate Excel
+    const excelUrl = await excelService.generateInvoiceShipmentExcel(invoice);
+
+    // Update invoice
+    invoice.documents.excel_shipment_list_url = excelUrl;
+    await invoice.save();
+
+    logger.info('Excel shipment list generated', {
+      invoice_id: invoice._id,
+      invoice_number: invoice.invoice_number
+    });
+
+    res.json({
+      success: true,
+      message: 'Excel generated successfully',
+      data: {
+        excel_url: excelUrl
+      }
+    });
+  } catch (error) {
+    logger.error('Excel generation error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating Excel',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get all invoices with filters
+// @route   GET /api/admin/billing/invoices
+// @access  Admin
+router.get('/billing/invoices', adminAuth, async (req, res) => {
+  try {
+    const {
+      client_id,
+      date_from,
+      date_to,
+      status,
+      page = 1,
+      limit = 25
+    } = req.query;
+
+    const query = {};
+
+    // Filter by client
+    if (client_id) {
+      const client = await User.findOne({ client_id }).select('_id');
+      if (client) {
+        query.user_id = client._id;
+      }
+    }
+
+    // Filter by date range
+    if (date_from || date_to) {
+      query.invoice_date = {};
+      if (date_from) {
+        query.invoice_date.$gte = new Date(date_from);
+      }
+      if (date_to) {
+        query.invoice_date.$lte = new Date(date_to);
+      }
+    }
+
+    // Filter by status
+    if (status) {
+      query.payment_status = status;
+    }
+
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Get invoices with client info
+    const [invoices, total] = await Promise.all([
+      Invoice.find(query)
+        .select('-shipment_charges') // Exclude heavy array
+        .populate('user_id', 'client_id company_name email')
+        .sort({ invoice_date: -1 })
+        .skip(skip)
+        .limit(parseInt(limit)),
+      Invoice.countDocuments(query)
+    ]);
+
+    // Calculate summary
+    const summaryData = await Invoice.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: null,
+          total_amount: { $sum: '$amounts.grand_total' },
+          paid_amount: { $sum: '$amount_paid' },
+          pending_amount: { $sum: '$balance_due' }
+        }
+      }
+    ]);
+
+    const summary = summaryData[0] || {
+      total_amount: 0,
+      paid_amount: 0,
+      pending_amount: 0
+    };
+
+    res.json({
+      success: true,
+      data: {
+        invoices,
+        pagination: {
+          current_page: parseInt(page),
+          total_pages: Math.ceil(total / parseInt(limit)),
+          total_count: total,
+          per_page: parseInt(limit)
+        },
+        summary
+      }
+    });
+  } catch (error) {
+    logger.error('Get invoices error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching invoices',
+      error: error.message
+    });
+  }
+});
+
 // ============================================================================
 // ADMIN ORDERS ROUTES
 // ============================================================================
@@ -6180,6 +6777,572 @@ router.patch('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error updating carrier rate',
+      error: error.message
+    });
+  }
+});
+
+// ========================================
+// NOTIFICATION ROUTES
+// ========================================
+
+/**
+ * POST /api/admin/notifications/bulk
+ * Send bulk notification to multiple clients
+ */
+router.post('/notifications/bulk', adminAuth, async (req, res) => {
+  try {
+    const { heading, message, recipients } = req.body;
+
+    // Validation
+    if (!heading || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Heading and message are required'
+      });
+    }
+
+    if (!recipients || (!recipients.client_ids && !recipients.excel_file)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Recipients are required (either client_ids or excel_file)'
+      });
+    }
+
+    let clientIds = [];
+    let invalidIds = [];
+
+    // Handle manual selection
+    if (recipients.selection_type === 'manual' && recipients.client_ids) {
+      clientIds = recipients.client_ids;
+    }
+    // Handle Excel upload
+    else if (recipients.selection_type === 'excel' && req.files && req.files.excel_file) {
+      try {
+        const excelFile = req.files.excel_file;
+        const workbook = XLSX.read(excelFile.data, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const data = XLSX.utils.sheet_to_json(sheet);
+
+        // Extract client IDs from Excel (expecting columns: Client ID, Name, Mobile)
+        for (const row of data) {
+          const clientId = row['Client ID'] || row['client_id'] || row['ClientID'];
+          const name = row['Name'] || row['name'];
+          const mobile = row['Mobile'] || row['mobile'] || row['phone'];
+
+          if (clientId) {
+            clientIds.push(clientId);
+          } else if (name || mobile) {
+            // Try to find client by name or mobile
+            const query = {};
+            if (name) query.company_name = new RegExp(name, 'i');
+            if (mobile) query.phone_number = mobile;
+
+            const user = await User.findOne(query).select('_id');
+            if (user) {
+              clientIds.push(user._id);
+            }
+          }
+        }
+      } catch (excelError) {
+        logger.error('Error parsing Excel file:', excelError);
+        return res.status(400).json({
+          success: false,
+          message: 'Error parsing Excel file',
+          error: excelError.message
+        });
+      }
+    }
+
+    if (clientIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid client IDs found'
+      });
+    }
+
+    // Validate client IDs exist
+    const validUserIds = [];
+    for (const clientId of clientIds) {
+      let user;
+      // Check if it's a MongoDB ObjectId or client_id string
+      if (mongoose.Types.ObjectId.isValid(clientId) && String(clientId).length === 24) {
+        user = await User.findById(clientId).select('_id');
+      } else {
+        user = await User.findOne({ client_id: clientId }).select('_id');
+      }
+
+      if (user) {
+        validUserIds.push(user._id);
+      } else {
+        invalidIds.push(clientId);
+      }
+    }
+
+    if (validUserIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid clients found',
+        invalid_ids: invalidIds
+      });
+    }
+
+    // Create sender info
+    const senderInfo = {
+      sender_type: req.staff ? 'staff' : 'admin',
+      sender_id: req.staff ? req.staff._id : null,
+      sender_name: req.staff ? req.staff.name : (req.admin ? req.admin.email : 'Admin')
+    };
+
+    // Create bulk notifications
+    const notifications = await Notification.createBulkNotifications(
+      validUserIds,
+      {
+        notification_type: 'bulk_announcement',
+        heading,
+        message,
+        related_entity: { entity_type: 'none', entity_id: null }
+      },
+      senderInfo
+    );
+
+    // Send WebSocket notifications to online clients
+    let sentCount = 0;
+    if (websocketService && websocketService.notifyMultipleClients) {
+      try {
+        sentCount = websocketService.notifyMultipleClients(validUserIds, notifications[0]);
+      } catch (wsError) {
+        logger.error('Error sending WebSocket notifications:', wsError);
+      }
+    }
+
+    logger.info('Bulk notification sent', {
+      sent: validUserIds.length,
+      invalid: invalidIds.length,
+      websocket_sent: sentCount,
+      sender: senderInfo.sender_name
+    });
+
+    res.json({
+      success: true,
+      message: 'Bulk notification sent successfully',
+      data: {
+        sent: validUserIds.length,
+        invalid: invalidIds.length,
+        invalid_ids: invalidIds,
+        websocket_sent: sentCount,
+        bulk_send_id: notifications[0].bulk_send_id
+      }
+    });
+  } catch (error) {
+    logger.error('Error sending bulk notification:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error sending bulk notification',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/clients/:id/comments
+ * Send comment to specific client
+ */
+router.post('/clients/:id/comments', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { heading, message } = req.body;
+
+    // Validation
+    if (!heading || !message) {
+      return res.status(400).json({
+        success: false,
+        message: 'Heading and message are required'
+      });
+    }
+
+    // Find client
+    const client = await User.findById(id);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Create sender info
+    const senderInfo = {
+      sender_type: req.staff ? 'staff' : 'admin',
+      sender_id: req.staff ? req.staff._id : null,
+      sender_name: req.staff ? req.staff.name : (req.admin ? req.admin.email : 'Admin')
+    };
+
+    // Create notification
+    const notification = await Notification.createNotification(
+      client._id,
+      {
+        notification_type: 'client_comment',
+        heading,
+        message,
+        related_entity: { entity_type: 'none', entity_id: null }
+      },
+      senderInfo
+    );
+
+    // Send WebSocket notification
+    if (websocketService && websocketService.notifyClient) {
+      try {
+        websocketService.notifyClient(client._id, notification);
+      } catch (wsError) {
+        logger.error('Error sending WebSocket notification:', wsError);
+      }
+    }
+
+    logger.info('Client comment sent', {
+      client_id: client.client_id,
+      sender: senderInfo.sender_name,
+      notification_id: notification._id
+    });
+
+    res.json({
+      success: true,
+      message: 'Comment sent successfully',
+      data: notification
+    });
+  } catch (error) {
+    logger.error('Error sending client comment:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error sending comment',
+      error: error.message
+    });
+  }
+});
+
+// ========================================
+// KYC MANAGEMENT ROUTES
+// ========================================
+
+/**
+ * GET /api/admin/clients/:id/kyc/documents
+ * Get all KYC documents for a client
+ */
+router.get('/clients/:id/kyc/documents', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const client = await User.findById(id).select('client_id company_name your_name email phone_number documents kyc_status');
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Return documents as array with all fields
+    const documents = client.documents.map(doc => ({
+      _id: doc._id,
+      document_type: doc.document_type,
+      document_status: doc.document_status,
+      file_url: doc.file_url,
+      upload_date: doc.upload_date,
+      verification_date: doc.verification_date,
+      mimetype: doc.mimetype,
+      original_filename: doc.original_filename,
+      rejection_reason: doc.rejection_reason
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        client: {
+          _id: client._id,
+          client_id: client.client_id,
+          company_name: client.company_name,
+          your_name: client.your_name,
+          email: client.email,
+          phone_number: client.phone_number,
+          kyc_status: {
+            status: client.kyc_status.status,
+            verified_date: client.kyc_status.verified_date,
+            verification_notes: client.kyc_status.verification_notes,
+            verified_by_staff_name: client.kyc_status.verified_by_staff_name,
+            verification_history: client.kyc_status.verification_history || []
+          }
+        },
+        documents: documents
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching KYC documents:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching KYC documents',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * PATCH /api/admin/clients/:id/kyc/verify
+ * Approve or reject KYC
+ */
+router.patch('/clients/:id/kyc/verify', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { action, notes } = req.body;
+
+    // Validation
+    if (!action || !['verify', 'reject'].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Action must be either "verify" or "reject"'
+      });
+    }
+
+    const client = await User.findById(id);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Get staff info
+    const staffName = req.staff ? req.staff.name : (req.admin ? req.admin.email : 'Admin');
+    const staffId = req.staff ? req.staff._id : null;
+
+    // Update KYC status
+    if (action === 'verify') {
+      client.kyc_status.status = 'verified';
+      client.kyc_status.verified_date = new Date();
+      client.kyc_status.verified_by_staff_id = staffId;
+      client.kyc_status.verified_by_staff_name = staffName;
+      client.kyc_status.verification_notes = notes || 'KYC documents verified';
+
+      // Lock profile fields when verified
+      client.profile_locked_fields = {
+        company_name: true,
+        your_name: true,
+        gstin: true,
+        phone_number: true,
+        email: true,
+        bank_details: true
+      };
+    } else {
+      client.kyc_status.status = 'rejected';
+      client.kyc_status.verified_date = new Date();
+      client.kyc_status.verified_by_staff_id = staffId;
+      client.kyc_status.verified_by_staff_name = staffName;
+      client.kyc_status.verification_notes = notes || 'KYC documents rejected';
+    }
+
+    // Add to verification history
+    client.kyc_status.verification_history.push({
+      action: action === 'verify' ? 'verified' : 'rejected',
+      staff_id: staffId,
+      staff_name: staffName,
+      notes: notes || '',
+      timestamp: new Date()
+    });
+
+    await client.save();
+
+    // Create notification for client
+    const notificationData = {
+      notification_type: 'kyc_update',
+      heading: action === 'verify' ? 'KYC Verified' : 'KYC Rejected',
+      message: action === 'verify'
+        ? 'Your KYC has been verified successfully. Your profile fields are now locked.'
+        : `Your KYC has been rejected. ${notes || 'Please re-upload correct documents.'}`,
+      related_entity: {
+        entity_type: 'kyc',
+        entity_id: client._id
+      }
+    };
+
+    const senderInfo = {
+      sender_type: req.staff ? 'staff' : 'admin',
+      sender_id: staffId,
+      sender_name: staffName
+    };
+
+    const notification = await Notification.createNotification(
+      client._id,
+      notificationData,
+      senderInfo
+    );
+
+    // Send WebSocket notification
+    if (websocketService && websocketService.notifyClient) {
+      try {
+        websocketService.notifyClient(client._id, notification);
+      } catch (wsError) {
+        logger.error('Error sending WebSocket notification:', wsError);
+      }
+    }
+
+    logger.info('KYC status updated', {
+      client_id: client.client_id,
+      action,
+      staff: staffName
+    });
+
+    res.json({
+      success: true,
+      message: `KYC ${action === 'verify' ? 'verified' : 'rejected'} successfully`,
+      data: client
+    });
+  } catch (error) {
+    logger.error('Error updating KYC status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating KYC status',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/admin/clients/:id/kyc/notes
+ * Send KYC notes without verifying/rejecting
+ */
+router.post('/clients/:id/kyc/notes', adminAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes } = req.body;
+
+    if (!notes) {
+      return res.status(400).json({
+        success: false,
+        message: 'Notes are required'
+      });
+    }
+
+    const client = await User.findById(id);
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Get staff info
+    const staffName = req.staff ? req.staff.name : (req.admin ? req.admin.email : 'Admin');
+    const staffId = req.staff ? req.staff._id : null;
+
+    // Add to verification history
+    client.kyc_status.verification_history.push({
+      action: 'note_sent',
+      staff_id: staffId,
+      staff_name: staffName,
+      notes,
+      timestamp: new Date()
+    });
+
+    await client.save();
+
+    // Create notification for client
+    const notificationData = {
+      notification_type: 'kyc_update',
+      heading: 'KYC Note from Admin',
+      message: notes,
+      related_entity: {
+        entity_type: 'kyc',
+        entity_id: client._id
+      }
+    };
+
+    const senderInfo = {
+      sender_type: req.staff ? 'staff' : 'admin',
+      sender_id: staffId,
+      sender_name: staffName
+    };
+
+    const notification = await Notification.createNotification(
+      client._id,
+      notificationData,
+      senderInfo
+    );
+
+    // Send WebSocket notification
+    if (websocketService && websocketService.notifyClient) {
+      try {
+        websocketService.notifyClient(client._id, notification);
+      } catch (wsError) {
+        logger.error('Error sending WebSocket notification:', wsError);
+      }
+    }
+
+    logger.info('KYC note sent', {
+      client_id: client.client_id,
+      staff: staffName
+    });
+
+    res.json({
+      success: true,
+      message: 'Note sent successfully',
+      data: notification
+    });
+  } catch (error) {
+    logger.error('Error sending KYC note:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error sending note',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/admin/clients/:id/kyc/documents/:doc_type/view
+ * Proxy document view (opens inline in new tab, not download)
+ */
+router.get('/clients/:id/kyc/documents/:doc_type/view', adminAuth, async (req, res) => {
+  try {
+    const { id, doc_type } = req.params;
+
+    const client = await User.findById(id).select('documents');
+    if (!client) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client not found'
+      });
+    }
+
+    // Find document by type (handle both new and legacy names)
+    const typeMap = {
+      'gst_certificate': ['gst_certificate'],
+      'photo_selfie': ['photo', 'photo_selfie'],
+      'pan_card': ['pan', 'pan_card'],
+      'aadhaar_card': ['aadhar', 'aadhaar_card']
+    };
+
+    const matchingTypes = typeMap[doc_type] || [doc_type];
+    const document = client.documents.find(doc =>
+      matchingTypes.includes(doc.document_type)
+    );
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        message: 'Document not found'
+      });
+    }
+
+    // Set Content-Disposition to inline (not attachment) for viewing in browser
+    const safeFilename = document.original_filename || `${doc_type}.pdf`;
+    res.setHeader('Content-Disposition', `inline; filename="${safeFilename}"`);
+    res.setHeader('Content-Type', document.mimetype || 'application/pdf');
+
+    // Redirect to Cloudinary URL (or proxy the content if needed)
+    res.redirect(document.file_url);
+  } catch (error) {
+    logger.error('Error viewing document:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error viewing document',
       error: error.message
     });
   }

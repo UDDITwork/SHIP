@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { userService, type User } from '../services/userService';
 import { DataCache } from '../utils/dataCache';
 import { environmentConfig } from '../config/environment';
 import { formatDateTime } from '../utils/dateFormat';
-import { Pencil, Loader, Eye, EyeOff } from 'lucide-react';
+import { Pencil, Loader, Eye, EyeOff, Lock } from 'lucide-react';
 import './AccountSettings.css';
 
 interface EditMode {
@@ -14,9 +15,21 @@ interface EditMode {
 }
 
 const AccountSettings: React.FC = () => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const userRef = React.useRef<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Check if KYC is verified (for field locking)
+  const isKycVerified = user?.kyc_status?.status === 'verified';
+
+  // Helper function to check if a specific field is locked
+  const isFieldLocked = (fieldName: string): boolean => {
+    if (user?.kyc_status?.status === 'verified') {
+      return ['company_name', 'your_name', 'gstin', 'phone_number', 'email', 'bank_details'].includes(fieldName);
+    }
+    return false;
+  };
   const [editMode, setEditMode] = useState<EditMode>({
     userDetails: false,
     address: false,
@@ -320,12 +333,17 @@ const AccountSettings: React.FC = () => {
       
       console.log('✅ FRONTEND UPDATED WITH NEW DATA:', response);
 
-    } catch (error) {
+    } catch (error: any) {
       console.error(`Error updating ${section}:`, error);
-      
+
+      // Handle 403 KYC lock error
+      if (error?.response?.status === 403) {
+        alert(error.response.data.message || 'Your KYC has been approved. Profile details cannot be edited.');
+        toggleEditMode(section as keyof EditMode); // Exit edit mode
+      }
       // Handle validation errors from backend
-      if ((error as any)?.response?.data?.errors) {
-        const validationErrors = (error as any).response.data.errors;
+      else if (error?.response?.data?.errors) {
+        const validationErrors = error.response.data.errors;
         const errorMessages = Object.values(validationErrors).join(', ');
         alert(`Validation Error: ${errorMessages}`);
       } else {
@@ -335,6 +353,16 @@ const AccountSettings: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRequestProfileEdit = () => {
+    navigate('/support', {
+      state: {
+        prefilledCategory: 'kyc_bank_verification',
+        prefilledSubject: 'Profile Edit Request - KYC Verified Account',
+        prefilledDescription: 'I need to update my verified profile details:\n\nField to update:\nReason for change:\nSupporting documents (if applicable):'
+      }
+    });
   };
 
   const handlePasswordChange = (field: string, value: string) => {
@@ -844,6 +872,48 @@ const AccountSettings: React.FC = () => {
         </div>
         </div>
 
+        {/* KYC Verified Banner */}
+        {isKycVerified && (
+          <div style={{
+            backgroundColor: '#eff6ff',
+            border: '1px solid #3b82f6',
+            borderRadius: '8px',
+            padding: '16px',
+            marginBottom: '20px',
+            display: 'flex',
+            gap: '12px'
+          }}>
+            <div style={{ color: '#3b82f6', marginTop: '2px' }}>
+              <svg width="20" height="20" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div style={{ flex: 1 }}>
+              <h4 style={{ margin: '0 0 4px 0', fontSize: '16px', fontWeight: 600, color: '#1e3a8a' }}>
+                KYC Verified
+              </h4>
+              <p style={{ margin: '0 0 12px 0', fontSize: '14px', color: '#1e40af' }}>
+                Your KYC has been approved. Profile details cannot be edited. To make changes, please contact admin or raise a support ticket.
+              </p>
+              <button
+                onClick={handleRequestProfileEdit}
+                style={{
+                  fontSize: '14px',
+                  backgroundColor: '#3b82f6',
+                  color: 'white',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 600
+                }}
+              >
+                Request Profile Edit
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* User Details Card */}
         <div className="settings-card">
           <div className="card-header">
@@ -858,50 +928,86 @@ const AccountSettings: React.FC = () => {
           <div className="card-body">
             <div className="info-grid">
               <div className="info-item">
-                <label>Company:</label>
+                <label>Company: {isFieldLocked('company_name') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.userDetails ? (
-                  <input
-                    type="text"
-                    value={formData.company_name}
-                    onChange={(e) => handleInputChange('', 'company_name', e.target.value)}
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.company_name}
+                      onChange={(e) => handleInputChange('', 'company_name', e.target.value)}
+                      disabled={isFieldLocked('company_name')}
+                      className={isFieldLocked('company_name') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('company_name') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.company_name || 'Not set'}</span>
                 )}
               </div>
               <div className="info-item">
-                <label>Email:</label>
+                <label>Email: {isFieldLocked('email') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.userDetails ? (
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => handleInputChange('', 'email', e.target.value)}
-                  />
+                  <div>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => handleInputChange('', 'email', e.target.value)}
+                      disabled={isFieldLocked('email')}
+                      className={isFieldLocked('email') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('email') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.email || 'Not set'}</span>
                 )}
               </div>
               <div className="info-item">
-                <label>User:</label>
+                <label>User: {isFieldLocked('your_name') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.userDetails ? (
-                  <input
-                    type="text"
-                    value={formData.your_name}
-                    onChange={(e) => handleInputChange('', 'your_name', e.target.value)}
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.your_name}
+                      onChange={(e) => handleInputChange('', 'your_name', e.target.value)}
+                      disabled={isFieldLocked('your_name')}
+                      className={isFieldLocked('your_name') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('your_name') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.your_name || 'Not set'}</span>
                 )}
               </div>
               <div className="info-item">
-                <label>Phone:</label>
+                <label>Phone: {isFieldLocked('phone_number') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.userDetails ? (
-                  <input
-                    type="tel"
-                    value={formData.phone_number}
-                    onChange={(e) => handleInputChange('', 'phone_number', e.target.value)}
-                    maxLength={10}
-                  />
+                  <div>
+                    <input
+                      type="tel"
+                      value={formData.phone_number}
+                      onChange={(e) => handleInputChange('', 'phone_number', e.target.value)}
+                      maxLength={10}
+                      disabled={isFieldLocked('phone_number')}
+                      className={isFieldLocked('phone_number') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('phone_number') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.phone_number || 'Not set'}</span>
                 )}
@@ -915,7 +1021,7 @@ const AccountSettings: React.FC = () => {
                 <span>{user?.joined_date ? formatDateTime(user.joined_date) : 'Not set'}</span>
               </div>
               <div className="info-item">
-                <label>GSTIN:</label>
+                <label>GSTIN: {isFieldLocked('gstin') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.userDetails ? (
                   <div>
                     <input
@@ -926,10 +1032,17 @@ const AccountSettings: React.FC = () => {
                         borderColor: formData.gstin && !validateGSTIN(formData.gstin) ? '#ff4444' : '#ddd'
                       }}
                       placeholder="22ABCDE1234F1Z5"
+                      disabled={isFieldLocked('gstin')}
+                      className={isFieldLocked('gstin') ? 'disabled-input' : ''}
                     />
-                    {formData.gstin && !validateGSTIN(formData.gstin) && (
+                    {formData.gstin && !validateGSTIN(formData.gstin) && !isFieldLocked('gstin') && (
                       <small style={{ color: '#ff4444', display: 'block', marginTop: '4px' }}>
                         Invalid GSTIN format. Use format: 22ABCDE1234F1Z5
+                      </small>
+                    )}
+                    {isFieldLocked('gstin') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
                       </small>
                     )}
                   </div>
@@ -946,7 +1059,7 @@ const AccountSettings: React.FC = () => {
               <button
                 className="save-btn"
                 onClick={() => handleSave('userDetails')}
-                disabled={loading}
+                disabled={loading || isKycVerified}
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
@@ -1055,61 +1168,106 @@ const AccountSettings: React.FC = () => {
           <div className="card-body">
             <div className="info-grid">
               <div className="info-item">
-                <label>Bank Name:</label>
+                <label>Bank Name: {isFieldLocked('bank_details') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.bankDetails ? (
-                  <input
-                    type="text"
-                    value={formData.bank_details.bank_name}
-                    onChange={(e) => handleInputChange('bank_details', 'bank_name', e.target.value)}
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.bank_details.bank_name}
+                      onChange={(e) => handleInputChange('bank_details', 'bank_name', e.target.value)}
+                      disabled={isFieldLocked('bank_details')}
+                      className={isFieldLocked('bank_details') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('bank_details') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.bank_details?.bank_name || 'Not set'}</span>
                 )}
               </div>
               <div className="info-item">
-                <label>Branch Name:</label>
+                <label>Branch Name: {isFieldLocked('bank_details') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.bankDetails ? (
-                  <input
-                    type="text"
-                    value={formData.bank_details.branch_name}
-                    onChange={(e) => handleInputChange('bank_details', 'branch_name', e.target.value)}
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.bank_details.branch_name}
+                      onChange={(e) => handleInputChange('bank_details', 'branch_name', e.target.value)}
+                      disabled={isFieldLocked('bank_details')}
+                      className={isFieldLocked('bank_details') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('bank_details') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.bank_details?.branch_name || 'Not set'}</span>
                 )}
               </div>
               <div className="info-item">
-                <label>A/C No:</label>
+                <label>A/C No: {isFieldLocked('bank_details') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.bankDetails ? (
-                  <input
-                    type="text"
-                    value={formData.bank_details.account_number}
-                    onChange={(e) => handleInputChange('bank_details', 'account_number', e.target.value)}
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.bank_details.account_number}
+                      onChange={(e) => handleInputChange('bank_details', 'account_number', e.target.value)}
+                      disabled={isFieldLocked('bank_details')}
+                      className={isFieldLocked('bank_details') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('bank_details') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.bank_details?.account_number ? maskAccountNumber(user.bank_details.account_number) : 'Not set'}</span>
                 )}
               </div>
               <div className="info-item">
-                <label>IFSC:</label>
+                <label>IFSC: {isFieldLocked('bank_details') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.bankDetails ? (
-                  <input
-                    type="text"
-                    value={formData.bank_details.ifsc_code}
-                    onChange={(e) => handleInputChange('bank_details', 'ifsc_code', e.target.value)}
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.bank_details.ifsc_code}
+                      onChange={(e) => handleInputChange('bank_details', 'ifsc_code', e.target.value)}
+                      disabled={isFieldLocked('bank_details')}
+                      className={isFieldLocked('bank_details') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('bank_details') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.bank_details?.ifsc_code || 'Not set'}</span>
                 )}
               </div>
               <div className="info-item full-width">
-                <label>A/C Name:</label>
+                <label>A/C Name: {isFieldLocked('bank_details') && <Lock size={14} style={{ display: 'inline', marginLeft: '4px', color: '#999' }} />}</label>
                 {editMode.bankDetails ? (
-                  <input
-                    type="text"
-                    value={formData.bank_details.account_holder_name}
-                    onChange={(e) => handleInputChange('bank_details', 'account_holder_name', e.target.value)}
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      value={formData.bank_details.account_holder_name}
+                      onChange={(e) => handleInputChange('bank_details', 'account_holder_name', e.target.value)}
+                      disabled={isFieldLocked('bank_details')}
+                      className={isFieldLocked('bank_details') ? 'disabled-input' : ''}
+                    />
+                    {isFieldLocked('bank_details') && (
+                      <small style={{ color: '#999', display: 'block', marginTop: '4px', fontSize: '12px' }}>
+                        This field is locked after KYC verification. Contact admin to make changes.
+                      </small>
+                    )}
+                  </div>
                 ) : (
                   <span>{user?.bank_details?.account_holder_name || 'Not set'}</span>
                 )}
@@ -1119,7 +1277,7 @@ const AccountSettings: React.FC = () => {
               <button
                 className="save-btn"
                 onClick={() => handleSave('bankDetails')}
-                disabled={loading}
+                disabled={loading || isKycVerified}
               >
                 {loading ? 'Saving...' : 'Save Changes'}
               </button>
@@ -1143,10 +1301,11 @@ const AccountSettings: React.FC = () => {
               </thead>
               <tbody>
                 {[
-                  { type: 'gst_certificate', label: 'GST Certificate/Company Incorporated Document' },
-                  { type: 'photo_selfie', label: 'Photo or Selfie' },
-                  { type: 'pan_card', label: 'PAN Card/Driving License' },
-                  { type: 'aadhaar_card', label: 'Aadhaar Card/Passport/Voter ID Card' }
+                  { type: 'gst_certificate', label: 'GST Certificate / Company Incorporated Document' },
+                  { type: 'photo', label: 'Photo / Selfie' },
+                  { type: 'pan', label: 'PAN Card' },
+                  { type: 'aadhar', label: 'Aadhar Card' },
+                  { type: 'bank_statement', label: 'Cheque / Bank Statement' }
                 ].map((doc) => {
                   const docStatus = getDocumentStatus(doc.type);
                   return (

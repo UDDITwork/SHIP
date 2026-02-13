@@ -688,7 +688,6 @@ router.get('/support-overview', auth, async (req, res) => {
       switch (stat._id) {
         case 'open':
         case 'in_progress':
-        case 'waiting_customer':
           supportOverview.open_tickets += stat.count;
           break;
         case 'resolved':
