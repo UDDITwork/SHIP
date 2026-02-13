@@ -1,5 +1,5 @@
 import { environmentConfig } from '../config/environment';
-import apiService from './api';
+import { apiService } from './api';
 
 // Notification Interface
 export interface Notification {
