@@ -429,11 +429,12 @@
   padding: 0;
   overflow-y: auto;
   overflow-x: visible; /* Allow active tab to extend beyond sidebar */
+  scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent overflow-x clipping */
   transition: width 0.3s ease, transform 0.3s ease;
   position: relative;
   display: flex;
   flex-direction: column;
-  z-index: 10;
+  z-index: 10; /* ABOVE main content */
   flex-shrink: 0;
 }
 
@@ -794,13 +795,13 @@
 .layout-main {
   flex: 1;
   overflow-y: auto;
-  overflow-x: hidden;
+  overflow-x: visible; /* CHANGED: Allow sidebar extension to show */
   background-color: #FFFFFF;
   padding: 20px 24px;
-  padding-left: 24px; /* Base padding only */
-  margin-left: 42px; /* Space for extension - white bg won't cover margin */
+  padding-left: 66px; /* 42px extension + 24px normal padding */
+  margin-left: -42px; /* NEGATIVE MARGIN: Pull left to overlap with sidebar extension */
   position: relative;
-  z-index: 1;
+  z-index: 1; /* BELOW sidebar (z-index: 10) so extension shows on top */
   border-left: none;
   min-height: 0;
   flex-basis: 0;
