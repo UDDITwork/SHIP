@@ -45,3 +45,13 @@ coverage/
 # Misc
 .pnp
 .pnp.js
+
+# Design files and diagrams
+Component*.svg
+*-diagram.svg
+*-understanding.svg
+*-vision.svg
+*-design.svg
+*-specification.svg
+EXACT-FIGMA-SHAPE.svg
+*.xlsx
