@@ -9,7 +9,8 @@
   flex-direction: column;
   height: 100vh;
   background-color: #FFFFFF;
-  overflow: hidden;
+  overflow-y: hidden; /* Prevent vertical scroll on container */
+  overflow-x: visible; /* Allow sidebar extension to show */
 }
 
 /* ============================================
