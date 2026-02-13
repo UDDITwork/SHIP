@@ -786,6 +786,7 @@ const AdminClientTickets: React.FC = () => {
                     >
                       <option value="open">Open</option>
                       <option value="in_progress">In Progress</option>
+                      <option value="waiting_customer">Waiting Customer</option>
                       <option value="resolved">Resolved</option>
                       <option value="closed">Closed</option>
                       <option value="escalated">Escalated</option>

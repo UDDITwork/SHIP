@@ -368,7 +368,7 @@ class NotificationService {
     limit: number = 20,
     unreadOnly: boolean = false
   ): Promise<NotificationResponse> {
-    const response = await apiService.get('/notifications', {
+    const response: any = await apiService.get('/notifications', {
       params: {
         page,
         limit,
@@ -382,7 +382,7 @@ class NotificationService {
    * Get unread notification count
    */
   async getUnreadCount(): Promise<number> {
-    const response = await apiService.get('/notifications/unread-count');
+    const response: any = await apiService.get('/notifications/unread-count');
     return response.data.data.unread_count;
   }
 
@@ -391,7 +391,7 @@ class NotificationService {
    * @param notificationId - Notification ID
    */
   async markAsRead(notificationId: string): Promise<Notification> {
-    const response = await apiService.patch(`/notifications/${notificationId}/read`);
+    const response: any = await apiService.patch(`/notifications/${notificationId}/read`);
     return response.data.data;
   }
 
@@ -399,7 +399,7 @@ class NotificationService {
    * Mark all notifications as read
    */
   async markAllAsRead(): Promise<{ modified_count: number }> {
-    const response = await apiService.patch('/notifications/mark-all-read');
+    const response: any = await apiService.patch('/notifications/mark-all-read');
     return response.data.data;
   }
 

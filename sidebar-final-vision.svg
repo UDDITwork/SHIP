@@ -1,0 +1,187 @@
+<svg width="1000" height="800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1000" height="800" fill="#F8F9FA"/>
+
+  <!-- Title -->
+  <text x="500" y="50" font-family="Arial, sans-serif" font-size="28" font-weight="bold" text-anchor="middle" fill="#2C4563">
+    FINAL OUTPUT - Sidebar with Concave Curves (After Fix)
+  </text>
+
+  <!-- Main Container -->
+  <g transform="translate(150, 120)">
+
+    <!-- Sidebar Background (Orange) -->
+    <rect x="0" y="0" width="250" height="500" fill="#F68723"/>
+    <text x="125" y="40" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#FFFFFF">
+      SIDEBAR (#F68723)
+    </text>
+
+    <!-- Content Area Background (White) -->
+    <rect x="250" y="0" width="450" height="500" fill="#FFFFFF" stroke="#E0E0E0" stroke-width="1"/>
+    <text x="475" y="40" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#2C4563">
+      CONTENT AREA (#FFFFFF)
+    </text>
+
+    <!-- Inactive Menu Item 1 - Dashboard -->
+    <rect x="22" y="80" width="228" height="54" fill="rgba(255,255,255,0.1)" rx="27"/>
+    <text x="90" y="112" font-family="Arial, sans-serif" font-size="15" fill="#FFFFFF">
+      🏠 Dashboard
+    </text>
+
+    <!-- ACTIVE Menu Item - Orders (The Important Part!) -->
+    <g id="active-orders">
+      <!-- Main white pill - flush to left edge -->
+      <path d="M 0,154 L 37,154 Q 0,154 0,181 Q 0,208 37,208 L 250,208 L 250,154 Z" fill="#FFFFFF"/>
+
+      <!-- Top Concave Curve - White quarter circle with transparent center -->
+      <path d="M 250,154 Q 250,129 225,129 L 250,129 Z" fill="#FFFFFF"/>
+      <circle cx="225" cy="154" r="25" fill="none" stroke="#F68723" stroke-width="2" stroke-dasharray="3,3"/>
+      <!-- The transparent center of this circle shows orange background -->
+
+      <!-- Bottom Concave Curve - White quarter circle with transparent center -->
+      <path d="M 250,208 Q 250,233 225,233 L 250,233 Z" fill="#FFFFFF"/>
+      <circle cx="225" cy="208" r="25" fill="none" stroke="#F68723" stroke-width="2" stroke-dasharray="3,3"/>
+
+      <!-- Orders text -->
+      <text x="90" y="186" font-family="Arial, sans-serif" font-size="15" font-weight="600" fill="#F68723">
+        🛒 Orders
+      </text>
+    </g>
+
+    <!-- Inactive Menu Item 3 - NDR -->
+    <rect x="22" y="228" width="228" height="54" fill="rgba(255,255,255,0.1)" rx="27"/>
+    <text x="90" y="260" font-family="Arial, sans-serif" font-size="15" fill="#FFFFFF">
+      📦 NDR
+    </text>
+
+    <!-- Inactive Menu Item 4 - Tools -->
+    <rect x="22" y="302" width="228" height="54" fill="rgba(255,255,255,0.1)" rx="27"/>
+    <text x="90" y="334" font-family="Arial, sans-serif" font-size="15" fill="#FFFFFF">
+      🔧 Tools
+    </text>
+
+    <!-- Annotations with Arrows -->
+
+    <!-- Top Curve Annotation -->
+    <line x1="280" y1="145" x2="250" y2="150" stroke="#DC3545" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="290" y="135" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#DC3545">
+      TOP CONCAVE CURVE
+    </text>
+    <text x="290" y="150" font-family="Arial, sans-serif" font-size="11" fill="#666">
+      Transparent center (shows orange)
+    </text>
+    <text x="290" y="163" font-family="Arial, sans-serif" font-size="11" fill="#666">
+      White fills outer area
+    </text>
+
+    <!-- Bottom Curve Annotation -->
+    <line x1="280" y1="217" x2="250" y2="212" stroke="#DC3545" stroke-width="2" marker-end="url(#arrow)"/>
+    <text x="290" y="215" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#DC3545">
+      BOTTOM CONCAVE CURVE
+    </text>
+    <text x="290" y="230" font-family="Arial, sans-serif" font-size="11" fill="#666">
+      Mirrors top curve
+    </text>
+
+    <!-- Active Tab Annotation -->
+    <line x1="125" y1="235" x2="125" y2="212" stroke="#28A745" stroke-width="2" marker-end="url(#arrow-green)"/>
+    <text x="70" y="255" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#28A745">
+      ACTIVE TAB
+    </text>
+    <text x="20" y="270" font-family="Arial, sans-serif" font-size="11" fill="#666">
+      • White background (#FFFFFF)
+    </text>
+    <text x="20" y="283" font-family="Arial, sans-serif" font-size="11" fill="#666">
+      • Flush to left edge (margin-left: 0)
+    </text>
+    <text x="20" y="296" font-family="Arial, sans-serif" font-size="11" fill="#666">
+      • Rounded left corners (37px radius)
+    </text>
+
+  </g>
+
+  <!-- Legend Box -->
+  <rect x="150" y="650" width="700" height="120" fill="#FFF9E6" stroke="#F68723" stroke-width="3" rx="10"/>
+  <text x="500" y="685" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#2C4563">
+    🔑 CSS CHANGES APPLIED (3 Lines)
+  </text>
+
+  <text x="180" y="715" font-family="Arial, sans-serif" font-size="14" fill="#DC3545" font-weight="bold">
+    1. overflow-x: clip
+  </text>
+  <text x="200" y="732" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    (Prevents pseudo-elements from bleeding into content area)
+  </text>
+
+  <text x="380" y="715" font-family="Arial, sans-serif" font-size="14" fill="#DC3545" font-weight="bold">
+    2. Gradient Fix: transparent → white
+  </text>
+  <text x="400" y="732" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    (Center is transparent, outer is white)
+  </text>
+
+  <text x="650" y="715" font-family="Arial, sans-serif" font-size="14" fill="#DC3545" font-weight="bold">
+    3. Same for bottom curve
+  </text>
+  <text x="670" y="732" font-family="Arial, sans-serif" font-size="12" fill="#666">
+    (Mirror of top curve)
+  </text>
+
+  <text x="500" y="760" font-family="Arial, sans-serif" font-size="16" font-weight="bold" text-anchor="middle" fill="#28A745">
+    ✅ Result: Perfect concave curves matching Figma design!
+  </text>
+
+  <!-- Arrow markers -->
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#DC3545"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#28A745"/>
+    </marker>
+  </defs>
+
+  <!-- Visual Guide - Zoomed Detail -->
+  <g transform="translate(600, 120)">
+    <rect x="0" y="0" width="250" height="180" fill="#FFFFFF" stroke="#999" stroke-width="2" rx="8"/>
+    <text x="125" y="25" font-family="Arial, sans-serif" font-size="14" font-weight="bold" text-anchor="middle" fill="#2C4563">
+      ZOOMED DETAIL
+    </text>
+
+    <!-- Show the curve mechanism -->
+    <rect x="20" y="40" width="80" height="120" fill="#F68723"/>
+    <text x="60" y="60" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#FFFFFF">
+      Sidebar
+    </text>
+
+    <rect x="100" y="40" width="130" height="120" fill="#FFFFFF" stroke="#E0E0E0"/>
+    <text x="165" y="60" font-family="Arial, sans-serif" font-size="11" text-anchor="middle" fill="#666">
+      Content
+    </text>
+
+    <!-- White pill -->
+    <rect x="20" y="80" width="80" height="40" fill="#FFFFFF"/>
+
+    <!-- Top curve detail -->
+    <circle cx="75" cy="80" r="20" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M 100,80 Q 100,60 80,60 L 100,60 Z" fill="#FFFFFF"/>
+    <text x="110" y="70" font-family="Arial, sans-serif" font-size="9" fill="#DC3545">
+      White fills
+    </text>
+
+    <!-- Show transparent center -->
+    <circle cx="75" cy="80" r="20" fill="none" stroke="#F68723" stroke-width="1" stroke-dasharray="2,2"/>
+    <text x="110" y="95" font-family="Arial, sans-serif" font-size="9" fill="#F68723">
+      Orange shows
+    </text>
+    <text x="110" y="105" font-family="Arial, sans-serif" font-size="9" fill="#F68723">
+      through center
+    </text>
+
+    <!-- Bottom curve detail -->
+    <circle cx="75" cy="120" r="20" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M 100,120 Q 100,140 80,140 L 100,140 Z" fill="#FFFFFF"/>
+
+  </g>
+
+</svg>

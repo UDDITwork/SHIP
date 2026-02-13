@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 700 700" font-family="Montserrat, Arial, sans-serif">
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+    <pattern id="redHatch" patternUnits="userSpaceOnUse" width="8" height="8" patternTransform="rotate(45)">
+      <rect width="8" height="8" fill="#ff000030"/>
+      <line x1="0" y1="0" x2="0" y2="8" stroke="#ff0000" stroke-width="2"/>
+    </pattern>
+  </defs>
+
+  <!-- Title -->
+  <text x="350" y="30" text-anchor="middle" font-size="18" font-weight="700" fill="#002B59">Sidebar Concave Curves — Geometry Understanding</text>
+
+  <!-- ====== SECTION 1: CURRENT PROBLEM ====== -->
+  <text x="175" y="65" text-anchor="middle" font-size="14" font-weight="700" fill="#dc3545">CURRENT (Problem)</text>
+
+  <!-- Sidebar background -->
+  <rect x="30" y="80" width="200" height="280" rx="0" fill="#F68723"/>
+  <text x="130" y="100" text-anchor="middle" font-size="11" fill="white" font-weight="600">SIDEBAR (250px)</text>
+
+  <!-- Content area -->
+  <rect x="230" y="80" width="120" height="280" fill="#FFFFFF" stroke="#E5E5E5" stroke-width="1"/>
+  <text x="290" y="100" text-anchor="middle" font-size="11" fill="#999" font-weight="500">CONTENT</text>
+
+  <!-- Sidebar boundary line -->
+  <line x1="230" y1="75" x2="230" y2="365" stroke="#0066CC" stroke-width="2" stroke-dasharray="6,4"/>
+  <text x="233" y="375" font-size="9" fill="#0066CC">sidebar edge (250px)</text>
+
+  <!-- Inactive item above (Billing) -->
+  <rect x="50" y="115" width="180" height="50" rx="25" fill="transparent" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+  <text x="140" y="145" text-anchor="middle" font-size="13" fill="white" font-weight="500">Billing</text>
+
+  <!-- Active item (Warehouse) - white pill -->
+  <rect x="30" y="175" width="200" height="54" rx="27" fill="#FFFFFF"/>
+  <!-- Flat right edge overlay -->
+  <rect x="200" y="175" width="30" height="54" fill="#FFFFFF"/>
+  <text x="130" y="207" text-anchor="middle" font-size="13" fill="#F68723" font-weight="600">Warehouse</text>
+
+  <!-- ::before pseudo-element (TOP) - the 25x25 box -->
+  <!-- This shows the full box extending to the sidebar edge -->
+  <rect x="205" y="150" width="25" height="25" fill="none" stroke="#0066CC" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- White quarter-circle of ::before (correct part) -->
+  <path d="M 205,175 L 205,150 A 25,25 0 0,1 230,175 Z" fill="#FFFFFF" opacity="0.8"/>
+
+  <!-- RED BLEED AREA - the part extending into content area -->
+  <path d="M 230,150 L 255,150 L 255,175 A 25,25 0 0,1 230,150" fill="url(#redHatch)" stroke="#ff0000" stroke-width="1.5"/>
+  <text x="260" y="158" font-size="9" fill="#dc3545" font-weight="700">BLEED!</text>
+  <text x="260" y="170" font-size="8" fill="#dc3545">extends into</text>
+  <text x="260" y="180" font-size="8" fill="#dc3545">content area</text>
+
+  <!-- ::after pseudo-element (BOTTOM) - the 25x25 box -->
+  <rect x="205" y="229" width="25" height="25" fill="none" stroke="#0066CC" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- White quarter-circle of ::after (correct part) -->
+  <path d="M 205,229 L 230,229 A 25,25 0 0,1 205,254 Z" fill="#FFFFFF" opacity="0.8"/>
+
+  <!-- RED BLEED AREA bottom -->
+  <path d="M 230,229 L 255,229 L 255,254 A 25,25 0 0,0 230,229" fill="url(#redHatch)" stroke="#ff0000" stroke-width="1.5"/>
+  <text x="260" y="248" font-size="9" fill="#dc3545" font-weight="700">BLEED!</text>
+
+  <!-- Inactive item below (Channel) -->
+  <rect x="50" y="265" width="180" height="50" rx="25" fill="transparent" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+  <text x="140" y="295" text-anchor="middle" font-size="13" fill="white" font-weight="500">Channel</text>
+
+  <!-- Problem annotation -->
+  <line x1="250" y1="165" x2="290" y2="135" stroke="#dc3545" stroke-width="1" marker-end="url(#arrow)"/>
+  <text x="295" y="130" font-size="10" fill="#dc3545">overflow-x: visible</text>
+  <text x="295" y="142" font-size="10" fill="#dc3545">lets curves bleed out</text>
+
+
+  <!-- ====== SECTION 2: FIX ====== -->
+  <text x="525" y="65" text-anchor="middle" font-size="14" font-weight="700" fill="#28a745">FIXED (overflow-x: clip)</text>
+
+  <!-- Sidebar background -->
+  <rect x="380" y="80" width="200" height="280" rx="0" fill="#F68723"/>
+  <text x="480" y="100" text-anchor="middle" font-size="11" fill="white" font-weight="600">SIDEBAR (250px)</text>
+
+  <!-- Content area -->
+  <rect x="580" y="80" width="120" height="280" fill="#FFFFFF" stroke="#E5E5E5" stroke-width="1"/>
+  <text x="640" y="100" text-anchor="middle" font-size="11" fill="#999" font-weight="500">CONTENT</text>
+
+  <!-- Sidebar boundary line -->
+  <line x1="580" y1="75" x2="580" y2="365" stroke="#28a745" stroke-width="2" stroke-dasharray="6,4"/>
+  <text x="583" y="375" font-size="9" fill="#28a745">clipped at edge</text>
+
+  <!-- Inactive item above (Billing) -->
+  <rect x="400" y="115" width="180" height="50" rx="25" fill="transparent" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+  <text x="490" y="145" text-anchor="middle" font-size="13" fill="white" font-weight="500">Billing</text>
+
+  <!-- Active item (Warehouse) - white pill -->
+  <rect x="380" y="175" width="200" height="54" rx="27" fill="#FFFFFF"/>
+  <rect x="550" y="175" width="30" height="54" fill="#FFFFFF"/>
+  <text x="480" y="207" text-anchor="middle" font-size="13" fill="#F68723" font-weight="600">Warehouse</text>
+
+  <!-- Top concave curve (CLIPPED - only within sidebar) -->
+  <path d="M 555,175 L 555,150 A 25,25 0 0,1 580,175 Z" fill="#FFFFFF"/>
+  <!-- Green outline showing clean clip -->
+  <path d="M 555,175 L 555,150 A 25,25 0 0,1 580,175" fill="none" stroke="#28a745" stroke-width="1.5"/>
+
+  <!-- Bottom concave curve (CLIPPED) -->
+  <path d="M 555,229 L 580,229 A 25,25 0 0,1 555,254 Z" fill="#FFFFFF"/>
+  <path d="M 555,229 L 580,229 A 25,25 0 0,1 555,254" fill="none" stroke="#28a745" stroke-width="1.5"/>
+
+  <!-- Inactive item below (Channel) -->
+  <rect x="400" y="265" width="180" height="50" rx="25" fill="transparent" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>
+  <text x="490" y="295" text-anchor="middle" font-size="13" fill="white" font-weight="500">Channel</text>
+
+  <!-- Seamless merge annotation -->
+  <line x1="582" y1="200" x2="620" y2="200" stroke="#28a745" stroke-width="1"/>
+  <text x="625" y="195" font-size="9" fill="#28a745">white pill meets</text>
+  <text x="625" y="207" font-size="9" fill="#28a745">white content</text>
+  <text x="625" y="219" font-size="9" fill="#28a745">(seamless merge)</text>
+
+  <!-- Curve annotation -->
+  <line x1="560" y1="155" x2="535" y2="135" stroke="#28a745" stroke-width="1"/>
+  <text x="480" y="130" font-size="9" fill="#28a745">concave curve stays</text>
+  <text x="480" y="142" font-size="9" fill="#28a745">within sidebar bounds</text>
+
+
+  <!-- ====== SECTION 3: GEOMETRY DETAIL ====== -->
+  <text x="350" y="420" text-anchor="middle" font-size="14" font-weight="700" fill="#002B59">Geometry Detail — ::before pseudo-element</text>
+
+  <!-- Large detailed view -->
+  <rect x="80" y="440" width="250" height="200" fill="#F68723" rx="0"/>
+  <text x="145" y="460" font-size="10" fill="white" opacity="0.7">Orange sidebar area</text>
+
+  <!-- Active item area -->
+  <rect x="80" y="540" width="250" height="60" fill="#FFFFFF"/>
+  <text x="205" y="575" text-anchor="middle" font-size="12" fill="#F68723" font-weight="600">Active Item (white)</text>
+
+  <!-- Content area -->
+  <rect x="330" y="440" width="150" height="200" fill="#FFFFFF" stroke="#E5E5E5"/>
+  <text x="405" y="460" font-size="10" fill="#999">Content area</text>
+
+  <!-- Boundary -->
+  <line x1="330" y1="435" x2="330" y2="645" stroke="#0066CC" stroke-width="2" stroke-dasharray="6,4"/>
+
+  <!-- ::before box outline -->
+  <rect x="280" y="490" width="50" height="50" fill="none" stroke="#0066CC" stroke-width="1.5" stroke-dasharray="4,3"/>
+  <text x="305" y="485" text-anchor="middle" font-size="9" fill="#0066CC">::before box (25px)</text>
+
+  <!-- The quarter-circle (white) inside the box -->
+  <path d="M 280,540 L 280,490 A 50,50 0 0,1 330,540 Z" fill="#FFFFFF" stroke="#28a745" stroke-width="2"/>
+
+  <!-- The transparent area (shows orange through) -->
+  <path d="M 280,490 L 330,490 L 330,540 A 50,50 0 0,0 280,490" fill="#F68723" opacity="0.3" stroke="#F68723" stroke-width="1"/>
+  <text x="318" y="505" font-size="8" fill="#F68723" font-weight="600">transparent</text>
+  <text x="318" y="515" font-size="8" fill="#F68723">(orange shows)</text>
+
+  <!-- White label -->
+  <text x="295" y="530" font-size="8" fill="#28a745" font-weight="600">WHITE</text>
+  <text x="295" y="540" font-size="8" fill="#28a745">(merges)</text>
+
+  <!-- Bleed zone -->
+  <path d="M 330,490 L 380,490 L 380,540 A 50,50 0 0,1 330,490" fill="url(#redHatch)" stroke="#dc3545" stroke-width="1.5"/>
+  <text x="360" y="520" font-size="8" fill="#dc3545" font-weight="700">TRIM</text>
+  <text x="360" y="530" font-size="8" fill="#dc3545">THIS</text>
+
+  <!-- Dimension annotations -->
+  <!-- Width -->
+  <line x1="280" y1="548" x2="330" y2="548" stroke="#333" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="330" y1="548" x2="280" y2="548" stroke="#333" stroke-width="1" marker-end="url(#arrow)"/>
+  <text x="305" y="558" text-anchor="middle" font-size="8" fill="#333">25px</text>
+
+  <!-- Fix explanation -->
+  <rect x="400" y="490" width="230" height="95" rx="8" fill="#f0fff0" stroke="#28a745" stroke-width="1"/>
+  <text x="415" y="510" font-size="11" fill="#28a745" font-weight="700">Fix: overflow-x: clip</text>
+  <text x="415" y="528" font-size="10" fill="#333">Clips the pseudo-element at</text>
+  <text x="415" y="542" font-size="10" fill="#333">the sidebar boundary (330px).</text>
+  <text x="415" y="556" font-size="10" fill="#333">White quarter-circle stays in</text>
+  <text x="415" y="570" font-size="10" fill="#333">sidebar. Content area untouched.</text>
+
+  <!-- Legend -->
+  <rect x="80" y="655" width="540" height="35" rx="6" fill="#f5f5f5" stroke="#ddd"/>
+  <rect x="95" y="664" width="14" height="14" fill="#F68723"/>
+  <text x="115" y="675" font-size="9" fill="#333">Orange sidebar</text>
+  <rect x="195" y="664" width="14" height="14" fill="#FFFFFF" stroke="#ccc"/>
+  <text x="215" y="675" font-size="9" fill="#333">White (pill/content)</text>
+  <rect x="315" y="664" width="14" height="14" fill="url(#redHatch)"/>
+  <text x="335" y="675" font-size="9" fill="#333">Bleed to trim</text>
+  <rect x="425" y="664" width="14" height="14" fill="#f0fff0" stroke="#28a745"/>
+  <text x="445" y="675" font-size="9" fill="#333">Correct curve area</text>
+</svg>

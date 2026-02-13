@@ -1,0 +1,153 @@
+<svg width="1200" height="900" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="900" fill="#F0F0F0"/>
+
+  <!-- Title -->
+  <text x="600" y="50" font-family="Arial, sans-serif" font-size="32" font-weight="bold" text-anchor="middle" fill="#2C4563">
+    ✅ CORRECT FIGMA DESIGN - Sidebar Active Tab
+  </text>
+  <text x="600" y="85" font-family="Arial, sans-serif" font-size="18" text-anchor="middle" fill="#DC3545">
+    (Based on your Figma Components 2, 3, 4)
+  </text>
+
+  <!-- Main Layout -->
+  <g transform="translate(100, 130)">
+
+    <!-- Sidebar (Orange) with concave cutouts -->
+    <path d="
+      M 0,0
+      L 250,0
+      L 250,120
+      L 250,154
+      Q 275,154 275,179
+      Q 275,204 250,204
+      L 250,238
+      L 250,550
+      L 0,550
+      Z
+    " fill="#F68723"/>
+
+    <!-- Label for sidebar -->
+    <text x="125" y="40" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#FFFFFF">
+      ORANGE SIDEBAR (250px wide)
+    </text>
+
+    <!-- Content Area (White) -->
+    <rect x="250" y="0" width="500" height="550" fill="#FFFFFF"/>
+    <text x="500" y="40" font-family="Arial, sans-serif" font-size="18" font-weight="bold" text-anchor="middle" fill="#2C4563">
+      WHITE CONTENT AREA
+    </text>
+
+    <!-- Menu Items -->
+
+    <!-- 1. Dashboard (Inactive) -->
+    <rect x="22" y="80" width="206" height="54" rx="27" fill="rgba(255,255,255,0.15)"/>
+    <text x="85" y="112" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">
+      🏠 Dashboard
+    </text>
+
+    <!-- 2. Orders (ACTIVE WHITE PILL) - EXTENDS INTO CONTENT AREA -->
+    <rect x="0" y="154" width="290" height="50" fill="#FFFFFF"/>
+    <!-- Rounded left corners -->
+    <circle cx="37" cy="179" r="37" fill="#FFFFFF"/>
+    <rect x="37" y="154" width="253" height="50" fill="#FFFFFF"/>
+
+    <text x="85" y="186" font-family="Arial, sans-serif" font-size="16" font-weight="600" fill="#F68723">
+      🛒 Orders
+    </text>
+
+    <!-- 3. NDR (Inactive) -->
+    <rect x="22" y="258" width="206" height="54" rx="27" fill="rgba(255,255,255,0.15)"/>
+    <text x="85" y="290" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">
+      📦 NDR
+    </text>
+
+    <!-- 4. Tools (Inactive) -->
+    <rect x="22" y="332" width="206" height="54" rx="27" fill="rgba(255,255,255,0.15)"/>
+    <text x="85" y="364" font-family="Arial, sans-serif" font-size="16" fill="#FFFFFF">
+      🔧 Tools
+    </text>
+
+    <!-- Annotations -->
+
+    <!-- Top Concave Curve -->
+    <ellipse cx="262" cy="154" rx="20" ry="20" fill="none" stroke="#DC3545" stroke-width="3" stroke-dasharray="5,5"/>
+    <line x1="320" y1="140" x2="275" y2="150" stroke="#DC3545" stroke-width="2" marker-end="url(#arrow-red)"/>
+    <text x="330" y="135" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#DC3545">
+      TOP CONCAVE CURVE
+    </text>
+    <text x="330" y="152" font-family="Arial, sans-serif" font-size="12" fill="#666">
+      Sidebar cuts inward (scoop)
+    </text>
+    <text x="330" y="167" font-family="Arial, sans-serif" font-size="12" fill="#666">
+      Shows white background
+    </text>
+
+    <!-- Bottom Concave Curve -->
+    <ellipse cx="262" cy="204" rx="20" ry="20" fill="none" stroke="#DC3545" stroke-width="3" stroke-dasharray="5,5"/>
+    <line x1="320" y1="218" x2="275" y2="208" stroke="#DC3545" stroke-width="2" marker-end="url(#arrow-red)"/>
+    <text x="330" y="215" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="#DC3545">
+      BOTTOM CONCAVE CURVE
+    </text>
+    <text x="330" y="232" font-family="Arial, sans-serif" font-size="12" fill="#666">
+      Mirrors top curve
+    </text>
+
+    <!-- Extension Arrow -->
+    <line x1="250" y1="179" x2="290" y2="179" stroke="#28A745" stroke-width="4"/>
+    <line x1="250" y1="240" x2="290" y2="240" stroke="#28A745" stroke-width="2" stroke-dasharray="3,3"/>
+    <text x="255" y="270" font-family="Arial, sans-serif" font-size="13" font-weight="bold" fill="#28A745">
+      ← 40px extension into content area →
+    </text>
+
+    <!-- Sidebar edge line -->
+    <line x1="250" y1="0" x2="250" y2="154" stroke="#DC3545" stroke-width="2" stroke-dasharray="5,5"/>
+    <line x1="250" y1="204" x2="250" y2="550" stroke="#DC3545" stroke-width="2" stroke-dasharray="5,5"/>
+    <text x="255" y="120" font-family="Arial, sans-serif" font-size="12" font-weight="bold" fill="#DC3545">
+      Sidebar Edge (250px)
+    </text>
+
+  </g>
+
+  <!-- Detailed View - Component Breakdown -->
+  <g transform="translate(100, 720)">
+    <rect x="0" y="0" width="1000" height="150" fill="#FFF9E6" stroke="#F68723" stroke-width="3" rx="10"/>
+    <text x="500" y="35" font-family="Arial, sans-serif" font-size="20" font-weight="bold" text-anchor="middle" fill="#2C4563">
+      🎯 KEY INSIGHT FROM FIGMA COMPONENTS
+    </text>
+
+    <text x="30" y="65" font-family="Arial, sans-serif" font-size="15" fill="#DC3545" font-weight="bold">
+      ❌ WRONG (My Previous Understanding):
+    </text>
+    <text x="50" y="85" font-family="Arial, sans-serif" font-size="13" fill="#666">
+      • White pill stays within sidebar (250px)
+    </text>
+    <text x="50" y="102" font-family="Arial, sans-serif" font-size="13" fill="#666">
+      • Curves are pseudo-elements on the white pill
+    </text>
+    <text x="50" y="119" font-family="Arial, sans-serif" font-size="13" fill="#666">
+      • Gradient fills the curve area
+    </text>
+
+    <text x="520" y="65" font-family="Arial, sans-serif" font-size="15" fill="#28A745" font-weight="bold">
+      ✅ CORRECT (Actual Figma Design):
+    </text>
+    <text x="540" y="85" font-family="Arial, sans-serif" font-size="13" fill="#666">
+      • White pill EXTENDS ~40px beyond sidebar edge
+    </text>
+    <text x="540" y="102" font-family="Arial, sans-serif" font-size="13" fill="#666">
+      • Sidebar has CONCAVE CUTOUTS (scoops inward)
+    </text>
+    <text x="540" y="119" font-family="Arial, sans-serif" font-size="13" fill="#666">
+      • Cutouts reveal white background behind sidebar
+    </text>
+  </g>
+
+  <!-- Arrow marker -->
+  <defs>
+    <marker id="arrow-red" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <path d="M0,0 L0,6 L9,3 z" fill="#DC3545"/>
+    </marker>
+  </defs>
+
+</svg>
