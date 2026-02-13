@@ -357,7 +357,7 @@ export interface AdminTicket {
   category: string;
   subject: string;
   description: string;
-  status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'escalated';
+  status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed' | 'escalated';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
   updated_at: string;
