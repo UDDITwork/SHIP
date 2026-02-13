@@ -49,14 +49,14 @@ const ActiveTabExtension: React.FC<{
   const curveDepth = 18; // Concave curve depth
   const width = 42;
 
-  // SVG path with concave curves on top and bottom left edges
+  // SVG path with concave curves on top-right and bottom-right edges (facing content area)
   const path = `
-    M 0 ${curveDepth}
-    C 0 ${curveDepth * 0.5}, ${curveDepth * 0.5} 0, ${curveDepth} 0
-    L ${width} 0
-    L ${width} ${height}
-    L ${curveDepth} ${height}
-    C ${curveDepth * 0.5} ${height}, 0 ${height - curveDepth * 0.5}, 0 ${height - curveDepth}
+    M 0 0
+    L ${width - curveDepth} 0
+    C ${width - curveDepth * 0.5} 0, ${width} ${curveDepth * 0.5}, ${width} ${curveDepth}
+    L ${width} ${height - curveDepth}
+    C ${width} ${height - curveDepth * 0.5}, ${width - curveDepth * 0.5} ${height}, ${width - curveDepth} ${height}
+    L 0 ${height}
     Z
   `;
 

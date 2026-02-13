@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Concave Curve Test</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      display: flex;
+      gap: 40px;
+      align-items: flex-start;
+    }
+    .demo {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    .sidebar-mock {
+      width: 250px;
+      background: #F68723;
+      height: 400px;
+      border-radius: 8px;
+      padding: 20px;
+      position: relative;
+    }
+    .active-item {
+      background: #FCE1C8;
+      height: 74px;
+      border-radius: 37px 0 0 37px;
+      width: 186px;
+      display: flex;
+      align-items: center;
+      padding-left: 20px;
+      font-weight: bold;
+      color: #F68723;
+    }
+    .extension-container {
+      position: absolute;
+      left: 250px;
+      top: 20px;
+      width: 42px;
+      height: 74px;
+    }
+    h2 {
+      margin-top: 0;
+    }
+    .info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+  <h1>Concave Curve Extension Test</h1>
+
+  <div class="container">
+    <div class="demo">
+      <h2>Original Figma Design</h2>
+      <p>Extension with concave curves on top-left and bottom-left edges</p>
+      <div style="position: relative;">
+        <div class="sidebar-mock">
+          <div class="active-item">Dashboard</div>
+        </div>
+        <div class="extension-container">
+          <svg
+            width="42"
+            height="74"
+            viewBox="0 0 42 74"
+            preserveAspectRatio="none"
+            style="display: block;"
+          >
+            <path
+              d="
+                M 0 18
+                C 0 9, 9 0, 18 0
+                L 42 0
+                L 42 74
+                L 18 74
+                C 9 74, 0 65, 0 56
+                Z
+              "
+              fill="#FCE1C8"
+            />
+          </svg>
+        </div>
+      </div>
+      <div class="info">
+        • Width: 42px<br>
+        • Height: 74px<br>
+        • Curve depth: 18px<br>
+        • Color: #FCE1C8
+      </div>
+    </div>
+
+    <div class="demo">
+      <h2>Comparison: No Curves</h2>
+      <p>Plain rectangle (what was showing before)</p>
+      <div style="position: relative;">
+        <div class="sidebar-mock">
+          <div class="active-item">Dashboard</div>
+        </div>
+        <div class="extension-container">
+          <div style="width: 42px; height: 74px; background: #FCE1C8;"></div>
+        </div>
+      </div>
+      <div class="info">
+        Plain rectangle with no curves
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top: 40px; padding: 20px; background: white; border-radius: 8px;">
+    <h2>SVG Path Explanation</h2>
+    <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; overflow-x: auto;">
+M 0 18              // Move to starting point (18px down from top)
+C 0 9, 9 0, 18 0    // Cubic curve: concave top-left (control points create inward curve)
+L 42 0              // Line to top-right corner
+L 42 74             // Line down to bottom-right corner
+L 18 74             // Line to bottom-left curve start
+C 9 74, 0 65, 0 56  // Cubic curve: concave bottom-left (control points create inward curve)
+Z                   // Close path back to start
+    </pre>
+    <p><strong>Key:</strong> The C (cubic Bezier) commands create the concave (inward) curves by positioning control points that pull the curve inward, creating the smooth concave shape that transitions from the sidebar to the content area.</p>
+  </div>
+</body>
+</html>
