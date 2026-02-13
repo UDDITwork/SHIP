@@ -796,8 +796,8 @@
   overflow-x: hidden;
   background-color: #FFFFFF;
   padding: 20px 24px;
-  padding-left: 66px; /* 24px base + 42px for active tab extension */
-  margin-left: 0;
+  padding-left: 24px; /* Base padding only */
+  margin-left: 42px; /* Space for extension - white bg won't cover margin */
   position: relative;
   z-index: 1;
   border-left: none;
