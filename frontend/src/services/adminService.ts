@@ -439,6 +439,7 @@ export interface AdminTicketSummaryTotals {
   all: number;
   open: number;
   in_progress: number;
+  waiting_customer: number;
   resolved: number;
   closed: number;
   escalated: number;
@@ -462,6 +463,7 @@ export interface AdminTicketSummaryClient {
   statusCounts: {
     open: number;
     in_progress: number;
+    waiting_customer: number;
     resolved: number;
     closed: number;
     escalated: number;
@@ -2127,134 +2129,6 @@ class AdminService {
   // ============================================================================
   // KYC MANAGEMENT METHODS (Iteration 2)
   // ============================================================================
-
-  /**
-   * Get all KYC documents for a client
-   */
-  async getAllKYCDocuments(clientId: string): Promise<{
-    success: boolean;
-    data: {
-      client: {
-        _id: string;
-        client_id: string;
-        company_name: string;
-        your_name: string;
-        email: string;
-        kyc_status: {
-          status: 'pending' | 'verified' | 'rejected';
-          verified_date?: string;
-          verification_notes?: string;
-          verified_by_staff_name?: string;
-          verification_history?: Array<{
-            action: 'verified' | 'rejected' | 'note_sent';
-            staff_name?: string;
-            notes?: string;
-            timestamp: string;
-          }>;
-        };
-      };
-      documents: Array<{
-        document_type: string;
-        document_status: string;
-        file_url: string;
-        upload_date: string;
-        mimetype?: string;
-        original_filename?: string;
-      }>;
-    };
-  }> {
-    const response = await apiService.get<{
-      success: boolean;
-      data: {
-        client: {
-          _id: string;
-          client_id: string;
-          company_name: string;
-          your_name: string;
-          email: string;
-          kyc_status: {
-            status: 'pending' | 'verified' | 'rejected';
-            verified_date?: string;
-            verification_notes?: string;
-            verified_by_staff_name?: string;
-            verification_history?: Array<{
-              action: 'verified' | 'rejected' | 'note_sent';
-              staff_name?: string;
-              notes?: string;
-              timestamp: string;
-            }>;
-          };
-        };
-        documents: Array<{
-          document_type: string;
-          document_status: string;
-          file_url: string;
-          upload_date: string;
-          mimetype?: string;
-          original_filename?: string;
-        }>;
-      };
-    }>(`/admin/clients/${clientId}/kyc/documents`, {
-      headers: this.getAdminHeaders()
-    });
-    return response;
-  }
-
-  /**
-   * Verify or reject KYC
-   */
-  async verifyKYC(clientId: string, action: 'verify' | 'reject', notes: string): Promise<{
-    success: boolean;
-    message: string;
-    data: {
-      client: AdminClient;
-    };
-  }> {
-    const response = await apiService.patch<{
-      success: boolean;
-      message: string;
-      data: {
-        client: AdminClient;
-      };
-    }>(`/admin/clients/${clientId}/kyc/verify`, {
-      action,
-      notes
-    }, {
-      headers: this.getAdminHeaders()
-    });
-    return response;
-  }
-
-  /**
-   * Send KYC notes without verifying/rejecting
-   */
-  async sendKYCNotes(clientId: string, notes: string): Promise<{
-    success: boolean;
-    message: string;
-    data: {
-      client: AdminClient;
-    };
-  }> {
-    const response = await apiService.post<{
-      success: boolean;
-      message: string;
-      data: {
-        client: AdminClient;
-      };
-    }>(`/admin/clients/${clientId}/kyc/notes`, {
-      notes
-    }, {
-      headers: this.getAdminHeaders()
-    });
-    return response;
-  }
-
-  /**
-   * Get document view URL for inline preview
-   */
-  getKYCDocumentViewURL(clientId: string, docType: string): string {
-    return `${environmentConfig.apiUrl}/admin/clients/${clientId}/kyc/documents/${docType}/view`;
-  }
 
   /**
    * Generate bulk invoices for selected clients
