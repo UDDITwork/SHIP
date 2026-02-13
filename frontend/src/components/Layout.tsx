@@ -37,7 +37,7 @@ const RATE_LIMIT_WINDOW_MS = 2 * 60 * 1000; // 2 minutes
 const WALLET_REFRESH_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 const PROFILE_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-// Portal-based active tab extension component
+// Portal-based active tab extension component with concave curves
 const ActiveTabExtension: React.FC<{
   active: boolean;
   top: number;
@@ -46,19 +46,39 @@ const ActiveTabExtension: React.FC<{
 }> = ({ active, top, height, sidebarLeft }) => {
   if (!active || top === 0) return null;
 
+  const curveDepth = 18; // Concave curve depth
+  const width = 42;
+
+  // SVG path with concave curves on top and bottom left edges
+  const path = `
+    M 0 ${curveDepth}
+    C 0 ${curveDepth * 0.5}, ${curveDepth * 0.5} 0, ${curveDepth} 0
+    L ${width} 0
+    L ${width} ${height}
+    L ${curveDepth} ${height}
+    C ${curveDepth * 0.5} ${height}, 0 ${height - curveDepth * 0.5}, 0 ${height - curveDepth}
+    Z
+  `;
+
   return ReactDOM.createPortal(
-    <div
+    <svg
       style={{
         position: 'fixed',
-        left: `${sidebarLeft + 250}px`, // Sidebar left + sidebar width
+        left: `${sidebarLeft + 250}px`,
         top: `${top}px`,
-        width: '42px',
+        width: `${width}px`,
         height: `${height}px`,
-        backgroundColor: '#FCE1C8',
         zIndex: 999,
         pointerEvents: 'none'
       }}
-    />,
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+    >
+      <path
+        d={path}
+        fill="#FCE1C8"
+      />
+    </svg>,
     document.body
   );
 };
