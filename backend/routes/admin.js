@@ -4539,14 +4539,16 @@ router.post('/billing/generate-bulk', adminAuth, async (req, res) => {
 
         // Create notification
         const notification = new Notification({
-          user_id: client._id,
-          type: 'billing_generated',
-          title: 'New Invoice Generated',
+          recipient_id: client._id,
+          recipient_type: 'client',
+          sender_type: 'system',
+          sender_name: 'System',
+          notification_type: 'billing_generated',
+          heading: 'New Invoice Generated',
           message: `Invoice ${invoice.invoice_number} has been generated for Rs ${invoice.amounts.grand_total.toFixed(2)}`,
-          data: {
-            invoice_id: invoice._id,
-            invoice_number: invoice.invoice_number,
-            amount: invoice.amounts.grand_total
+          related_entity: {
+            entity_type: 'invoice',
+            entity_id: invoice._id
           }
         });
         await notification.save();
@@ -4672,13 +4674,16 @@ router.patch('/billing/invoices/:id/manual-upload', adminAuth, upload.single('in
 
     // Create notification
     const notification = new Notification({
-      user_id: invoice.user_id,
-      type: 'billing_updated',
-      title: 'Invoice Updated',
+      recipient_id: invoice.user_id,
+      recipient_type: 'client',
+      sender_type: 'admin',
+      sender_name: staffName,
+      notification_type: 'billing_generated',
+      heading: 'Invoice Updated',
       message: `Manual invoice has been uploaded for ${invoice.invoice_number}`,
-      data: {
-        invoice_id: invoice._id,
-        invoice_number: invoice.invoice_number
+      related_entity: {
+        entity_type: 'invoice',
+        entity_id: invoice._id
       }
     });
     await notification.save();
