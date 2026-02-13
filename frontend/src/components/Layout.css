@@ -583,15 +583,25 @@
   color: #F68723 !important;
   font-weight: 600;
   margin-left: 0;
-  padding-left: 36px;
   margin-right: -42px; /* Extend 42px into content area */
   position: relative;
   z-index: 100; /* Above content area */
   border: none;
   outline: none;
+  /* Fixed dimensions to match SVG clip-path (228px × 74px) */
+  width: 228px; /* 186px main + 42px extension */
+  height: 74px;
+  min-height: 74px;
+  max-height: 74px;
+  padding: 0;
+  padding-left: 36px;
   /* Use SVG clip-path for exact Figma shape */
   clip-path: url(#sidebar-active-shape);
   box-shadow: none;
+  /* Maintain flex layout for content */
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
 /* SVG clip-path definition (add to HTML or inline) */
