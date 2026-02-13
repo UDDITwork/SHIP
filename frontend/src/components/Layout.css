@@ -596,34 +596,17 @@
   overflow: visible;
 }
 
-/* Extension rectangle - 42px into content area with concave curves cut out */
+/* Extension rectangle - 42px into content area (simple version) */
 .sidebar-item.active::after {
   content: '';
   position: absolute;
-  right: -42px; /* Extend 42px beyond the main element */
+  right: -42px;
   top: 0;
   width: 42px;
   height: 100%;
   background-color: #FCE1C8;
-  z-index: -1;
-  /* Cut out concave curves using CSS mask */
-  -webkit-mask-image:
-    radial-gradient(circle 37px at left top, transparent 37px, #000 37px),
-    radial-gradient(circle 37px at left bottom, transparent 37px, #000 37px);
-  -webkit-mask-position: 0 -37px, 0 100%;
-  -webkit-mask-size: 100% 37px, 100% 37px;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-composite: destination-out;
-  mask-image:
-    radial-gradient(circle 37px at left top, transparent 37px, #000 37px),
-    radial-gradient(circle 37px at left bottom, transparent 37px, #000 37px);
-  mask-position: 0 -37px, 0 100%;
-  mask-size: 100% 37px, 100% 37px;
-  mask-repeat: no-repeat;
-  mask-composite: exclude;
+  z-index: 1;
 }
-
-/* Concave curves are created using mask on the ::after extension above */
 
 .sidebar-icon {
   font-size: 18px;
