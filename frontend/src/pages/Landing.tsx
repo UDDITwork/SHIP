@@ -5,6 +5,7 @@ import { enquiryService, EnquiryData } from '../services/enquiryService';
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -181,25 +182,27 @@ const Landing: React.FC = () => {
           <div className="logo" onClick={() => navigate('/')} style={{ cursor: 'pointer' }}>
             <img src="/NEW LOGO.png" alt="Shipsarthi" className="logo-img" />
           </div>
-          
-          <nav className="nav-links">
-            <a href="#services" className="nav-link">Services</a>
+
+          <nav className={`nav-links${menuOpen ? ' open' : ''}`}>
+            <a href="#services" className="nav-link" onClick={() => setMenuOpen(false)}>Services</a>
             <a
               href="/rate-calculator"
               className="nav-link"
               onClick={(event) => {
                 event.preventDefault();
+                setMenuOpen(false);
                 navigate('/rate-calculator');
               }}
             >
               Rate Calculator
             </a>
-            <a href="#features" className="nav-link">Features</a>
+            <a href="#features" className="nav-link" onClick={() => setMenuOpen(false)}>Features</a>
             <a
               href="/about"
               className="nav-link"
               onClick={(event) => {
                 event.preventDefault();
+                setMenuOpen(false);
                 navigate('/about');
               }}
             >
@@ -210,25 +213,35 @@ const Landing: React.FC = () => {
               className="nav-link"
               onClick={(event) => {
                 event.preventDefault();
+                setMenuOpen(false);
                 navigate('/contact');
               }}
             >
               Contact Us
             </a>
           </nav>
-          
-          <div className="header-buttons">
-            <button 
+
+          <div className="header-right">
+            <button
               className="btn-track"
               onClick={() => navigate('/tracking')}
             >
               Track
             </button>
-            <button 
+            <button
               className="btn-login"
               onClick={() => navigate('/login')}
             >
               Login
+            </button>
+            <button
+              className={`hamburger-btn${menuOpen ? ' active' : ''}`}
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-label="Toggle menu"
+            >
+              <span className="hamburger-line"></span>
+              <span className="hamburger-line"></span>
+              <span className="hamburger-line"></span>
             </button>
           </div>
         </div>
