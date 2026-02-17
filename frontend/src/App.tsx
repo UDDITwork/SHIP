@@ -59,9 +59,12 @@ import AdminWalletRecharge from './pages/AdminWalletRecharge';
 import AdminWeightDiscrepancies from './pages/AdminWeightDiscrepancies';
 import AdminBilling from './pages/AdminBilling';
 import AdminRemittances from './pages/AdminRemittances';
+import AdminRemittanceDetail from './pages/AdminRemittanceDetail';
+import AdminTracking from './pages/AdminTracking';
 import AdminOrders from './pages/AdminOrders';
 import AdminClientDashboard from './pages/AdminClientDashboard';
 import AdminNDR from './pages/AdminNDR';
+import { AdminManualMapping } from './pages/AdminManualMapping';
 import AdminCarriers from './pages/AdminCarriers';
 import AdminCarrierRates from './pages/AdminCarrierRates';
 import AdminKYC from './pages/AdminKYC';
@@ -428,16 +431,40 @@ function App() {
                 </AdminLayout>
               } 
             />
-            <Route 
-              path="/admin/remittances" 
+            <Route
+              path="/admin/remittances"
               element={
                 <AdminLayout>
                   <AdminRemittances />
                 </AdminLayout>
-              } 
+              }
             />
-            <Route 
-              path="/admin/orders" 
+            <Route
+              path="/admin/remittances/:remittanceId"
+              element={
+                <AdminLayout>
+                  <AdminRemittanceDetail />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/tracking"
+              element={
+                <AdminLayout>
+                  <AdminTracking />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/tracking/:awb"
+              element={
+                <AdminLayout>
+                  <AdminTracking />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/orders"
               element={
                 <AdminLayout>
                   <AdminOrders />
@@ -460,16 +487,24 @@ function App() {
                 </AdminLayout>
               } 
             />
-            <Route 
-              path="/admin/ndr/:clientId" 
+            <Route
+              path="/admin/ndr/:clientId"
               element={
                 <AdminLayout>
                   <AdminNDR />
                 </AdminLayout>
-              } 
+              }
             />
-            <Route 
-              path="/admin/staff-management" 
+            <Route
+              path="/admin/manual-mapping"
+              element={
+                <AdminLayout>
+                  <AdminManualMapping />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/staff-management"
               element={
                 <AdminLayout>
                   <AdminStaffManagement />

@@ -63,9 +63,9 @@ class WebhookService {
       // RT - Return statuses (Forward shipment converted to return)
       if (normalizedType === 'RT') {
         const rtMapping = {
-          'In Transit': 'rto',   // Return shipment in transit back to origin
-          'Pending': 'rto',      // Return reached DC nearest to origin
-          'Dispatched': 'rto'    // Return dispatched for delivery to origin
+          'In Transit': 'rto_in_transit',   // Return shipment in transit back to origin
+          'Pending': 'rto_in_transit',      // Return reached DC nearest to origin
+          'Dispatched': 'rto_in_transit'    // Return dispatched for delivery to origin
         };
         const lowerStatus = normalizedStatus.toLowerCase();
         for (const [key, value] of Object.entries(rtMapping)) {
@@ -74,7 +74,7 @@ class WebhookService {
           }
         }
         // Fallback for RT type
-        return 'rto';
+        return 'rto_in_transit';
       }
 
       // CN - Canceled statuses
@@ -86,7 +86,7 @@ class WebhookService {
       if (normalizedType === 'DL') {
         const dlMapping = {
           'Delivered': 'delivered',  // Forward shipment delivered to customer
-          'RTO': 'rto',              // Forward shipment returned to origin
+          'RTO': 'rto_delivered',    // Forward shipment returned to origin
           'DTO': 'delivered'         // Reverse pickup delivered to origin (client accepted)
         };
         const lowerStatus = normalizedStatus.toLowerCase();
@@ -97,7 +97,7 @@ class WebhookService {
         }
         // Check if it contains 'rto'
         if (lowerStatus.includes('rto')) {
-          return 'rto';
+          return 'rto_delivered';
         }
         return 'delivered';
       }
@@ -121,9 +121,9 @@ class WebhookService {
       'DTO': 'delivered',
 
       // RT - Return statuses
-      'RTO': 'rto',
-      'RTO Initiated': 'rto',
-      'RTO Delivered': 'rto',
+      'RTO': 'rto_in_transit',
+      'RTO Initiated': 'rto_in_transit',
+      'RTO Delivered': 'rto_delivered',
 
       // NDR statuses (Undelivered reasons)
       'Undelivered': 'ndr',
@@ -169,7 +169,7 @@ class WebhookService {
         case 'DL':
           return 'delivered';
         case 'RT':
-          return 'rto';
+          return 'rto_in_transit';
         case 'PP':
           return 'pickups_manifests';
         case 'PU':
@@ -257,7 +257,25 @@ class WebhookService {
             raw_payload: payload
           });
 
-          await trackingEvent.save({ session });
+          try {
+            await trackingEvent.save({ session });
+          } catch (saveError) {
+            // Handle duplicate key error from unique compound index
+            if (saveError.code === 11000) {
+              logger.info('⚠️ Duplicate webhook event caught by index', {
+                waybill,
+                status: statusData?.Status,
+                statusDateTime: statusData?.StatusDateTime
+              });
+              return {
+                success: true,
+                message: 'Event already processed (index dedup)',
+                duplicate: true,
+                waybill
+              };
+            }
+            throw saveError;
+          }
 
           // Find and update order if exists
           let order = null;
@@ -276,8 +294,22 @@ class WebhookService {
               statusData?.StatusType || null
             );
             
-            // Update order status if changed
-            if (order.status !== mappedStatus) {
+            // Prevent backward transitions from terminal states (late/out-of-order webhooks)
+            const TERMINAL_STATUSES = ['delivered', 'rto_delivered', 'cancelled'];
+            const isTerminal = TERMINAL_STATUSES.includes(order.status);
+
+            if (isTerminal && order.status !== mappedStatus) {
+              logger.warn('⚠️ Skipping status update — order in terminal state', {
+                orderId: order.order_id,
+                waybill,
+                currentStatus: order.status,
+                attemptedStatus: mappedStatus,
+                webhookStatus: statusData?.Status
+              });
+            }
+
+            // Update order status if changed and not in terminal state
+            if (!isTerminal && order.status !== mappedStatus) {
               const oldStatus = order.status;
               order.status = mappedStatus;
 
@@ -328,12 +360,60 @@ class WebhookService {
                 });
               }
 
+              // Handle RTO In Transit — shipment returning to origin
+              if (mappedStatus === 'rto_in_transit') {
+                if (order.ndr_info) {
+                  order.ndr_info.is_ndr = false;
+                }
+                logger.info('📦 RTO In Transit — shipment returning to origin', {
+                  orderId: order.order_id,
+                  waybill
+                });
+              }
+
+              // Handle RTO Delivered — shipment returned to seller
+              if (mappedStatus === 'rto_delivered') {
+                order.rto_delivered_date = new Date();
+                if (order.ndr_info) {
+                  order.ndr_info.is_ndr = false;
+                }
+                logger.info('📦 RTO Delivered — shipment returned to seller', {
+                  orderId: order.order_id,
+                  waybill
+                });
+              }
+
+              // Handle Cancelled — courier-initiated cancellation
+              if (mappedStatus === 'cancelled') {
+                if (!order.delhivery_data) {
+                  order.delhivery_data = {};
+                }
+                order.delhivery_data.cancellation_status = 'cancelled';
+                order.delhivery_data.cancellation_date = new Date();
+                order.delhivery_data.cancellation_message = statusData?.Instructions || 'Cancelled by courier';
+                logger.info('🚫 Order cancelled via webhook', {
+                  orderId: order.order_id,
+                  waybill,
+                  reason: statusData?.Instructions
+                });
+              }
+
+              // Handle Lost
+              if (mappedStatus === 'lost') {
+                logger.info('⚠️ Order marked as lost', {
+                  orderId: order.order_id,
+                  waybill,
+                  location: statusData?.StatusLocation
+                });
+              }
+
               // Update Delhivery data
               if (!order.delhivery_data) {
                 order.delhivery_data = {};
               }
               order.delhivery_data.last_status_update = new Date();
               order.delhivery_data.current_status = statusData?.Status;
+              order.delhivery_data.status_type = statusData?.StatusType || null;
 
               await order.save({ session });
 
@@ -401,9 +481,12 @@ class WebhookService {
                 } else if (mappedStatus === 'cancelled') {
                   trackingOrder.is_tracking_active = false;
                   trackingOrder.cancelled_at = new Date();
-                } else if (mappedStatus === 'rto') {
-                  trackingOrder.is_tracking_active = false;
+                } else if (mappedStatus === 'rto_in_transit' || mappedStatus === 'rto') {
+                  trackingOrder.is_tracking_active = true;
                   trackingOrder.rto_at = new Date();
+                } else if (mappedStatus === 'rto_delivered') {
+                  trackingOrder.is_tracking_active = false;
+                  trackingOrder.rto_at = trackingOrder.rto_at || new Date();
                 } else if (mappedStatus === 'ndr') {
                   trackingOrder.ndr_attempts = (trackingOrder.ndr_attempts || 0) + 1;
                   trackingOrder.last_ndr_date = new Date();

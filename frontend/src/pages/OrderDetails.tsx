@@ -12,30 +12,31 @@ const OrderDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchOrderDetails = async () => {
+    if (!orderId) {
+      setError('Order ID not provided');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      const orderData = await orderService.getOrderById(orderId);
+      if (orderData) {
+        setOrder(orderData);
+      } else {
+        setError('Order not found');
+      }
+    } catch (err: any) {
+      console.error('Error fetching order details:', err);
+      setError(err.message || 'Failed to fetch order details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchOrderDetails = async () => {
-      if (!orderId) {
-        setError('Order ID not provided');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const orderData = await orderService.getOrderById(orderId);
-        if (orderData) {
-          setOrder(orderData);
-        } else {
-          setError('Order not found');
-        }
-      } catch (err: any) {
-        console.error('Error fetching order details:', err);
-        setError(err.message || 'Failed to fetch order details');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchOrderDetails();
   }, [orderId]);
 
@@ -57,6 +58,15 @@ const OrderDetails: React.FC = () => {
 
   const formatStatus = (status: string | undefined) => {
     if (!status) return 'N/A';
+    const statusLabels: Record<string, string> = {
+      'rto_in_transit': 'RTO In Transit',
+      'rto_delivered': 'RTO Delivered',
+      'ndr': 'NDR',
+      'rto': 'RTO',
+      'out_for_delivery': 'Out for Delivery',
+      'pickups_manifests': 'Pickup/Manifest'
+    };
+    if (statusLabels[status]) return statusLabels[status];
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
@@ -80,9 +90,14 @@ const OrderDetails: React.FC = () => {
           <div className="order-details-error">
             <h2>Error</h2>
             <p>{error || 'Order not found'}</p>
-            <button onClick={handleBack} className="back-btn">
-              Back to Orders
-            </button>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', marginTop: '16px' }}>
+              <button onClick={fetchOrderDetails} className="back-btn" style={{ background: '#002B59', color: 'white' }}>
+                Retry
+              </button>
+              <button onClick={handleBack} className="back-btn">
+                Back to Orders
+              </button>
+            </div>
           </div>
         </div>
       </Layout>

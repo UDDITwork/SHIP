@@ -3929,7 +3929,7 @@ router.get('/remittances', async (req, res) => {
 
     const [remittances, total] = await Promise.all([
       Remittance.find(filterQuery)
-        .populate('user_id', 'company_name email')
+        .populate('user_id', 'company_name email client_id')
         .sort({ date: -1 })
         .skip(skip)
         .limit(parseInt(limit))
@@ -3938,16 +3938,20 @@ router.get('/remittances', async (req, res) => {
     ]);
 
     const formattedRemittances = remittances.map(r => ({
+      _id: r._id,
       remittance_number: r.remittance_number,
       user_id: r.user_id?._id,
+      client_id: r.user_id?.client_id || 'N/A',
       company_name: r.user_id?.company_name || 'N/A',
       email: r.user_id?.email || 'N/A',
       date: r.date,
+      remittance_date: r.remittance_date || r.date,
       processed_on: r.processed_on || r.date,
       bank_transaction_id: r.bank_transaction_id || '-',
       state: r.state,
       total_remittance: r.total_remittance,
-      total_orders: r.total_orders
+      total_orders: r.total_orders,
+      settlement_date: r.settlement_date
     }));
 
     res.json({
@@ -3969,6 +3973,527 @@ router.get('/remittances', async (req, res) => {
       message: 'Error fetching remittances',
       error: error.message
     });
+  }
+});
+
+// @desc    Simplified COD AWB upload for remittance
+// @route   POST /api/admin/remittances/upload-cod
+// @access  Admin
+const { generateRemittanceNumber, getNextFriday, validateAWBForRemittance } = require('../utils/remittanceHelper');
+
+router.post('/remittances/upload-cod', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer', cellDates: true });
+    const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+    if (!rows.length) {
+      return res.status(400).json({ success: false, message: 'Excel file is empty' });
+    }
+
+    // Normalise column headers
+    const normalised = rows.map((row, idx) => {
+      const normalRow = {};
+      for (const key of Object.keys(row)) {
+        normalRow[key.trim().toLowerCase().replace(/[\s]+/g, '_')] = row[key];
+      }
+      return { ...normalRow, _row: idx + 2 };
+    });
+
+    // Extract AWB list
+    const awbList = normalised.map(r => String(r.awb_number || r.awb || '').trim()).filter(Boolean);
+    if (!awbList.length) {
+      return res.status(400).json({ success: false, message: 'No AWB numbers found. Required column: "AWB Number"' });
+    }
+
+    // Batch fetch orders and existing remittances
+    const [orders, existingRemittances] = await Promise.all([
+      Order.find({ 'delhivery_data.waybill': { $in: awbList } })
+        .populate('user_id', 'client_id company_name bank_details')
+        .lean(),
+      Remittance.find({ 'remittance_orders.awb_number': { $in: awbList } })
+        .select('remittance_orders.awb_number remittance_number state')
+        .lean()
+    ]);
+
+    // Build lookup maps
+    const orderByAwb = {};
+    orders.forEach(o => { if (o.delhivery_data?.waybill) orderByAwb[o.delhivery_data.waybill] = o; });
+
+    const remittedAwbSet = new Set();
+    const awbToRemittanceMap = new Map();
+    existingRemittances.forEach(r => {
+      r.remittance_orders.forEach(o => {
+        remittedAwbSet.add(o.awb_number);
+        awbToRemittanceMap.set(o.awb_number, { number: r.remittance_number, state: r.state });
+      });
+    });
+
+    // Validate each row
+    const errors = [];
+    const validRows = [];
+
+    for (const row of normalised) {
+      const awb = String(row.awb_number || row.awb || '').trim();
+      const remittanceDateRaw = row.remittance_date || row.date;
+      const rowNum = row._row;
+
+      if (!awb) {
+        errors.push({ row: rowNum, awb: '', error: 'AWB number is empty' });
+        continue;
+      }
+
+      let remittanceDate;
+      if (remittanceDateRaw instanceof Date) {
+        remittanceDate = remittanceDateRaw;
+      } else {
+        remittanceDate = new Date(remittanceDateRaw);
+      }
+      if (isNaN(remittanceDate.getTime())) {
+        errors.push({ row: rowNum, awb, error: 'Invalid remittance date' });
+        continue;
+      }
+
+      const order = orderByAwb[awb];
+      const validation = validateAWBForRemittance(order, remittedAwbSet, awbToRemittanceMap);
+
+      if (!validation.valid) {
+        errors.push({ row: rowNum, awb, error: validation.error });
+        continue;
+      }
+
+      const fridayDate = getNextFriday(remittanceDate);
+      validRows.push({
+        awb,
+        order,
+        fridayDate,
+        codAmount: order.payment_info.cod_amount,
+        userId: order.user_id._id,
+        clientId: order.user_id.client_id,
+        companyName: order.user_id.company_name,
+        bankDetails: order.user_id.bank_details,
+        orderId: order.order_id,
+        orderRef: order._id,
+        deliveredDate: order.delivered_date
+      });
+    }
+
+    // Group valid rows by (userId + fridayDate)
+    const groups = {};
+    for (const row of validRows) {
+      const key = `${row.userId}_${row.fridayDate.toISOString().split('T')[0]}`;
+      if (!groups[key]) {
+        groups[key] = {
+          userId: row.userId,
+          clientId: row.clientId,
+          companyName: row.companyName,
+          bankDetails: row.bankDetails,
+          fridayDate: row.fridayDate,
+          orders: []
+        };
+      }
+      groups[key].orders.push(row);
+    }
+
+    // Create remittance documents
+    const createdRemittances = [];
+    for (const group of Object.values(groups)) {
+      const remittanceNumber = await generateRemittanceNumber(group.clientId, group.fridayDate);
+      const totalAmount = group.orders.reduce((sum, o) => sum + o.codAmount, 0);
+
+      const remittance = new Remittance({
+        remittance_number: remittanceNumber,
+        user_id: group.userId,
+        date: new Date(),
+        remittance_date: group.fridayDate,
+        state: 'upcoming',
+        total_remittance: totalAmount,
+        account_details: {
+          bank: group.bankDetails?.bank_name || '',
+          beneficiary_name: group.bankDetails?.account_holder_name || '',
+          account_number: group.bankDetails?.account_number || '',
+          ifsc_code: group.bankDetails?.ifsc_code || ''
+        },
+        remittance_orders: group.orders.map(o => ({
+          awb_number: o.awb,
+          amount_collected: o.codAmount,
+          order_id: o.orderId,
+          order_reference: o.orderRef,
+          delivered_date: o.deliveredDate
+        })),
+        uploaded_by: req.admin?.email || req.staff?.name || 'admin'
+      });
+
+      await remittance.save();
+      createdRemittances.push({
+        remittance_number: remittanceNumber,
+        client: group.companyName,
+        client_id: group.clientId,
+        total_amount: totalAmount,
+        orders_count: group.orders.length,
+        remittance_date: group.fridayDate
+      });
+    }
+
+    // Build error report as downloadable Excel if errors exist
+    let errorReportBuffer = null;
+    if (errors.length > 0) {
+      const errorWb = XLSX.utils.book_new();
+      const errorWs = XLSX.utils.json_to_sheet(errors.map(e => ({
+        'Row': e.row,
+        'AWB Number': e.awb,
+        'Error': e.error
+      })));
+      XLSX.utils.book_append_sheet(errorWb, errorWs, 'Errors');
+      errorReportBuffer = XLSX.write(errorWb, { type: 'base64', bookType: 'xlsx' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        total_rows: normalised.length,
+        valid: validRows.length,
+        failed: errors.length,
+        remittances_created: createdRemittances.length,
+        remittances: createdRemittances,
+        errors: errors,
+        error_report_base64: errorReportBuffer
+      }
+    });
+  } catch (error) {
+    console.error('COD remittance upload error:', error);
+    res.status(500).json({ success: false, message: 'Error processing COD remittance upload', error: error.message });
+  }
+});
+
+// @desc    Get client-wise remittance summary
+// @route   GET /api/admin/remittances/client-summary
+// @access  Admin
+router.get('/remittances/client-summary', async (req, res) => {
+  try {
+    const summary = await Remittance.aggregate([
+      { $group: {
+        _id: '$user_id',
+        total_remittance_amount: { $sum: '$total_remittance' },
+        total_remittances: { $sum: 1 },
+        total_orders: { $sum: '$total_orders' },
+        upcoming_count: { $sum: { $cond: [{ $eq: ['$state', 'upcoming'] }, 1, 0] } },
+        upcoming_amount: { $sum: { $cond: [{ $eq: ['$state', 'upcoming'] }, '$total_remittance', 0] } },
+        processing_count: { $sum: { $cond: [{ $eq: ['$state', 'processing'] }, 1, 0] } },
+        processing_amount: { $sum: { $cond: [{ $eq: ['$state', 'processing'] }, '$total_remittance', 0] } },
+        settled_count: { $sum: { $cond: [{ $eq: ['$state', 'settled'] }, 1, 0] } },
+        settled_amount: { $sum: { $cond: [{ $eq: ['$state', 'settled'] }, '$total_remittance', 0] } }
+      }},
+      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'user' } },
+      { $unwind: '$user' },
+      { $project: {
+        user_id: '$_id',
+        client_name: '$user.company_name',
+        client_id: '$user.client_id',
+        email: '$user.email',
+        total_remittance_amount: 1,
+        total_remittances: 1,
+        total_orders: 1,
+        upcoming_count: 1, upcoming_amount: 1,
+        processing_count: 1, processing_amount: 1,
+        settled_count: 1, settled_amount: 1
+      }},
+      { $sort: { total_remittance_amount: -1 } }
+    ]);
+
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    console.error('Get remittance client summary error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching client summary', error: error.message });
+  }
+});
+
+// @desc    Get single remittance detail
+// @route   GET /api/admin/remittances/:id
+// @access  Admin
+router.get('/remittances/:id', async (req, res) => {
+  try {
+    const remittance = await Remittance.findById(req.params.id)
+      .populate('user_id', 'company_name email client_id bank_details phone_number')
+      .populate('remittance_orders.order_reference', 'order_id status delivered_date payment_info')
+      .lean();
+
+    if (!remittance) {
+      return res.status(404).json({ success: false, message: 'Remittance not found' });
+    }
+
+    res.json({ success: true, data: remittance });
+  } catch (error) {
+    console.error('Get remittance detail error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching remittance detail', error: error.message });
+  }
+});
+
+// @desc    Add AWB to existing remittance
+// @route   POST /api/admin/remittances/:id/add-awb
+// @access  Admin only (not staff)
+router.post('/remittances/:id/add-awb', adminOnly, async (req, res) => {
+  try {
+    const { awb_number } = req.body;
+    if (!awb_number) {
+      return res.status(400).json({ success: false, message: 'AWB number is required' });
+    }
+
+    const remittance = await Remittance.findById(req.params.id);
+    if (!remittance) {
+      return res.status(404).json({ success: false, message: 'Remittance not found' });
+    }
+
+    if (remittance.state === 'settled') {
+      return res.status(400).json({ success: false, message: 'Cannot modify a settled remittance' });
+    }
+
+    // Validate the AWB
+    const order = await Order.findOne({ 'delhivery_data.waybill': awb_number });
+
+    // Check if already in this remittance
+    const alreadyInThis = remittance.remittance_orders.find(o => o.awb_number === awb_number);
+    if (alreadyInThis) {
+      return res.status(400).json({ success: false, message: 'AWB already in this remittance' });
+    }
+
+    // Check if in another remittance
+    const existingRemittance = await Remittance.findOne({
+      'remittance_orders.awb_number': awb_number,
+      _id: { $ne: remittance._id }
+    });
+
+    const remittedAwbSet = existingRemittance ? new Set([awb_number]) : new Set();
+    const awbToRemittanceMap = existingRemittance
+      ? new Map([[awb_number, { number: existingRemittance.remittance_number }]])
+      : new Map();
+
+    const validation = validateAWBForRemittance(order, remittedAwbSet, awbToRemittanceMap);
+    if (!validation.valid) {
+      return res.status(400).json({ success: false, message: validation.error });
+    }
+
+    // Ensure AWB belongs to the same client
+    if (String(order.user_id) !== String(remittance.user_id)) {
+      return res.status(400).json({ success: false, message: 'AWB belongs to a different client' });
+    }
+
+    await remittance.addOrder(
+      awb_number,
+      order.payment_info.cod_amount,
+      order.order_id,
+      order._id,
+      order.delivered_date
+    );
+
+    res.json({ success: true, message: 'AWB added successfully', data: remittance });
+  } catch (error) {
+    console.error('Add AWB to remittance error:', error);
+    res.status(500).json({ success: false, message: 'Error adding AWB', error: error.message });
+  }
+});
+
+// @desc    Remove AWB from remittance
+// @route   DELETE /api/admin/remittances/:id/remove-awb
+// @access  Admin only (not staff)
+router.delete('/remittances/:id/remove-awb', adminOnly, async (req, res) => {
+  try {
+    const { awb_number } = req.body;
+    if (!awb_number) {
+      return res.status(400).json({ success: false, message: 'AWB number is required' });
+    }
+
+    const remittance = await Remittance.findById(req.params.id);
+    if (!remittance) {
+      return res.status(404).json({ success: false, message: 'Remittance not found' });
+    }
+
+    if (remittance.state === 'settled') {
+      return res.status(400).json({ success: false, message: 'Cannot modify a settled remittance' });
+    }
+
+    const existingOrder = remittance.remittance_orders.find(o => o.awb_number === awb_number);
+    if (!existingOrder) {
+      return res.status(404).json({ success: false, message: 'AWB not found in this remittance' });
+    }
+
+    await remittance.removeOrder(awb_number);
+
+    // If remittance is now empty, delete it
+    if (remittance.remittance_orders.length === 0) {
+      await Remittance.findByIdAndDelete(remittance._id);
+      return res.json({ success: true, message: 'AWB removed. Remittance deleted (no remaining AWBs)', deleted: true });
+    }
+
+    res.json({ success: true, message: 'AWB removed successfully', data: remittance });
+  } catch (error) {
+    console.error('Remove AWB from remittance error:', error);
+    res.status(500).json({ success: false, message: 'Error removing AWB', error: error.message });
+  }
+});
+
+// @desc    Move remittance to processing
+// @route   PATCH /api/admin/remittances/:id/process
+// @access  Admin
+router.patch('/remittances/:id/process', async (req, res) => {
+  try {
+    const remittance = await Remittance.findById(req.params.id);
+    if (!remittance) {
+      return res.status(404).json({ success: false, message: 'Remittance not found' });
+    }
+
+    if (remittance.state !== 'upcoming') {
+      return res.status(400).json({ success: false, message: `Cannot process a remittance with state "${remittance.state}". Must be "upcoming".` });
+    }
+
+    await remittance.markAsProcessing();
+    res.json({ success: true, message: 'Remittance moved to processing', data: remittance });
+  } catch (error) {
+    console.error('Process remittance error:', error);
+    res.status(500).json({ success: false, message: 'Error processing remittance', error: error.message });
+  }
+});
+
+// @desc    Settle remittance with UTR/bank transaction ID
+// @route   PATCH /api/admin/remittances/:id/settle
+// @access  Admin
+router.patch('/remittances/:id/settle', async (req, res) => {
+  try {
+    const { bank_transaction_id } = req.body;
+    if (!bank_transaction_id) {
+      return res.status(400).json({ success: false, message: 'Bank Transaction ID / UTR number is required' });
+    }
+
+    const remittance = await Remittance.findById(req.params.id);
+    if (!remittance) {
+      return res.status(404).json({ success: false, message: 'Remittance not found' });
+    }
+
+    if (remittance.state !== 'processing') {
+      return res.status(400).json({ success: false, message: `Cannot settle a remittance with state "${remittance.state}". Must be "processing".` });
+    }
+
+    const settledBy = req.admin?.email || req.staff?.name || 'admin';
+    await remittance.markAsSettled(bank_transaction_id, settledBy);
+
+    // Bulk update all orders in this remittance
+    const awbNumbers = remittance.remittance_orders.map(o => o.awb_number);
+    await Order.updateMany(
+      { 'delhivery_data.waybill': { $in: awbNumbers } },
+      {
+        $set: {
+          'payment_info.cod_remitted': true,
+          'payment_info.cod_remittance_date': new Date(),
+          'payment_info.cod_utr_number': bank_transaction_id,
+        }
+      }
+    );
+
+    // Also set cod_remitted_amount per order
+    for (const remOrder of remittance.remittance_orders) {
+      await Order.updateOne(
+        { 'delhivery_data.waybill': remOrder.awb_number },
+        { $set: { 'payment_info.cod_remitted_amount': remOrder.amount_collected } }
+      );
+    }
+
+    res.json({ success: true, message: 'Remittance settled successfully', data: remittance });
+  } catch (error) {
+    console.error('Settle remittance error:', error);
+    res.status(500).json({ success: false, message: 'Error settling remittance', error: error.message });
+  }
+});
+
+// @desc    Dashboard analytics (COD/Prepaid, Weight, Zone, Courier)
+// @route   GET /api/admin/dashboard/analytics
+// @access  Admin
+router.get('/dashboard/analytics', async (req, res) => {
+  try {
+    const { date_from, date_to } = req.query;
+    const dateFilter = {};
+    if (date_from) dateFilter.createdAt = { $gte: new Date(date_from) };
+    if (date_to) dateFilter.createdAt = { ...dateFilter.createdAt, $lte: new Date(date_to) };
+
+    const [codVsPrepaid, weightDist, zoneDist, courierDist] = await Promise.all([
+      // COD vs Prepaid
+      Order.aggregate([
+        { $match: { ...dateFilter, 'payment_info.payment_mode': { $in: ['COD', 'Prepaid'] } } },
+        { $group: { _id: '$payment_info.payment_mode', count: { $sum: 1 } } }
+      ]),
+
+      // Weight distribution
+      Order.aggregate([
+        { $match: { ...dateFilter, 'billing_info.charged_weight': { $exists: true, $gt: 0 } } },
+        { $bucket: {
+          groupBy: '$billing_info.charged_weight',
+          boundaries: [0, 500, 1000, 2000, 5000, 10000, Infinity],
+          default: 'other',
+          output: { count: { $sum: 1 } }
+        }}
+      ]),
+
+      // Zone distribution
+      Order.aggregate([
+        { $match: { ...dateFilter, 'billing_info.zone': { $exists: true } } },
+        { $group: { _id: '$billing_info.zone', count: { $sum: 1 } } },
+        { $sort: { _id: 1 } }
+      ]),
+
+      // Courier distribution
+      Order.aggregate([
+        { $match: dateFilter },
+        { $lookup: { from: 'carriers', localField: 'carrier_id', foreignField: '_id', as: 'carrier' } },
+        { $unwind: { path: '$carrier', preserveNullAndEmptyArrays: true } },
+        { $group: {
+          _id: { $ifNull: ['$carrier.display_name', 'Unknown'] },
+          count: { $sum: 1 },
+          delivered: { $sum: { $cond: [{ $eq: ['$status', 'delivered'] }, 1, 0] } },
+          rto: { $sum: { $cond: [{ $in: ['$status', ['rto', 'rto_in_transit', 'rto_delivered']] }, 1, 0] } }
+        }},
+        { $sort: { count: -1 } }
+      ])
+    ]);
+
+    // Format COD vs Prepaid
+    const codCount = codVsPrepaid.find(r => r._id === 'COD')?.count || 0;
+    const prepaidCount = codVsPrepaid.find(r => r._id === 'Prepaid')?.count || 0;
+    const total = codCount + prepaidCount;
+
+    // Format weight distribution
+    const weightBucketLabels = {
+      0: '0-0.5kg', 500: '0.5-1kg', 1000: '1-2kg', 2000: '2-5kg', 5000: '5-10kg', 10000: '10kg+'
+    };
+    const weightDistribution = weightDist.map(b => ({
+      bucket: weightBucketLabels[b._id] || `${b._id}g+`,
+      count: b.count
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        cod_vs_prepaid: {
+          cod_count: codCount,
+          prepaid_count: prepaidCount,
+          cod_percentage: total > 0 ? Math.round((codCount / total) * 1000) / 10 : 0,
+          prepaid_percentage: total > 0 ? Math.round((prepaidCount / total) * 1000) / 10 : 0
+        },
+        weight_distribution: weightDistribution,
+        zone_distribution: zoneDist.map(z => ({ zone: z._id, count: z.count })),
+        courier_distribution: courierDist.map(c => ({
+          carrier_name: c._id,
+          count: c.count,
+          delivered: c.delivered,
+          rto: c.rto
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Dashboard analytics error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching analytics', error: error.message });
   }
 });
 
@@ -4445,7 +4970,7 @@ router.post('/billing/generate-bulk', adminAuth, async (req, res) => {
         // Get orders for billing period
         const orders = await Order.find({
           user_id: client._id,
-          status: { $in: ['delivered', 'rto'] },
+          status: { $in: ['delivered', 'rto', 'rto_in_transit', 'rto_delivered'] },
           delivered_date: {
             $gte: new Date(billing_period.start_date),
             $lte: new Date(billing_period.end_date)
@@ -4960,6 +5485,8 @@ router.get('/orders/clients', async (req, res) => {
             delivered: statusMap['delivered'] || 0,
             ndr: statusMap['ndr'] || 0,
             rto: statusMap['rto'] || 0,
+            rto_in_transit: statusMap['rto_in_transit'] || 0,
+            rto_delivered: statusMap['rto_delivered'] || 0,
             cancelled: statusMap['cancelled'] || 0
           }
         };
@@ -5319,7 +5846,7 @@ router.get('/ndr/clients', async (req, res) => {
           Order.countDocuments({
             user_id: client._id,
             'ndr_info.is_ndr': true,
-            status: 'rto'
+            status: { $in: ['rto', 'rto_in_transit', 'rto_delivered'] }
           })
         ]);
         
@@ -5402,7 +5929,7 @@ router.get('/ndr/clients/:clientId/ndrs', async (req, res) => {
           filterQuery.status = 'delivered';
           break;
         case 'rto':
-          filterQuery.status = 'rto';
+          filterQuery.status = { $in: ['rto', 'rto_in_transit', 'rto_delivered'] };
           break;
       }
     }
@@ -5516,7 +6043,7 @@ router.get('/ndr/clients/:clientId/stats', async (req, res) => {
       Order.countDocuments({
         user_id: clientId,
         'ndr_info.is_ndr': true,
-        status: 'rto'
+        status: { $in: ['rto', 'rto_in_transit', 'rto_delivered'] }
       })
     ]);
     
@@ -7348,6 +7875,319 @@ router.get('/clients/:id/kyc/documents/:doc_type/view', adminAuth, async (req, r
     res.status(500).json({
       success: false,
       message: 'Error viewing document',
+      error: error.message
+    });
+  }
+});
+
+// ============================================================================
+// MANUAL AWB MAPPING
+// ============================================================================
+
+/**
+ * Helper: Parse Excel date serial number to JavaScript Date
+ */
+function parseExcelDate(excelDate) {
+  if (!excelDate) return new Date();
+
+  // If already a Date object or valid date string
+  if (excelDate instanceof Date) return excelDate;
+  if (typeof excelDate === 'string') {
+    const parsed = new Date(excelDate);
+    if (!isNaN(parsed.getTime())) return parsed;
+  }
+
+  // Excel date serial number (days since 1900-01-01)
+  if (typeof excelDate === 'number') {
+    const excelEpoch = new Date(1900, 0, 1);
+    const days = Math.floor(excelDate) - 2; // Excel has a bug for leap year 1900
+    return new Date(excelEpoch.getTime() + days * 24 * 60 * 60 * 1000);
+  }
+
+  return new Date();
+}
+
+/**
+ * Helper: Normalize phone number to 10 digits
+ */
+function normalizePhone(phone) {
+  if (!phone) return '';
+  const cleaned = phone.toString().replace(/\D/g, '');
+  return cleaned.slice(-10); // Take last 10 digits
+}
+
+/**
+ * Helper: Normalize pincode to 6 digits
+ */
+function normalizePincode(pincode) {
+  if (!pincode) return '';
+  return pincode.toString().replace(/\D/g, '').slice(0, 6);
+}
+
+/**
+ * Helper: Normalize Service Type from Excel
+ * @param {string} serviceType - Raw service type from Excel
+ * @returns {string} - Normalized service type ('surface' or 'air')
+ */
+function normalizeServiceType(serviceType) {
+  if (!serviceType) return 'surface'; // Default to surface if missing
+
+  const normalized = serviceType.toString().trim().toLowerCase();
+
+  // Accept variations
+  if (['air', 'delhivery air', 'express'].includes(normalized)) {
+    return 'air';
+  }
+
+  // Default to surface for invalid values
+  return 'surface';
+}
+
+/**
+ * Helper: Create manually mapped order from Excel row
+ */
+async function createManualMappedOrder(row, client, adminUser) {
+  const { generateOrderId } = require('../utils/orderIdGenerator');
+
+  // Validate AWB uniqueness
+  const existingOrder = await Order.findOne({ 'delhivery_data.waybill': row['*awb']?.toString().trim() });
+  if (existingOrder) {
+    throw new Error(`AWB ${row['*awb']} already exists in system`);
+  }
+
+  // Normalize and lookup carrier by service type
+  const serviceType = normalizeServiceType(row['Service Type']); // Optional column
+  let carrierId = null;
+
+  try {
+    const carrier = await Carrier.findOne({
+      carrier_group: 'DELHIVERY',
+      service_type: serviceType,
+      is_active: true
+    });
+
+    if (carrier) {
+      carrierId = carrier._id;
+    } else {
+      logger.warn(`Carrier not found for service_type: ${serviceType}, defaulting to null`);
+    }
+  } catch (carrierErr) {
+    logger.error('Error looking up carrier:', carrierErr);
+    // Continue without carrier_id - non-critical
+  }
+
+  // Parse and validate data
+  const orderData = {
+    user_id: client._id,
+    order_id: row['*Order ID']?.toString().trim() || generateOrderId(),
+    reference_id: row['Ref Id']?.toString().trim() || undefined,
+    invoice_number: row['Invoice No.']?.toString().trim() || undefined,
+    order_date: parseExcelDate(row['*Order Date']),
+
+    // Customer info
+    customer_info: {
+      buyer_name: row['*Customer Name']?.toString().trim(),
+      phone: normalizePhone(row['*Customer Phone']),
+      email: client.email
+    },
+
+    // Delivery address
+    delivery_address: {
+      address_line_1: row['*Shipping Address Line1']?.toString().trim(),
+      address_line_2: row['Shipping Address Line2']?.toString().trim() || '',
+      full_address: row['*Shipping Address Line1']?.toString().trim(),
+      city: row['*Shipping City']?.toString().trim(),
+      state: row['*Shipping State']?.toString().trim(),
+      pincode: normalizePincode(row['*Shipping Pincode']),
+      country: 'India'
+    },
+
+    // Pickup address
+    pickup_address: {
+      name: row['*Pickup Location Name']?.toString().trim(),
+      full_address: row['*Pickup Location Name']?.toString().trim(),
+      city: '',
+      state: '',
+      pincode: '',
+      country: 'India'
+    },
+
+    // Products
+    products: [{
+      product_name: row['*Product name']?.toString().trim(),
+      quantity: parseInt(row['*Quantity']) || 1,
+      unit_price: parseFloat(row['*Unit price']) || 0,
+      hsn_code: row['HSN']?.toString().trim() || '',
+      category: row['product category']?.toString().trim() || '',
+      sku: row['SKU']?.toString().trim() || '',
+      discount: parseFloat(row['Discount']) || 0,
+      tax: parseFloat(row['Tax']) || 0
+    }],
+
+    // Package info
+    package_info: {
+      weight: parseFloat(row['*Weight (kg)']),
+      dimensions: {
+        length: parseFloat(row['*Length (cm)']),
+        width: parseFloat(row['*Breadth (cm)']),
+        height: parseFloat(row['*Height (cm)'])
+      },
+      package_type: row['*Package type']?.toString().trim(),
+      number_of_boxes: parseInt(row['*No. of box']) || 1
+    },
+
+    // Payment info
+    payment_info: {
+      payment_mode: row['*Payment type']?.toString().toUpperCase() === 'COD' ? 'COD' : 'Prepaid',
+      cod_amount: parseFloat(row['*COD Amount']) || 0,
+      order_value: parseFloat(row['*Unit Item Price']) || 0,
+      total_amount: parseFloat(row['*total payment']) || 0,
+      grand_total: parseFloat(row['*total payment']) || 0
+    },
+
+    // Delhivery data with pre-assigned AWB
+    delhivery_data: {
+      waybill: row['*awb']?.toString().trim(),
+      status: 'ready_to_ship'
+    },
+
+    // Manual mapping metadata
+    is_manually_mapped: true,
+    manually_mapped_by: adminUser.email,
+    manually_mapped_at: new Date(),
+    manual_mapping_source: 'excel_upload',
+
+    // Status
+    status: 'ready_to_ship',
+    shipping_mode: serviceType === 'air' ? 'Express' : 'Surface',
+    order_type: 'forward',
+    carrier_used: carrierId,
+
+    // Special flags
+    is_fragile: row['Fragile Shipment'] === 'Y' || row['Fragile Shipment'] === '1',
+    ewaybill_number: row['e-Way Bill Number']?.toString().trim() || ''
+  };
+
+  // Create order
+  const order = new Order(orderData);
+  await order.save();
+
+  logger.info('✅ Manual mapping created:', {
+    orderId: order.order_id,
+    awb: order.delhivery_data.waybill,
+    clientId: client.client_id,
+    mappedBy: adminUser.email
+  });
+
+  return order;
+}
+
+/**
+ * POST /admin/orders/manual-mapping/upload
+ * Admin uploads Excel file with manual AWB mappings
+ */
+router.post('/orders/manual-mapping/upload', adminAuth, upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    // Parse Excel file
+    const XLSX = require('xlsx');
+    const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const rows = XLSX.utils.sheet_to_json(worksheet);
+
+    if (rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Excel file is empty'
+      });
+    }
+
+    const results = {
+      total: rows.length,
+      successful: 0,
+      failed: 0,
+      errors: []
+    };
+
+    // Mandatory fields (marked with * in Excel)
+    const mandatoryFields = [
+      '*awb', '*Client mail id', '*Pickup Location Name',
+      '*Customer Name', '*Customer Phone',
+      '*Shipping Address Line1', '*Shipping City', '*Shipping State', '*Shipping Pincode',
+      '*Order ID', '*Order Date', '*Product name', '*Quantity', '*Unit price',
+      '*Unit Item Price', '*total payment', '*Payment type', '*COD Amount',
+      '*Package type', '*Length (cm)', '*Breadth (cm)', '*Height (cm)',
+      '*No. of box', '*Weight (kg)'
+    ];
+
+    // Process each row
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+
+      try {
+        // Validate mandatory fields
+        const missingFields = mandatoryFields.filter(field => !row[field] && row[field] !== 0);
+        if (missingFields.length > 0) {
+          throw new Error(`Missing mandatory fields: ${missingFields.join(', ')}`);
+        }
+
+        // Find client by email
+        const clientEmail = row['*Client mail id']?.toString().trim().toLowerCase();
+        const client = await User.findOne({
+          email: clientEmail,
+          user_type: { $in: ['seller', 'brand', 'manufacturer', 'distributor'] }
+        });
+
+        if (!client) {
+          throw new Error(`Client not found with email: ${clientEmail}`);
+        }
+
+        // Validate phone format
+        const phone = normalizePhone(row['*Customer Phone']);
+        if (!/^[6-9]\d{9}$/.test(phone)) {
+          throw new Error(`Invalid phone number: ${row['*Customer Phone']}`);
+        }
+
+        // Validate pincode format
+        const pincode = normalizePincode(row['*Shipping Pincode']);
+        if (!/^\d{6}$/.test(pincode)) {
+          throw new Error(`Invalid pincode: ${row['*Shipping Pincode']}`);
+        }
+
+        // Create order
+        await createManualMappedOrder(row, client, req.admin || req.staff);
+
+        results.successful++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          row: i + 2, // +2 for Excel row number (1-indexed + header)
+          awb: row['*awb']?.toString() || 'N/A',
+          error: error.message
+        });
+      }
+    }
+
+    logger.info('📊 Manual mapping upload completed:', results);
+
+    res.status(200).json({
+      success: true,
+      message: `Processed ${results.total} rows: ${results.successful} successful, ${results.failed} failed`,
+      data: results
+    });
+
+  } catch (error) {
+    logger.error('❌ Manual mapping upload failed:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process manual mapping',
       error: error.message
     });
   }

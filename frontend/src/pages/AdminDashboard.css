@@ -291,4 +291,51 @@
   .clients-table td {
     padding: 8px;
   }
+
+  .charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Analytics Section */
+.analytics-section {
+  margin-top: 30px;
+}
+
+.analytics-section h2 {
+  color: #1f2937;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+}
+
+.chart-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.chart-card h3 {
+  color: #002B59;
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 16px 0;
+}
+
+.chart-container {
+  height: 280px;
+  position: relative;
+}
+
+.pie-chart-container {
+  height: 260px;
+  max-width: 300px;
+  margin: 0 auto;
 }

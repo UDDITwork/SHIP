@@ -139,7 +139,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { path: '/admin/billing', label: 'Billing', icon: 'B' },
     { path: '/admin/remittances', label: 'Remittances', icon: 'R' },
     { path: '/admin/orders', label: 'Orders', icon: 'O' },
+    { path: '/admin/tracking', label: 'Tracking', icon: 'TR' },
     { path: '/admin/ndr', label: 'NDR', icon: 'N' },
+    { path: '/admin/manual-mapping', label: 'Manual AWB Mapping', icon: 'M' },
     { path: '/admin/wallet-recharge', label: 'Wallet Recharge', icon: 'W' },
     { path: '/admin/weight-discrepancies', label: 'Weight Discrepancies', icon: 'WD' },
     // Carriers - only visible to admins
@@ -170,6 +172,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     }
     if (path === '/admin/wallet-recharge') {
       return location.pathname.startsWith('/admin/wallet-recharge');
+    }
+    if (path === '/admin/tracking') {
+      return location.pathname.startsWith('/admin/tracking');
+    }
+    if (path === '/admin/remittances') {
+      return location.pathname.startsWith('/admin/remittances');
     }
     return location.pathname === path;
   };

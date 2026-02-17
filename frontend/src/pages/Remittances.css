@@ -299,16 +299,76 @@
   text-transform: capitalize;
 }
 
-.status-badge.pending {
-  background-color: #FFF3CD;
-  color: #856404;
-  border: 1px solid #FFEBA3;
+.status-badge.pending,
+.status-badge.upcoming {
+  background-color: #e3f2fd;
+  color: #1565c0;
+  border: 1px solid #90caf9;
 }
 
-.status-badge.completed {
-  background-color: #D4EDDA;
-  color: #155724;
-  border: 1px solid #C3E6CB;
+.status-badge.processing {
+  background-color: #fff3e0;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+}
+
+.status-badge.completed,
+.status-badge.settled {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  border: 1px solid #a5d6a7;
+}
+
+/* State Filter */
+.state-filter-box select {
+  padding: 8px 14px;
+  border: 2px solid #002B59;
+  border-radius: 20px;
+  font-size: 12px;
+  outline: none;
+  background: white;
+  cursor: pointer;
+  min-width: 130px;
+}
+
+.state-filter-box select:focus {
+  border-color: #1F4068;
+  box-shadow: 0 0 0 3px rgba(31, 64, 104, 0.1);
+}
+
+/* Upcoming Banner */
+.upcoming-banner {
+  background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+  border: 1px solid #90caf9;
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+
+.upcoming-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.upcoming-banner-icon {
+  font-size: 24px;
+}
+
+.upcoming-banner-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upcoming-banner-info strong {
+  color: #002B59;
+  font-size: 15px;
+}
+
+.upcoming-banner-info span {
+  color: #1565c0;
+  font-size: 13px;
 }
 
 /* Loading and Empty States */

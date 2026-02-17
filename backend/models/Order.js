@@ -231,6 +231,24 @@ const paymentSchema = new mongoose.Schema({
   grand_total: {
     type: Number,
     min: [0, 'Grand total cannot be negative']
+  },
+  // COD Remittance tracking fields
+  cod_remitted: {
+    type: Boolean,
+    default: false
+  },
+  cod_remittance_date: {
+    type: Date,
+    default: null
+  },
+  cod_utr_number: {
+    type: String,
+    trim: true,
+    default: null
+  },
+  cod_remitted_amount: {
+    type: Number,
+    default: 0
   }
 }, { _id: false });
 
@@ -564,6 +582,12 @@ const orderSchema = new mongoose.Schema({
     default: 'Surface'
   },
 
+  // Carrier Used (for tracking which carrier/service type was selected)
+  carrier_used: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Carrier'
+  },
+
   // Order Type
   order_type: {
     type: String,
@@ -584,6 +608,8 @@ const orderSchema = new mongoose.Schema({
       'delivered',
       'ndr',
       'rto',
+      'rto_in_transit',
+      'rto_delivered',
       'cancelled',
       'lost',
       'all'
@@ -727,6 +753,25 @@ const orderSchema = new mongoose.Schema({
     // Billing timestamps
     charged_at: Date, // When wallet was deducted
     billed_at: Date // When added to invoice
+  },
+
+  // Manual AWB Mapping Metadata (Admin-only fields)
+  // Used when admin maps externally-generated AWBs to client accounts
+  is_manually_mapped: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  manually_mapped_by: {
+    type: String // Email of admin/staff who created the mapping
+  },
+  manually_mapped_at: {
+    type: Date
+  },
+  manual_mapping_source: {
+    type: String,
+    enum: ['excel_upload', 'manual_form'],
+    default: 'manual_form'
   }
 
 }, {
@@ -745,6 +790,7 @@ orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'billing_info.billing_status': 1, 'billing_info.billing_cycle_id': 1 });
 orderSchema.index({ 'billing_info.zone': 1 });
 orderSchema.index({ user_id: 1, order_date: -1, status: 1 });
+orderSchema.index({ 'payment_info.payment_mode': 1, status: 1, 'payment_info.cod_remitted': 1 });
 
 // Virtual for total products count
 orderSchema.virtual('total_products').get(function() {
@@ -778,7 +824,7 @@ orderSchema.pre('save', function(next) {
 
 // Method to check if order can be cancelled
 orderSchema.methods.canBeCancelled = function() {
-  const nonCancellableStatuses = ['delivered', 'cancelled', 'rto'];
+  const nonCancellableStatuses = ['delivered', 'cancelled', 'rto', 'rto_in_transit', 'rto_delivered'];
   return !nonCancellableStatuses.includes(this.status);
 };
 
@@ -815,7 +861,7 @@ orderSchema.statics.getOrdersByStatus = function(userId, status) {
 orderSchema.statics.getOrdersCountByStatus = async function(userId) {
   const statuses = [
     'new', 'ready_to_ship', 'pickups_manifests', 'in_transit',
-    'out_for_delivery', 'delivered', 'ndr', 'rto', 'cancelled', 'lost'
+    'out_for_delivery', 'delivered', 'ndr', 'rto', 'rto_in_transit', 'rto_delivered', 'cancelled', 'lost'
   ];
 
   const counts = {};

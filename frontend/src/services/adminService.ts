@@ -357,7 +357,7 @@ export interface AdminTicket {
   category: string;
   subject: string;
   description: string;
-  status: 'open' | 'in_progress' | 'waiting_customer' | 'resolved' | 'closed' | 'escalated';
+  status: 'open' | 'in_progress' | 'resolved' | 'closed' | 'escalated';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   created_at: string;
   updated_at: string;
@@ -439,7 +439,6 @@ export interface AdminTicketSummaryTotals {
   all: number;
   open: number;
   in_progress: number;
-  waiting_customer: number;
   resolved: number;
   closed: number;
   escalated: number;
@@ -463,7 +462,6 @@ export interface AdminTicketSummaryClient {
   statusCounts: {
     open: number;
     in_progress: number;
-    waiting_customer: number;
     resolved: number;
     closed: number;
     escalated: number;
@@ -1851,6 +1849,108 @@ class AdminService {
     return response.json();
   }
 
+  /**
+   * Upload simplified COD remittance (AWB + Date only)
+   */
+  async uploadCODRemittance(file: File): Promise<any> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${environmentConfig.apiUrl}/admin/remittances/upload-cod`, {
+      method: 'POST',
+      headers: this.getAdminHeaders(),
+      body: formData
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Failed to upload COD remittance file');
+    }
+
+    return response.json();
+  }
+
+  /**
+   * Get client-wise remittance summary
+   */
+  async getRemittanceClientSummary(): Promise<any> {
+    return apiService.get('/admin/remittances/client-summary', {
+      headers: this.getAdminHeaders()
+    });
+  }
+
+  /**
+   * Get all remittances (master table)
+   */
+  async getRemittances(params: { page?: number; limit?: number; search?: string; state?: string } = {}): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params.page) queryParams.append('page', params.page.toString());
+    if (params.limit) queryParams.append('limit', params.limit.toString());
+    if (params.search) queryParams.append('search', params.search);
+    if (params.state) queryParams.append('state', params.state);
+    return apiService.get(`/admin/remittances?${queryParams.toString()}`, {
+      headers: this.getAdminHeaders()
+    });
+  }
+
+  /**
+   * Get single remittance detail (admin)
+   */
+  async getRemittanceDetail(id: string): Promise<any> {
+    return apiService.get(`/admin/remittances/${id}`, {
+      headers: this.getAdminHeaders()
+    });
+  }
+
+  /**
+   * Add AWB to remittance
+   */
+  async addAWBToRemittance(remittanceId: string, awbNumber: string): Promise<any> {
+    return apiService.post(`/admin/remittances/${remittanceId}/add-awb`, { awb_number: awbNumber }, {
+      headers: this.getAdminHeaders()
+    });
+  }
+
+  /**
+   * Remove AWB from remittance
+   */
+  async removeAWBFromRemittance(remittanceId: string, awbNumber: string): Promise<any> {
+    return apiService.delete(`/admin/remittances/${remittanceId}/remove-awb`, {
+      headers: this.getAdminHeaders(),
+      data: { awb_number: awbNumber }
+    });
+  }
+
+  /**
+   * Move remittance to processing
+   */
+  async processRemittance(remittanceId: string): Promise<any> {
+    return apiService.patch(`/admin/remittances/${remittanceId}/process`, {}, {
+      headers: this.getAdminHeaders()
+    });
+  }
+
+  /**
+   * Settle remittance with UTR
+   */
+  async settleRemittance(remittanceId: string, bankTransactionId: string): Promise<any> {
+    return apiService.patch(`/admin/remittances/${remittanceId}/settle`, { bank_transaction_id: bankTransactionId }, {
+      headers: this.getAdminHeaders()
+    });
+  }
+
+  /**
+   * Get dashboard analytics (charts data)
+   */
+  async getDashboardAnalytics(dateFrom?: string, dateTo?: string): Promise<any> {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    return apiService.get(`/admin/dashboard/analytics?${params.toString()}`, {
+      headers: this.getAdminHeaders()
+    });
+  }
+
   // Staff Management Methods
   async createStaff(name: string, email: string, password: string): Promise<StaffResponse> {
     const response = await apiService.post<StaffResponse>(
@@ -2278,6 +2378,41 @@ class AdminService {
     }>(`/admin/billing/invoices?${params.toString()}`, {
       headers: this.getAdminHeaders()
     });
+    return response;
+  }
+
+  // Manual AWB Mapping
+  async uploadManualMapping(formData: FormData): Promise<{
+    success: boolean;
+    message: string;
+    data: {
+      total: number;
+      successful: number;
+      failed: number;
+      errors: Array<{
+        row: number;
+        awb: string;
+        error: string;
+      }>;
+    };
+  }> {
+    const response = await apiService.post<{
+      success: boolean;
+      message: string;
+      data: {
+        total: number;
+        successful: number;
+        failed: number;
+        errors: Array<{
+          row: number;
+          awb: string;
+          error: string;
+        }>;
+      };
+    }>(`/admin/orders/manual-mapping/upload`, formData, {
+      headers: this.getAdminHeaders()
+    });
+
     return response;
   }
 }

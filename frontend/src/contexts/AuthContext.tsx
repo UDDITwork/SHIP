@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, AuthContextType, RegisterData } from '../types';
 import { authService } from '../services/authService';
+import { DataCache } from '../utils/dataCache';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -187,6 +188,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('user');
     localStorage.removeItem('impersonation_session');
     sessionStorage.removeItem('location_verified');
+    // Clear cached data to prevent stale data from showing for next user
+    DataCache.clearAll();
     // DO NOT clear remembered_email and remembered_password on logout
     // These should persist based on user's Remember Me checkbox choice
   };

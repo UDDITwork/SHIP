@@ -104,7 +104,7 @@ const RemittanceDetail: React.FC = () => {
 
         {/* Transaction ID Section */}
         <div className="transaction-id-section">
-          <div className="transaction-icon">💰</div>
+          <div className="transaction-icon">&#8377;</div>
           <div className="transaction-info">
             <div className="transaction-number">{remittance.remittance_number}</div>
             <div className="transaction-meta">
@@ -112,7 +112,7 @@ const RemittanceDetail: React.FC = () => {
                 {remittance.state.charAt(0).toUpperCase() + remittance.state.slice(1)}
               </span>
               <span className="processed-date">
-                📅 Processed On: {formatDate(remittance.processed_on || remittance.date)}
+                Remittance Date: {formatDate(remittance.remittance_date || remittance.date)}
               </span>
             </div>
           </div>
@@ -144,8 +144,20 @@ const RemittanceDetail: React.FC = () => {
                 </div>
                 <div className="summary-item">
                   <span className="summary-label">Remittance Date:</span>
-                  <span className="summary-value">{formatDate(remittance.date)}</span>
+                  <span className="summary-value">{formatDate(remittance.remittance_date || remittance.date)}</span>
                 </div>
+                {remittance.bank_transaction_id && (
+                  <div className="summary-item">
+                    <span className="summary-label">UTR / Bank Txn ID:</span>
+                    <span className="summary-value" style={{ fontWeight: 700, color: '#2e7d32' }}>{remittance.bank_transaction_id}</span>
+                  </div>
+                )}
+                {remittance.settlement_date && (
+                  <div className="summary-item">
+                    <span className="summary-label">Settlement Date:</span>
+                    <span className="summary-value">{formatDate(remittance.settlement_date)}</span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -200,12 +212,13 @@ const RemittanceDetail: React.FC = () => {
                   <tr>
                     <th>AWB NUMBER</th>
                     <th>AMOUNT COLLECTED</th>
+                    <th>DELIVERED DATE</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={2} className="no-orders">
+                      <td colSpan={3} className="no-orders">
                         No orders found
                       </td>
                     </tr>
@@ -216,6 +229,7 @@ const RemittanceDetail: React.FC = () => {
                           <AWBLink awb={order.awb_number} />
                         </td>
                         <td>₹ {order.amount_collected.toFixed(2)}</td>
+                        <td>{order.delivered_date ? formatDate(order.delivered_date) : '-'}</td>
                       </tr>
                     ))
                   )}

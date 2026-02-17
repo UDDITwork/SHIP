@@ -15,7 +15,7 @@ router.get('/', auth, [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
   query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
   query('search').optional().isString().trim(),
-  query('state').optional().isIn(['pending', 'completed', 'all']).withMessage('Invalid state filter'),
+  query('state').optional().isIn(['upcoming', 'processing', 'settled', 'all']).withMessage('Invalid state filter'),
   query('date_from').optional().isISO8601().withMessage('Invalid date format'),
   query('date_to').optional().isISO8601().withMessage('Invalid date format')
 ], async (req, res) => {
@@ -65,11 +65,13 @@ router.get('/', auth, [
     const formattedRemittances = remittances.map(remittance => ({
       remittance_number: remittance.remittance_number,
       date: remittance.date,
+      remittance_date: remittance.remittance_date || remittance.date,
       bank_transaction_id: remittance.bank_transaction_id || '-',
       state: remittance.state,
       total_remittance: remittance.total_remittance,
       total_orders: remittance.total_orders,
-      processed_on: remittance.processed_on || remittance.date
+      processed_on: remittance.processed_on || remittance.date,
+      settlement_date: remittance.settlement_date
     }));
 
     res.json({
@@ -95,6 +97,41 @@ router.get('/', auth, [
       message: 'Failed to fetch remittances',
       error: error.message
     });
+  }
+});
+
+// @desc    Get upcoming remittances for logged-in user
+// @route   GET /api/remittances/upcoming
+// @access  Private
+router.get('/upcoming', auth, async (req, res) => {
+  try {
+    const upcomingRemittances = await Remittance.find({
+      user_id: req.user._id,
+      state: { $in: ['upcoming', 'processing'] }
+    })
+      .sort({ remittance_date: 1 })
+      .lean();
+
+    const summary = {
+      total_amount: upcomingRemittances.reduce((sum, r) => sum + r.total_remittance, 0),
+      total_orders: upcomingRemittances.reduce((sum, r) => sum + r.total_orders, 0),
+      count: upcomingRemittances.length,
+      remittances: upcomingRemittances.map(r => ({
+        remittance_number: r.remittance_number,
+        remittance_date: r.remittance_date || r.date,
+        state: r.state,
+        total_remittance: r.total_remittance,
+        total_orders: r.total_orders
+      }))
+    };
+
+    res.json({ success: true, data: summary });
+  } catch (error) {
+    logger.error('Get upcoming remittances error', {
+      userId: req.user._id,
+      error: error.message
+    });
+    res.status(500).json({ success: false, message: 'Failed to fetch upcoming remittances', error: error.message });
   }
 });
 
@@ -124,22 +161,25 @@ router.get('/:remittanceNumber', auth, [
     const formattedRemittance = {
       remittance_number: remittance.remittance_number,
       date: remittance.date,
+      remittance_date: remittance.remittance_date || remittance.date,
       processed_on: remittance.processed_on || remittance.date,
       bank_transaction_id: remittance.bank_transaction_id,
       state: remittance.state,
       total_remittance: remittance.total_remittance,
       total_orders: remittance.total_orders,
+      settlement_date: remittance.settlement_date,
       account_details: {
         bank: remittance.account_details?.bank || '',
         beneficiary_name: remittance.account_details?.beneficiary_name || '',
-        account_number: remittance.account_details?.account_number ? 
+        account_number: remittance.account_details?.account_number ?
           `XXXXXXXXXX${remittance.account_details.account_number.slice(-4)}` : '',
         ifsc_code: remittance.account_details?.ifsc_code || ''
       },
       remittance_orders: remittance.remittance_orders.map(order => ({
         awb_number: order.awb_number,
         amount_collected: order.amount_collected,
-        order_id: order.order_reference?.order_id || order.order_id || ''
+        order_id: order.order_reference?.order_id || order.order_id || '',
+        delivered_date: order.delivered_date
       }))
     };
 

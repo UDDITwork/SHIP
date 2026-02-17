@@ -261,9 +261,20 @@ class OrderService {
         };
       }
       return null;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching order by ID:', error);
-      return null;
+      // Propagate the actual error instead of silently returning null
+      const status = error.response?.status;
+      const message = error.response?.data?.message || error.message;
+      if (status === 401) {
+        throw new Error('Session expired. Please login again.');
+      } else if (status === 404) {
+        throw new Error('Order not found');
+      } else if (status === 403) {
+        throw new Error(message || 'Access denied');
+      } else {
+        throw new Error(message || 'Failed to fetch order details');
+      }
     }
   }
 

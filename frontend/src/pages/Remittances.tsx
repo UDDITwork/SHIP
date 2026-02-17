@@ -10,7 +10,7 @@ const Remittances: React.FC = () => {
   const [remittances, setRemittances] = useState<Remittance[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [stateFilter, setStateFilter] = useState<'all' | 'pending' | 'completed'>('all');
+  const [stateFilter, setStateFilter] = useState<'all' | 'upcoming' | 'processing' | 'settled'>('all');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [page, setPage] = useState(1);
@@ -18,6 +18,7 @@ const Remittances: React.FC = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const datePickerRef = useRef<HTMLDivElement>(null);
+  const [upcoming, setUpcoming] = useState<{total_amount: number; total_orders: number; count: number; remittances: any[]} | null>(null);
 
   const limit = 25;
 
@@ -107,6 +108,21 @@ const Remittances: React.FC = () => {
     fetchRemittances();
   }, [fetchRemittances]);
 
+  // Fetch upcoming remittances once
+  useEffect(() => {
+    const fetchUpcoming = async () => {
+      try {
+        const res = await remittanceService.getUpcoming();
+        if (res.success && res.data) {
+          setUpcoming(res.data);
+        }
+      } catch {
+        // silently ignore
+      }
+    };
+    fetchUpcoming();
+  }, []);
+
   // Close date picker when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -147,6 +163,19 @@ const Remittances: React.FC = () => {
           <button className="learn-more-btn">Learn More ?</button>
         </div>
 
+        {/* Upcoming Banner */}
+        {upcoming && upcoming.count > 0 && (
+          <div className="upcoming-banner">
+            <div className="upcoming-banner-content">
+              <div className="upcoming-banner-icon">&#8986;</div>
+              <div className="upcoming-banner-info">
+                <strong>Upcoming Remittance{upcoming.count > 1 ? 's' : ''}</strong>
+                <span>{upcoming.count} remittance{upcoming.count > 1 ? 's' : ''} with {upcoming.total_orders} orders totaling Rs. {upcoming.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Search & Filter Section */}
         <div className="remittances-filters">
           <div className="search-box">
@@ -159,6 +188,20 @@ const Remittances: React.FC = () => {
                 setPage(1);
               }}
             />
+          </div>
+          <div className="state-filter-box">
+            <select
+              value={stateFilter}
+              onChange={(e) => {
+                setStateFilter(e.target.value as any);
+                setPage(1);
+              }}
+            >
+              <option value="all">All States</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="processing">Processing</option>
+              <option value="settled">Settled</option>
+            </select>
           </div>
           <div className="date-filter" ref={datePickerRef}>
             <button
@@ -218,9 +261,9 @@ const Remittances: React.FC = () => {
               <thead>
                 <tr>
                   <th>REMITTANCE NUMBER</th>
-                  <th>DATE</th>
+                  <th>REMITTANCE DATE</th>
                   <th>BANK'S TRANSACTION ID</th>
-                  <th>Status</th>
+                  <th>STATUS</th>
                   <th>TOTAL REMITTANCE</th>
                 </tr>
               </thead>
@@ -242,7 +285,7 @@ const Remittances: React.FC = () => {
                           {remittance.remittance_number}
                         </button>
                       </td>
-                      <td>{formatDate(remittance.date)}</td>
+                      <td>{formatDate(remittance.remittance_date || remittance.date)}</td>
                       <td>{remittance.bank_transaction_id || '-'}</td>
                       <td>
                         <span className={`status-badge ${remittance.state}`}>

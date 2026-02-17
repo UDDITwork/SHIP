@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import './AWBLink.css';
 
 interface AWBLinkProps {
@@ -11,15 +11,22 @@ interface AWBLinkProps {
 
 const AWBLink: React.FC<AWBLinkProps> = ({ awb, orderId, className = '', showPrefix = false }) => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   if (!awb || awb === 'N/A' || awb === '—') {
     return <span className={className}>{awb || '—'}</span>;
   }
 
+  const isAdminContext = location.pathname.startsWith('/admin');
+
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const url = `/tracking/detail?awb=${encodeURIComponent(awb.trim())}${orderId ? `&orderId=${encodeURIComponent(orderId.trim())}` : ''}`;
-    navigate(url);
+    if (isAdminContext) {
+      navigate(`/admin/tracking/${encodeURIComponent(awb.trim())}`);
+    } else {
+      const url = `/tracking/detail?awb=${encodeURIComponent(awb.trim())}${orderId ? `&orderId=${encodeURIComponent(orderId.trim())}` : ''}`;
+      navigate(url);
+    }
   };
 
   return (

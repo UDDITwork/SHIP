@@ -21,6 +21,10 @@ const remittanceSchema = new mongoose.Schema({
     required: true,
     index: true
   },
+  remittance_date: {
+    type: Date,
+    required: true
+  },
   bank_transaction_id: {
     type: String,
     trim: true,
@@ -28,8 +32,8 @@ const remittanceSchema = new mongoose.Schema({
   },
   state: {
     type: String,
-    enum: ['pending', 'completed'],
-    default: 'pending',
+    enum: ['upcoming', 'processing', 'settled'],
+    default: 'upcoming',
     index: true
   },
   total_remittance: {
@@ -39,6 +43,17 @@ const remittanceSchema = new mongoose.Schema({
   },
   processed_on: {
     type: Date,
+    default: null
+  },
+
+  // Settlement fields
+  settlement_date: {
+    type: Date,
+    default: null
+  },
+  settled_by: {
+    type: String,
+    trim: true,
     default: null
   },
 
@@ -81,6 +96,9 @@ const remittanceSchema = new mongoose.Schema({
     order_reference: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Order'
+    },
+    delivered_date: {
+      type: Date
     }
   }],
 
@@ -116,6 +134,7 @@ remittanceSchema.index({ remittance_number: 1, user_id: 1 }); // Compound index 
 remittanceSchema.index({ user_id: 1, date: -1 }); // For user queries sorted by date
 remittanceSchema.index({ user_id: 1, state: 1 }); // For filtering by state
 remittanceSchema.index({ 'remittance_orders.awb_number': 1 }); // For AWB lookup
+remittanceSchema.index({ user_id: 1, remittance_date: -1 }); // For upcoming remittance queries
 
 // Pre-save middleware
 remittanceSchema.pre('save', function(next) {
@@ -123,12 +142,12 @@ remittanceSchema.pre('save', function(next) {
   if (this.remittance_orders && Array.isArray(this.remittance_orders)) {
     this.total_orders = this.remittance_orders.length;
   }
-  
-  // Update processed_on if state changes to completed
-  if (this.isModified('state') && this.state === 'completed' && !this.processed_on) {
+
+  // Update processed_on if state changes to settled
+  if (this.isModified('state') && this.state === 'settled' && !this.processed_on) {
     this.processed_on = new Date();
   }
-  
+
   this.updated_at = new Date();
   next();
 });
@@ -139,16 +158,16 @@ remittanceSchema.statics.getByRemittanceNumber = function(remittanceNumber, user
   if (userId) {
     query.user_id = userId;
   }
-  return this.findOne(query).populate('user_id', 'email company_name');
+  return this.findOne(query).populate('user_id', 'email company_name client_id bank_details');
 };
 
 remittanceSchema.statics.findByUser = function(userId, filters = {}) {
   const query = { user_id: userId };
-  
+
   if (filters.state) {
     query.state = filters.state;
   }
-  
+
   if (filters.dateFrom || filters.dateTo) {
     query.date = {};
     if (filters.dateFrom) {
@@ -158,45 +177,68 @@ remittanceSchema.statics.findByUser = function(userId, filters = {}) {
       query.date.$lte = new Date(filters.dateTo);
     }
   }
-  
+
   if (filters.search) {
     query.remittance_number = { $regex: filters.search, $options: 'i' };
   }
-  
+
   return this.find(query).sort({ date: -1 });
 };
 
 // Instance methods
-remittanceSchema.methods.markAsCompleted = function() {
-  this.state = 'completed';
+remittanceSchema.methods.markAsProcessing = function() {
+  this.state = 'processing';
+  return this.save();
+};
+
+remittanceSchema.methods.markAsSettled = function(bankTransactionId, settledBy = 'admin') {
+  this.state = 'settled';
+  this.bank_transaction_id = bankTransactionId || this.bank_transaction_id;
+  this.settlement_date = new Date();
+  this.settled_by = settledBy;
   if (!this.processed_on) {
     this.processed_on = new Date();
   }
   return this.save();
 };
 
-remittanceSchema.methods.addOrder = function(awbNumber, amountCollected, orderId = null, orderRef = null) {
+remittanceSchema.methods.addOrder = function(awbNumber, amountCollected, orderId = null, orderRef = null, deliveredDate = null) {
   if (!this.remittance_orders) {
     this.remittance_orders = [];
   }
-  
+
   // Check if order already exists
   const existingOrder = this.remittance_orders.find(
     order => order.awb_number === awbNumber
   );
-  
+
   if (!existingOrder) {
     this.remittance_orders.push({
       awb_number: awbNumber,
       amount_collected: amountCollected,
       order_id: orderId,
-      order_reference: orderRef
+      order_reference: orderRef,
+      delivered_date: deliveredDate
     });
     this.total_orders = this.remittance_orders.length;
+    // Recalculate total
+    this.total_remittance = this.remittance_orders.reduce((sum, o) => sum + o.amount_collected, 0);
   }
-  
+
+  return this.save();
+};
+
+remittanceSchema.methods.removeOrder = function(awbNumber) {
+  if (!this.remittance_orders) return this.save();
+
+  this.remittance_orders = this.remittance_orders.filter(
+    order => order.awb_number !== awbNumber
+  );
+  this.total_orders = this.remittance_orders.length;
+  // Recalculate total
+  this.total_remittance = this.remittance_orders.reduce((sum, o) => sum + o.amount_collected, 0);
+
   return this.save();
 };
 
 module.exports = mongoose.model('Remittance', remittanceSchema);
-
