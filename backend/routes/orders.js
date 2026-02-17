@@ -12,6 +12,7 @@ const Transaction = require('../models/Transaction');
 const User = require('../models/User');
 const TrackingOrder = require('../models/TrackingOrder');
 const BillingCycle = require('../models/BillingCycle');
+const Carrier = require('../models/Carrier');
 const RateCardService = require('../services/rateCardService');
 const delhiveryService = require('../services/delhiveryService');
 const websocketService = require('../services/websocketService');
@@ -419,28 +420,68 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
         cod_charge: 0,
         total_charge: shippingCharges
       };
-      
+
       if (zone && user.user_category) {
         try {
-          const chargeResult = await RateCardService.calculateShippingCharges(
-            user.user_category,
-            actualWeightGrams, // weight in grams
-            {
-              length: order.package_info.dimensions.length,
-              breadth: order.package_info.dimensions.width,
-              height: order.package_info.dimensions.height
-            },
-            zone,
-            order.payment_info?.cod_amount || 0,
-            order.order_type || 'forward'
-          );
-          
+          // Determine carrier for rate calculation
+          let selectedCarrierId = req.body.carrier_id;
+
+          if (!selectedCarrierId && req.body.service_type) {
+            // Lookup carrier by service type
+            const carrier = await Carrier.findOne({
+              carrier_group: 'DELHIVERY',
+              service_type: req.body.service_type.toLowerCase(),
+              is_active: true
+            });
+
+            if (carrier) {
+              selectedCarrierId = carrier._id;
+            }
+          }
+
+          // Calculate charges (with carrier support)
+          let chargeResult;
+          if (selectedCarrierId) {
+            chargeResult = await RateCardService.calculateShippingChargesByCarrier(
+              user.user_category,
+              actualWeightGrams, // weight in grams
+              {
+                length: order.package_info.dimensions.length,
+                breadth: order.package_info.dimensions.width,
+                height: order.package_info.dimensions.height
+              },
+              zone,
+              order.payment_info?.cod_amount || 0,
+              order.order_type || 'forward',
+              selectedCarrierId
+            );
+          } else {
+            // Legacy: no carrier specified, use default (Surface)
+            chargeResult = await RateCardService.calculateShippingCharges(
+              user.user_category,
+              actualWeightGrams, // weight in grams
+              {
+                length: order.package_info.dimensions.length,
+                breadth: order.package_info.dimensions.width,
+                height: order.package_info.dimensions.height
+              },
+              zone,
+              order.payment_info?.cod_amount || 0,
+              order.order_type || 'forward'
+            );
+          }
+
           billingCharges = {
             forward_charge: chargeResult.forwardCharges,
             rto_charge: chargeResult.rtoCharges,
             cod_charge: chargeResult.codCharges,
             total_charge: chargeResult.totalCharges
           };
+
+          // Store carrier_id in order if provided
+          if (selectedCarrierId) {
+            order.carrier_used = selectedCarrierId;
+          }
         } catch (rateError) {
           console.warn('⚠️ Rate calculation failed, using shipping_charges:', rateError.message);
         }
@@ -1210,7 +1251,7 @@ router.get('/', auth, [
   query('limit').optional().isInt({ min: 1, max: 100 }),
   query('status').optional().isIn([
     'new', 'ready_to_ship', 'pickup_pending', 'manifested', 'pickups_manifests',
-    'in_transit', 'out_for_delivery', 'delivered', 'ndr', 'rto', 'cancelled', 'lost', 'all'
+    'in_transit', 'out_for_delivery', 'delivered', 'ndr', 'rto', 'rto_in_transit', 'rto_delivered', 'cancelled', 'lost', 'all'
   ]),
   query('order_type').optional().isIn(['forward', 'reverse']),
   query('payment_mode').optional().isIn(['prepaid', 'cod']),
@@ -1238,8 +1279,13 @@ router.get('/', auth, [
     const filterQuery = { user_id: userId };
 
     if (req.query.status && req.query.status !== 'all') {
-      filterQuery['status'] = req.query.status;
-      
+      // Expand 'rto' to include all RTO sub-statuses
+      if (req.query.status === 'rto') {
+        filterQuery['status'] = { $in: ['rto', 'rto_in_transit', 'rto_delivered'] };
+      } else {
+        filterQuery['status'] = req.query.status;
+      }
+
       // Exclude canceled shipments from pickups_manifests tab
       // Canceled shipments should only appear in "All" tab
       if (req.query.status === 'pickups_manifests') {
@@ -1732,10 +1778,25 @@ router.get('/:id/print', auth, async (req, res) => {
 // @access  Private
 router.get('/:id', auth, async (req, res) => {
   try {
-    const order = await Order.findOne({
-      _id: req.params.id,
-      user_id: req.user._id
-    }).populate('pickup_info.warehouse_id', 'title name address contact_info');
+    const mongoose = require('mongoose');
+    const id = req.params.id;
+    let order = null;
+
+    // First try by _id if it's a valid ObjectId
+    if (mongoose.Types.ObjectId.isValid(id) && String(new mongoose.Types.ObjectId(id)) === id) {
+      order = await Order.findOne({
+        _id: id,
+        user_id: req.user._id
+      }).populate('pickup_info.warehouse_id', 'title name address contact_info');
+    }
+
+    // Fallback: try by order_id (e.g. "ORD-12345")
+    if (!order) {
+      order = await Order.findOne({
+        order_id: id,
+        user_id: req.user._id
+      }).populate('pickup_info.warehouse_id', 'title name address contact_info');
+    }
 
     if (!order) {
       return res.status(404).json({
@@ -1751,6 +1812,13 @@ router.get('/:id', auth, async (req, res) => {
 
   } catch (error) {
     console.error('Get order error:', error);
+    // Handle CastError (invalid ObjectId format) gracefully
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Invalid order ID format'
+      });
+    }
     res.status(500).json({
       status: 'error',
       message: 'Server error fetching order'
@@ -1916,7 +1984,11 @@ router.post('/', auth, [
     return true;
   }),
   body('seller_info.reseller_name').optional().trim(),
-  body('order_id').optional().trim()
+  body('order_id').optional().trim(),
+
+  // Carrier/Service Type (optional - for Delhivery Air support)
+  body('service_type').optional().isIn(['surface', 'air']).withMessage('Service type must be "surface" or "air"'),
+  body('carrier_id').optional().isMongoId().withMessage('Carrier ID must be valid MongoDB ObjectId')
 ], async (req, res) => {
   const { generateOrderId } = require('../utils/orderIdGenerator');
   // Use the Order ID from frontend if provided, otherwise generate one
@@ -3123,7 +3195,7 @@ router.put('/:id', auth, [
     }
 
     // Check if order can be updated
-    if (['delivered', 'rto', 'cancelled'].includes(order.status)) {
+    if (['delivered', 'rto', 'rto_in_transit', 'rto_delivered', 'cancelled', 'lost'].includes(order.status)) {
       return res.status(400).json({
         status: 'error',
         message: 'Cannot update order in current status'
@@ -3172,7 +3244,7 @@ router.delete('/:id', auth, async (req, res) => {
     }
 
     // Check if order can be cancelled
-    if (['delivered', 'rto', 'cancelled'].includes(order.status)) {
+    if (['delivered', 'rto', 'rto_in_transit', 'rto_delivered', 'cancelled', 'lost'].includes(order.status)) {
       return res.status(400).json({
         status: 'error',
         message: 'Cannot cancel order in current status'
@@ -3201,7 +3273,7 @@ router.delete('/:id', auth, async (req, res) => {
 router.patch('/:id/status', auth, [
   body('status').isIn([
     'new', 'ready_to_ship', 'pickup_pending', 'manifested', 'pickups_manifests',
-    'in_transit', 'out_for_delivery', 'delivered', 'ndr', 'rto', 'cancelled'
+    'in_transit', 'out_for_delivery', 'delivered', 'ndr', 'rto', 'rto_in_transit', 'rto_delivered', 'cancelled', 'lost'
   ]).withMessage('Valid status is required'),
   body('remarks').optional().trim(),
   body('location').optional().trim()
@@ -4880,7 +4952,7 @@ router.post('/bulk/cancel', auth, async (req, res) => {
         }
 
         // Check if order can be cancelled
-        if (['delivered', 'rto', 'cancelled'].includes(order.status)) {
+        if (['delivered', 'rto', 'rto_in_transit', 'rto_delivered', 'cancelled', 'lost'].includes(order.status)) {
           results.push({
             order_id: order.order_id,
             status: 'failed',

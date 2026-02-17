@@ -1,6 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
 import { environmentConfig } from '../config/environment';
 import { requestDeduplicator } from '../utils/requestDeduplicator';
+import { DataCache } from '../utils/dataCache';
 
 // Use the environment configuration
 const API_BASE_URL = environmentConfig.apiUrl;
@@ -202,9 +203,11 @@ class ApiService {
         }
         
         if (error.response?.status === 401) {
-          console.error('🔐 UNAUTHORIZED - Clearing auth and redirecting');
+          console.error('🔐 UNAUTHORIZED - Clearing auth, cache and redirecting');
           localStorage.removeItem('token');
           localStorage.removeItem('user');
+          // Clear all cached data to prevent stale cross-user data
+          DataCache.clearAll();
           window.location.href = '/login';
         }
         

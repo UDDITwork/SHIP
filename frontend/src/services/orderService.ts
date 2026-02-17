@@ -87,9 +87,24 @@ class OrderService {
    * Get all orders with filters
    * Uses cache for instant display, then fetches fresh data from MongoDB
    */
+  private getUserCachePrefix(): string {
+    // Include user identity in cache key to prevent cross-user stale data
+    const token = localStorage.getItem('token');
+    const userStr = localStorage.getItem('user');
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        return user._id || user.id || '';
+      } catch { /* ignore */ }
+    }
+    // Fallback: use a hash of the token to differentiate users
+    return token ? token.slice(-8) : 'anon';
+  }
+
   async getOrders(filters: OrderFilters = {}, useCache: boolean = true): Promise<Order[]> {
-    // Generate cache key based on filters
-    const cacheKey = `${this.CACHE_KEY}_${JSON.stringify(filters)}`;
+    // Generate cache key based on filters AND user identity
+    const userPrefix = this.getUserCachePrefix();
+    const cacheKey = `${this.CACHE_KEY}_${userPrefix}_${JSON.stringify(filters)}`;
 
     // Try to load from cache first for instant display
     if (useCache) {
@@ -283,7 +298,8 @@ class OrderService {
    */
   clearCache(filters?: OrderFilters): void {
     if (filters) {
-      const cacheKey = `${this.CACHE_KEY}_${JSON.stringify(filters)}`;
+      const userPrefix = this.getUserCachePrefix();
+      const cacheKey = `${this.CACHE_KEY}_${userPrefix}_${JSON.stringify(filters)}`;
       DataCache.clear(cacheKey);
     } else {
       // Clear all order caches
