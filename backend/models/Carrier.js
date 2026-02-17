@@ -95,8 +95,7 @@ const carrierSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
-// Indexes
-carrierSchema.index({ carrier_code: 1 }, { unique: true });
+// Indexes (carrier_code unique index is already defined at field level - line 9)
 carrierSchema.index({ is_active: 1, carrier_group: 1 });
 carrierSchema.index({ display_name: 1 });
 carrierSchema.index({ priority_order: 1 });

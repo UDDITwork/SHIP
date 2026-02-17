@@ -25,7 +25,6 @@ const STATUS_ORDER: AdminTicket['status'][] = [
 const STATUS_CONFIG: Record<AdminTicket['status'], { label: string; icon: string; className: string }> = {
   open: { label: 'Open', icon: 'O', className: 'open' },
   in_progress: { label: 'In Progress', icon: 'IP', className: 'in-progress' },
-  waiting_customer: { label: 'Waiting Customer', icon: 'WC', className: 'waiting-customer' },
   escalated: { label: 'Escalated', icon: 'E', className: 'escalated' },
   resolved: { label: 'Resolved', icon: 'R', className: 'resolved' },
   closed: { label: 'Closed', icon: 'C', className: 'closed' }

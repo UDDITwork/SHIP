@@ -1855,7 +1855,14 @@
   .status-badge.ready_to_ship { background: #dbeafe; color: #1e40af; }
   .status-badge.pickups_manifests { background: #fef3c7; color: #92400e; }
   .status-badge.in_transit { background: #ddd6fe; color: #5b21b6; }
+  .status-badge.out_for_delivery { background: #e0f2fe; color: #075985; }
   .status-badge.delivered { background: #d1fae5; color: #065f46; }
+  .status-badge.ndr { background: #fef3c7; color: #92400e; }
+  .status-badge.rto { background: #fef2f2; color: #b91c1c; }
+  .status-badge.rto_in_transit { background: #ffedd5; color: #9a3412; }
+  .status-badge.rto_delivered { background: #fef2f2; color: #b91c1c; }
+  .status-badge.cancelled { background: #f3f4f6; color: #6b7280; }
+  .status-badge.lost { background: #fee2e2; color: #991b1b; }
   .status-badge.pending { background: #fee2e2; color: #991b1b; }
   .status-badge.scheduled { background: #bfdbfe; color: #1e40af; }
 

@@ -1897,6 +1897,9 @@ const Orders: React.FC = () => {
                            order.status === 'delivered' ? 'Delivered' :
                            order.status === 'ndr' ? 'NDR' :
                            order.status === 'rto' ? 'RTO' :
+                           order.status === 'rto_in_transit' ? 'RTO In Transit' :
+                           order.status === 'rto_delivered' ? 'RTO Delivered' :
+                           order.status === 'lost' ? 'Lost' :
                            order.status || 'N/A'}
                         </span>
                       </td>

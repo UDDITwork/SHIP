@@ -176,7 +176,11 @@ router.put('/profile', auth, async (req, res) => {
       if (phone_number) updateData.phone_number = phone_number;
       if (gstin) updateData.gstin = gstin;
       if (address) updateData.address = address;
-      if (bank_details) updateData.bank_details = bank_details;
+      if (bank_details) {
+        // Auto-uppercase IFSC code to match model validation
+        if (bank_details.ifsc_code) bank_details.ifsc_code = bank_details.ifsc_code.toUpperCase();
+        updateData.bank_details = bank_details;
+      }
     }
     
     logger.debug('🔄 UPDATE DATA TO SAVE', updateData);
@@ -308,7 +312,7 @@ function generateInitials(companyName) {
 // @route   POST /api/users/upload-document
 // @access  Private
 router.post('/upload-document', auth, upload.single('file'), [
-  body('document_type').isIn(['gst_certificate', 'photo_selfie', 'pan_card', 'aadhaar_card']).withMessage('Valid document type is required')
+  body('document_type').isIn(['gst_certificate', 'photo', 'photo_selfie', 'pan', 'pan_card', 'aadhar', 'aadhaar_card', 'bank_statement']).withMessage('Valid document type is required')
 ], async (req, res) => {
   logger.info('📥 UPLOAD ENDPOINT HIT', {
     method: req.method,
@@ -1024,10 +1028,17 @@ router.get('/kyc-status', auth, async (req, res) => {
       });
     }
 
-    // Check document requirements
-    const requiredDocuments = ['gst_certificate', 'photo_selfie', 'pan_card', 'aadhaar_card'];
-    const uploadedDocuments = user.documents.map(doc => doc.document_type);
-    const missingDocuments = requiredDocuments.filter(doc => !uploadedDocuments.includes(doc));
+    // Check document requirements (accept both old and new naming conventions)
+    const requiredDocuments = ['gst_certificate', 'photo', 'pan', 'aadhar'];
+    const uploadedDocuments = (user.documents || []).map(doc => doc.document_type);
+    const docAliases = {
+      'photo': ['photo', 'photo_selfie'],
+      'pan': ['pan', 'pan_card'],
+      'aadhar': ['aadhar', 'aadhaar_card'],
+      'gst_certificate': ['gst_certificate']
+    };
+    const hasDoc = (type) => (docAliases[type] || [type]).some(t => uploadedDocuments.includes(t));
+    const missingDocuments = requiredDocuments.filter(doc => !hasDoc(doc));
 
     res.json({
       status: 'success',
@@ -1066,10 +1077,17 @@ router.post('/submit-kyc', auth, async (req, res) => {
       });
     }
 
-    // Check if all required documents are uploaded
-    const requiredDocuments = ['gst_certificate', 'photo_selfie', 'pan_card', 'aadhaar_card'];
-    const uploadedDocuments = user.documents.map(doc => doc.document_type);
-    const missingDocuments = requiredDocuments.filter(doc => !uploadedDocuments.includes(doc));
+    // Check if all required documents are uploaded (accept both old and new naming conventions)
+    const requiredDocuments = ['gst_certificate', 'photo', 'pan', 'aadhar'];
+    const uploadedDocuments = (user.documents || []).map(doc => doc.document_type);
+    const docAliases = {
+      'photo': ['photo', 'photo_selfie'],
+      'pan': ['pan', 'pan_card'],
+      'aadhar': ['aadhar', 'aadhaar_card'],
+      'gst_certificate': ['gst_certificate']
+    };
+    const hasDoc = (type) => (docAliases[type] || [type]).some(t => uploadedDocuments.includes(t));
+    const missingDocuments = requiredDocuments.filter(doc => !hasDoc(doc));
 
     if (missingDocuments.length > 0) {
       return res.status(400).json({

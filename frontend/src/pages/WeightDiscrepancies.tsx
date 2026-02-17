@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { environmentConfig } from '../config/environment';
 import { ticketService } from '../services/ticketService';
@@ -55,6 +56,7 @@ const createInitialSummary = (): Summary => ({
 });
 
 const WeightDiscrepancies: React.FC = () => {
+  const navigate = useNavigate();
   const [discrepancies, setDiscrepancies] = useState<WeightDiscrepancy[]>([]);
   const [summary, setSummary] = useState<Summary>(() => createInitialSummary());
   const [loading, setLoading] = useState(false);
@@ -68,12 +70,13 @@ const WeightDiscrepancies: React.FC = () => {
 
   // Ticket creation state
   const [raisingIssue, setRaisingIssue] = useState<string | null>(null);
-  const [ticketMessage, setTicketMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [ticketMessage, setTicketMessage] = useState<{ type: 'success' | 'error'; text: string; ticketId?: string; ticketObjId?: string } | null>(null);
 
   // Dispute modal state
   const [showDisputeModal, setShowDisputeModal] = useState(false);
   const [selectedDiscrepancy, setSelectedDiscrepancy] = useState<WeightDiscrepancy | null>(null);
   const [disputeDescription, setDisputeDescription] = useState('');
+  const [disputeFiles, setDisputeFiles] = useState<File[]>([]);
 
   const fetchDiscrepancies = useCallback(async () => {
     setLoading(true);
@@ -130,6 +133,29 @@ const WeightDiscrepancies: React.FC = () => {
     setShowDisputeModal(false);
     setSelectedDiscrepancy(null);
     setDisputeDescription('');
+    setDisputeFiles([]);
+  };
+
+  const handleDisputeFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const invalidFiles = files.filter(file => {
+        if (file.type.startsWith('image/') && file.size > 2 * 1024 * 1024) return true;
+        if (file.type.startsWith('video/') && file.size > 5 * 1024 * 1024) return true;
+        if (file.type.startsWith('application/') && file.size > 5 * 1024 * 1024) return true;
+        return false;
+      });
+      if (invalidFiles.length > 0) {
+        setTicketMessage({ type: 'error', text: 'Some files exceed size limit: Image 2MB, Video/Document 5MB' });
+        setTimeout(() => setTicketMessage(null), 5000);
+        return;
+      }
+      setDisputeFiles(prev => [...prev, ...files].slice(0, 5));
+    }
+  };
+
+  const removeDisputeFile = (index: number) => {
+    setDisputeFiles(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleRaiseDispute = async () => {
@@ -180,13 +206,19 @@ Transaction ID: ${discrepancy.transaction_id?.transaction_id || 'N/A'}
 Dispute Reason:
 ${disputeDescription.trim()}`;
 
-      await ticketService.createTicket({
+      const ticket = await ticketService.createTicket({
         category: 'shipment_dispute',
         awb_numbers: [discrepancy.awb_number],
-        comment: description
+        comment: description,
+        files: disputeFiles.length > 0 ? disputeFiles : undefined
       });
 
-      setTicketMessage({ type: 'success', text: 'Dispute raised successfully! Ticket created and sent to admin.' });
+      setTicketMessage({
+        type: 'success',
+        text: `Dispute raised successfully! Ticket ${ticket.ticket_id || ''} created.`,
+        ticketId: ticket.ticket_id,
+        ticketObjId: ticket._id
+      });
       closeDisputeModal(); // Close modal on success
       fetchDiscrepancies(); // Refresh to show updated status
 
@@ -293,6 +325,15 @@ ${disputeDescription.trim()}`;
         {ticketMessage && (
           <div className={`ticket-message ${ticketMessage.type}`}>
             {ticketMessage.text}
+            {ticketMessage.ticketObjId && (
+              <button
+                className="view-ticket-link"
+                onClick={() => navigate(`/support/tickets/${ticketMessage.ticketObjId}`)}
+                style={{ marginLeft: '10px', textDecoration: 'underline', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', fontWeight: 600 }}
+              >
+                View Ticket
+              </button>
+            )}
           </div>
         )}
 
@@ -463,9 +504,34 @@ ${disputeDescription.trim()}`;
                     </span>
                     <span className="text-muted"> (minimum 10 required)</span>
                   </div>
-                  <p className="help-text">
-                    You can attach images/videos via the support ticket that will be automatically created.
-                  </p>
+                </div>
+
+                <div className="form-group">
+                  <label>Attach Proof (Images / Videos)</label>
+                  <div className="file-upload-container">
+                    <input
+                      type="file"
+                      id="dispute-file-upload"
+                      multiple
+                      accept="image/*,video/*,.pdf,.doc,.docx"
+                      onChange={handleDisputeFileSelect}
+                      style={{ display: 'none' }}
+                    />
+                    <label htmlFor="dispute-file-upload" className="file-upload-btn" style={{ display: 'inline-block', padding: '8px 16px', border: '1px dashed #ccc', borderRadius: '6px', cursor: 'pointer', fontSize: '14px', color: '#666' }}>
+                      Select files (max 5)
+                    </label>
+                  </div>
+                  <small style={{ color: '#888', fontSize: '12px' }}>Image: 2MB max, Video/Document: 5MB max</small>
+                  {disputeFiles.length > 0 && (
+                    <div className="selected-files" style={{ marginTop: '8px' }}>
+                      {disputeFiles.map((file, index) => (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px 0', fontSize: '13px' }}>
+                          <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                          <button type="button" onClick={() => removeDisputeFile(index)} style={{ background: 'none', border: 'none', color: '#e74c3c', cursor: 'pointer', fontWeight: 'bold' }}>x</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 

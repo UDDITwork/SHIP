@@ -1,14 +1,22 @@
+const IST_TIMEZONE = 'Asia/Kolkata';
+
 /**
- * Formats a date to DD/MM/YYYY format.
+ * Formats a date to DD/MM/YYYY format in IST.
  */
 export const formatDate = (dateInput?: string | Date | null): string => {
   if (!dateInput) return 'N/A';
   try {
     const date = new Date(dateInput);
     if (isNaN(date.getTime())) return 'N/A';
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
+    const parts = new Intl.DateTimeFormat('en-IN', {
+      timeZone: IST_TIMEZONE,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).formatToParts(date);
+    const day = parts.find(p => p.type === 'day')?.value || '';
+    const month = parts.find(p => p.type === 'month')?.value || '';
+    const year = parts.find(p => p.type === 'year')?.value || '';
     return `${day}/${month}/${year}`;
   } catch {
     return 'N/A';
@@ -16,7 +24,7 @@ export const formatDate = (dateInput?: string | Date | null): string => {
 };
 
 /**
- * Formats a date to DD/MM/YYYY, HH:MM AM/PM format.
+ * Formats a date to DD/MM/YYYY, HH:MM AM/PM format in IST.
  */
 export const formatDateTime = (dateInput?: string | Date | null): string => {
   if (!dateInput) return 'N/A';
@@ -25,6 +33,7 @@ export const formatDateTime = (dateInput?: string | Date | null): string => {
     if (isNaN(date.getTime())) return 'N/A';
     const datePart = formatDate(dateInput);
     const timePart = date.toLocaleTimeString('en-US', {
+      timeZone: IST_TIMEZONE,
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
@@ -36,7 +45,7 @@ export const formatDateTime = (dateInput?: string | Date | null): string => {
 };
 
 /**
- * Formats time only: HH:MM:SS AM/PM
+ * Formats time only: HH:MM:SS AM/PM in IST.
  */
 export const formatTime = (dateInput?: string | Date | null): string => {
   if (!dateInput) return 'N/A';
@@ -44,6 +53,7 @@ export const formatTime = (dateInput?: string | Date | null): string => {
     const date = new Date(dateInput);
     if (isNaN(date.getTime())) return 'N/A';
     return date.toLocaleTimeString('en-US', {
+      timeZone: IST_TIMEZONE,
       hour: '2-digit',
       minute: '2-digit',
       second: '2-digit',
@@ -55,28 +65,32 @@ export const formatTime = (dateInput?: string | Date | null): string => {
 };
 
 /**
- * Smart date format with "Today" / "Yesterday" labels.
+ * Smart date format with "Today" / "Yesterday" labels in IST.
  */
 export const formatDateSmart = (dateInput?: string | Date | null): string => {
   if (!dateInput) return 'N/A';
   try {
     const date = new Date(dateInput);
     if (isNaN(date.getTime())) return 'N/A';
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
+
+    // Get today and yesterday in IST
+    const nowIST = new Date(new Date().toLocaleString('en-US', { timeZone: IST_TIMEZONE }));
+    const dateIST = new Date(date.toLocaleString('en-US', { timeZone: IST_TIMEZONE }));
+    const yesterdayIST = new Date(nowIST);
+    yesterdayIST.setDate(yesterdayIST.getDate() - 1);
 
     const datePart = formatDate(dateInput);
     const timePart = date.toLocaleTimeString('en-US', {
+      timeZone: IST_TIMEZONE,
       hour: '2-digit',
       minute: '2-digit',
       hour12: true
     });
 
-    if (date.toDateString() === today.toDateString()) {
+    if (dateIST.toDateString() === nowIST.toDateString()) {
       return `Today, ${timePart}`;
     }
-    if (date.toDateString() === yesterday.toDateString()) {
+    if (dateIST.toDateString() === yesterdayIST.toDateString()) {
       return `Yesterday, ${timePart}`;
     }
     return `${datePart}, ${timePart}`;

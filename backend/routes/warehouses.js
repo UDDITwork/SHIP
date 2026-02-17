@@ -655,6 +655,14 @@ router.put('/:id', auth, [
       if (retAddr?.pincode) returnPincode = retAddr.pincode.toString().trim();
     }
 
+    // Fallback: if no return address, use pickup address (Delhivery requires it)
+    if (!returnAddressString && addressString) {
+      returnAddressString = addressString;
+      returnPincode = pincode;
+      returnCity = req.body.address?.city || warehouse.address?.city || '';
+      returnState = req.body.address?.state || warehouse.address?.state || '';
+    }
+
     // Add return address fields to Delhivery update payload
     if (returnAddressString) {
       delhiveryUpdateData.return_address = returnAddressString;

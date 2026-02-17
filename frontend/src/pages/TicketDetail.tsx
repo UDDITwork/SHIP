@@ -190,7 +190,6 @@ const TicketDetail: React.FC = () => {
     switch (status) {
       case 'open': return '#3b82f6';
       case 'in_progress': return '#f59e0b';
-      case 'waiting_customer': return '#f97316';
       case 'resolved': return '#10b981';
       case 'closed': return '#6b7280';
       case 'escalated': return '#ef4444';
@@ -198,19 +197,27 @@ const TicketDetail: React.FC = () => {
     }
   };
 
-  // Format date with time in DD/MM/YYYY, HH:MM AM/PM format
+  // Format date with time in DD/MM/YYYY, HH:MM AM/PM format (IST)
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return 'N/A';
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    const hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    const hour12 = hours % 12 || 12;
-    return `${day}/${month}/${year}, ${hour12}:${minutes} ${ampm}`;
+    const parts = new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric'
+    }).formatToParts(date);
+    const day = parts.find(p => p.type === 'day')?.value || '';
+    const month = parts.find(p => p.type === 'month')?.value || '';
+    const year = parts.find(p => p.type === 'year')?.value || '';
+    const timePart = date.toLocaleTimeString('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    });
+    return `${day}/${month}/${year}, ${timePart}`;
   };
 
   if (loading) {
@@ -255,10 +262,6 @@ const TicketDetail: React.FC = () => {
           <div className="info-row">
             <span className="info-label">Category:</span>
             <span className="info-value">{ticket.category}</span>
-          </div>
-          <div className="info-row">
-            <span className="info-label">Priority:</span>
-            <span className="info-value">{ticket.priority}</span>
           </div>
           <div className="info-row">
             <span className="info-label">Created:</span>

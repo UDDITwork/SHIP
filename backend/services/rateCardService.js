@@ -7,6 +7,7 @@ const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 class RateCardService {
   // Get rate card for a specific user category (from database)
+  // Legacy method - defaults to Surface for backward compatibility
   static async getRateCard(userCategory) {
     try {
       // Normalize category name
@@ -24,7 +25,7 @@ class RateCardService {
 
       // Fetch from database
       const rateCard = await RateCard.findByCategory(normalizedCategory);
-      
+
       if (!rateCard) {
         return null;
       }
@@ -41,6 +42,46 @@ class RateCardService {
       return rateCardObj;
     } catch (error) {
       console.error('Error fetching ratecard from database:', error);
+      return null;
+    }
+  }
+
+  // Get rate card for a specific user category and carrier
+  static async getRateCardByCarrier(userCategory, carrierId) {
+    try {
+      // Normalize category name
+      let normalizedCategory = userCategory;
+      if (userCategory === 'Advanced User') {
+        normalizedCategory = 'Advanced';
+      }
+
+      // Check cache first (include carrier in cache key)
+      const cacheKey = `${normalizedCategory.toLowerCase()}_${carrierId}`;
+      const cached = rateCardCache.get(cacheKey);
+      if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+        return cached.data;
+      }
+
+      // Fetch from database with carrier filter
+      const rateCard = await RateCard.findOne({
+        userCategory: normalizedCategory,
+        carrier_id: carrierId,
+        is_current: true
+      }).lean();
+
+      if (!rateCard) {
+        return null;
+      }
+
+      // Cache the result
+      rateCardCache.set(cacheKey, {
+        data: rateCard,
+        timestamp: Date.now()
+      });
+
+      return rateCard;
+    } catch (error) {
+      console.error('Error fetching ratecard by carrier from database:', error);
       return null;
     }
   }
@@ -74,6 +115,7 @@ class RateCardService {
   }
 
   // Calculate shipping charges based on weight, dimensions, and zone
+  // Legacy method - defaults to Surface for backward compatibility
   static async calculateShippingCharges(userCategory, weight, dimensions, zone, codAmount = 0, orderType = 'forward') {
     const rateCard = await this.getRateCard(userCategory);
     if (!rateCard) {
@@ -84,16 +126,16 @@ class RateCardService {
     // Dimensions are in cm, so result is in kg
     const volumetricWeightKg = (dimensions.length * dimensions.breadth * dimensions.height) / 5000;
     const volumetricWeightGrams = volumetricWeightKg * 1000; // Convert to grams
-    
+
     // Use higher of actual weight (in grams) or volumetric weight (in grams)
     const chargeableWeight = Math.max(weight, volumetricWeightGrams);
 
     // Calculate forward charges
     const forwardCharges = this.calculateForwardCharges(rateCard, chargeableWeight, zone);
-    
+
     // Calculate RTO charges
     const rtoCharges = this.calculateRTOCharges(rateCard, chargeableWeight, zone);
-    
+
     // Calculate COD charges if COD amount is provided
     let codCharges = 0;
     if (codAmount && codAmount > 0) {
@@ -124,6 +166,71 @@ class RateCardService {
       volumetricWeight: volumetricWeightKg, // Return in kg for display
       chargeableWeight: chargeableWeight / 1000, // Return in kg for display (converted from grams)
       orderType: orderType
+    };
+  }
+
+  // Calculate shipping charges by carrier (Surface/Air)
+  // NEW METHOD: Supports carrier selection for Delhivery Surface vs Air
+  static async calculateShippingChargesByCarrier(userCategory, weight, dimensions, zone, codAmount = 0, orderType = 'forward', carrierId = null) {
+    let rateCard;
+
+    if (carrierId) {
+      // Fetch rate card for specific carrier + category
+      rateCard = await this.getRateCardByCarrier(userCategory, carrierId);
+      if (!rateCard) {
+        throw new Error(`Rate card not found for user category: ${userCategory} and carrier: ${carrierId}`);
+      }
+    } else {
+      // Legacy: fetch by category only (defaults to Surface)
+      rateCard = await this.getRateCard(userCategory);
+      if (!rateCard) {
+        throw new Error(`Rate card not found for user category: ${userCategory}`);
+      }
+    }
+
+    // Calculate volumetric weight (LxBxH/5000) in kg, then convert to grams
+    // Dimensions are in cm, so result is in kg
+    const volumetricWeightKg = (dimensions.length * dimensions.breadth * dimensions.height) / 5000;
+    const volumetricWeightGrams = volumetricWeightKg * 1000; // Convert to grams
+
+    // Use higher of actual weight (in grams) or volumetric weight (in grams)
+    const chargeableWeight = Math.max(weight, volumetricWeightGrams);
+
+    // Calculate forward charges (same logic, different rate data)
+    const forwardCharges = this.calculateForwardCharges(rateCard, chargeableWeight, zone);
+
+    // Calculate RTO charges (same logic, different rate data)
+    const rtoCharges = this.calculateRTOCharges(rateCard, chargeableWeight, zone);
+
+    // Calculate COD charges if COD amount is provided
+    let codCharges = 0;
+    if (codAmount && codAmount > 0) {
+      const codPercentage = (codAmount * rateCard.codCharges.percentage) / 100;
+      codCharges = Math.max(codPercentage, rateCard.codCharges.minimumAmount);
+      if (rateCard.codCharges.gstAdditional) {
+        codCharges = codCharges * 1.18; // Adding 18% GST
+      }
+    }
+
+    // Calculate total based on order type
+    let totalCharges;
+    if (orderType === 'forward') {
+      totalCharges = forwardCharges + codCharges;
+    } else if (orderType === 'rto') {
+      totalCharges = rtoCharges + codCharges;
+    } else {
+      totalCharges = forwardCharges + codCharges;
+    }
+
+    return {
+      forwardCharges,
+      rtoCharges,
+      codCharges,
+      totalCharges,
+      volumetricWeight: volumetricWeightKg,
+      chargeableWeight: chargeableWeight / 1000,
+      orderType: orderType,
+      carrierId: carrierId // Return carrier ID for reference
     };
   }
 

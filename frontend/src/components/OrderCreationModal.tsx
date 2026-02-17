@@ -211,8 +211,9 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
       gst_number: '',
       reseller_name: ''
     },
-    
-    shipping_mode: 'Surface'
+
+    shipping_mode: 'Surface',
+    service_type: 'surface' // Delhivery Surface (default) or 'air' for Delhivery Air
   });
 
   // Fetch warehouses, packages, and saved products on component mount
@@ -889,7 +890,8 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         shipping_mode: (formData.shipping_mode || 'Surface') as 'Surface' | 'Express' | 'S' | 'E',
         payment_mode: formData.payment_info.payment_mode as 'Prepaid' | 'COD' | 'Pre-paid',
         cod_amount: formData.payment_info.payment_mode === 'COD' ? formData.payment_info.cod_amount : 0,
-        order_type: orderType === 'reverse' ? 'rto' : 'forward' // Use 'rto' for reverse orders, 'forward' for forward orders
+        order_type: orderType === 'reverse' ? 'rto' : 'forward', // Use 'rto' for reverse orders, 'forward' for forward orders
+        service_type: formData.service_type as 'surface' | 'air' // Delhivery Surface or Air
       };
 
       const response = await shippingService.calculateShippingCharges(calculationRequest);
@@ -1219,6 +1221,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         },
         seller_info: formData.seller_info,
         shipping_mode: formData.shipping_mode,
+        service_type: formData.service_type, // Delhivery Surface or Air
         order_type: orderType === 'reverse' ? 'reverse' : 'forward', // Send order type to backend
         order_id: orderId
       };
@@ -1382,7 +1385,8 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
             gst_number: '',
             reseller_name: ''
           },
-          shipping_mode: 'Surface'
+          shipping_mode: 'Surface',
+          service_type: 'surface'
         });
       } else {
         try {
@@ -1917,6 +1921,27 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     <small className="form-note">Enter shipping charges manually. Charges will be calculated automatically in the final step before saving.</small>
                   </div>
                 </div>
+            </div>
+
+            {/* Service Type Selection */}
+            <div className="form-section">
+              <h3>Shipping Service</h3>
+              <div className="form-row">
+                <div className="form-group">
+                  <label>Service Type *</label>
+                  <select
+                    value={formData.service_type}
+                    onChange={(e) => setFormData(prev => ({ ...prev, service_type: e.target.value as 'surface' | 'air' }))}
+                    required
+                  >
+                    <option value="surface">Delhivery Surface (Standard)</option>
+                    <option value="air">Delhivery Air (Faster Delivery)</option>
+                  </select>
+                  <small className="form-note">
+                    Air service typically costs 20-30% more but delivers faster
+                  </small>
+                </div>
+              </div>
             </div>
 
             {/* Package Type & Dimensions Section */}

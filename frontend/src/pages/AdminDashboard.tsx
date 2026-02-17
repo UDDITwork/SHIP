@@ -12,6 +12,7 @@ const AdminDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [analytics, setAnalytics] = useState<any>(null);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
 
   useEffect(() => {
     // Only fetch data if admin is authenticated
@@ -41,12 +42,16 @@ const AdminDashboard: React.FC = () => {
 
   const fetchAnalytics = async () => {
     try {
+      setAnalyticsError(null);
       const res = await adminService.getDashboardAnalytics();
       if (res.success) {
         setAnalytics(res.data);
+      } else {
+        setAnalyticsError(res.message || 'Failed to load analytics');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Analytics fetch error:', err);
+      setAnalyticsError(err.message || 'Failed to load analytics');
     }
   };
 
@@ -233,6 +238,15 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {/* Analytics Charts */}
+      {analyticsError && (
+        <div className="analytics-section">
+          <h2>Order Analytics</h2>
+          <div style={{ padding: '20px', background: '#fef2f2', borderRadius: '8px', color: '#991b1b' }}>
+            <p>Failed to load analytics: {analyticsError}</p>
+            <button onClick={fetchAnalytics} className="retry-btn" style={{ marginTop: '8px' }}>Retry</button>
+          </div>
+        </div>
+      )}
       {analytics && (
         <div className="analytics-section">
           <h2>Order Analytics</h2>

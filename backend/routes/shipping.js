@@ -3,6 +3,7 @@ const router = express.Router();
 const { auth } = require('../middleware/auth');
 const delhiveryService = require('../services/delhiveryService');
 const Order = require('../models/Order');
+const Carrier = require('../models/Carrier');
 
 const { body, validationResult } = require('express-validator');
 const RateCardService = require('../services/rateCardService');
@@ -890,7 +891,9 @@ router.post('/public/calculate-rate-card',
         body('shipping_mode').optional().isIn(['Surface', 'Express', 'S', 'E']).withMessage('Shipping mode must be Surface/Express or S/E'),
         body('payment_mode').optional().isIn(['Prepaid', 'COD', 'Pre-paid']).withMessage('Payment mode must be Prepaid or COD'),
         body('cod_amount').optional().isFloat({ min: 0 }).withMessage('COD amount must be positive'),
-        body('order_type').optional().isIn(['forward', 'rto']).withMessage('Order type must be "forward" or "rto"')
+        body('order_type').optional().isIn(['forward', 'rto']).withMessage('Order type must be "forward" or "rto"'),
+        body('service_type').optional().isIn(['surface', 'air']).withMessage('Service type must be "surface" or "air"'),
+        body('carrier_id').optional().isMongoId().withMessage('Carrier ID must be valid MongoDB ObjectId')
     ],
     async (req, res) => {
         try {
@@ -912,7 +915,9 @@ router.post('/public/calculate-rate-card',
                 shipping_mode,
                 payment_mode,
                 cod_amount,
-                order_type = 'forward'
+                order_type = 'forward',
+                service_type,
+                carrier_id
             } = req.body;
 
             const userCategory = 'New User';
@@ -1043,14 +1048,52 @@ router.post('/public/calculate-rate-card',
                 });
             }
 
-            const result = await RateCardService.calculateShippingCharges(
-                userCategory,
-                weight,
-                dimensions,
-                finalZone,
-                cod_amount || 0,
-                order_type
-            );
+            // Determine carrier for rate calculation
+            let selectedCarrierId = carrier_id;
+            let carrierServiceType = null;
+
+            if (!selectedCarrierId && service_type) {
+                // Lookup carrier by service type
+                const carrier = await Carrier.findOne({
+                    carrier_group: 'DELHIVERY',
+                    service_type: service_type.toLowerCase(),
+                    is_active: true
+                });
+
+                if (!carrier) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `No active carrier found for service type: ${service_type}`
+                    });
+                }
+
+                selectedCarrierId = carrier._id;
+                carrierServiceType = carrier.service_type;
+            }
+
+            // Calculate shipping charges (with carrier support)
+            let result;
+            if (selectedCarrierId) {
+                result = await RateCardService.calculateShippingChargesByCarrier(
+                    userCategory,
+                    weight,
+                    dimensions,
+                    finalZone,
+                    cod_amount || 0,
+                    order_type,
+                    selectedCarrierId
+                );
+            } else {
+                // Legacy: no carrier specified, use default (Surface)
+                result = await RateCardService.calculateShippingCharges(
+                    userCategory,
+                    weight,
+                    dimensions,
+                    finalZone,
+                    cod_amount || 0,
+                    order_type
+                );
+            }
 
             res.json({
                 success: true,
@@ -1059,7 +1102,8 @@ router.post('/public/calculate-rate-card',
                     ...result,
                     zone: finalZone,
                     user_category: userCategory,
-                    rate_card_applied: rateCard.userCategory
+                    rate_card_applied: rateCard.userCategory,
+                    service_type: carrierServiceType || service_type || 'surface'
                 }
             });
         } catch (error) {
@@ -1086,7 +1130,9 @@ router.post('/calculate-rate-card',
         body('shipping_mode').optional().isIn(['Surface', 'Express', 'S', 'E']).withMessage('Shipping mode must be Surface/Express or S/E'),
         body('payment_mode').optional().isIn(['Prepaid', 'COD', 'Pre-paid']).withMessage('Payment mode must be Prepaid or COD'),
         body('cod_amount').optional().isFloat({ min: 0 }).withMessage('COD amount must be positive'),
-        body('order_type').optional().isIn(['forward', 'rto']).withMessage('Order type must be "forward" or "rto"')
+        body('order_type').optional().isIn(['forward', 'rto']).withMessage('Order type must be "forward" or "rto"'),
+        body('service_type').optional().isIn(['surface', 'air']).withMessage('Service type must be "surface" or "air"'),
+        body('carrier_id').optional().isMongoId().withMessage('Carrier ID must be valid MongoDB ObjectId')
     ],
     async (req, res) => {
         try {
@@ -1099,7 +1145,7 @@ router.post('/calculate-rate-card',
                 });
             }
 
-            const { weight, dimensions, zone, pickup_pincode, delivery_pincode, shipping_mode, payment_mode, cod_amount, order_type = 'forward' } = req.body;
+            const { weight, dimensions, zone, pickup_pincode, delivery_pincode, shipping_mode, payment_mode, cod_amount, order_type = 'forward', service_type, carrier_id } = req.body;
             const userCategory = req.user.user_category || 'Basic User';
 
             // SECURITY: Validate user category exists and is valid
@@ -1248,18 +1294,55 @@ router.post('/calculate-rate-card',
                 });
             }
 
+            // Determine carrier for rate calculation
+            let selectedCarrierId = carrier_id;
+            let carrierServiceType = null;
+
+            if (!selectedCarrierId && service_type) {
+                // Lookup carrier by service type
+                const carrier = await Carrier.findOne({
+                    carrier_group: 'DELHIVERY',
+                    service_type: service_type.toLowerCase(),
+                    is_active: true
+                });
+
+                if (!carrier) {
+                    return res.status(400).json({
+                        success: false,
+                        message: `No active carrier found for service type: ${service_type}`
+                    });
+                }
+
+                selectedCarrierId = carrier._id;
+                carrierServiceType = carrier.service_type;
+            }
+
             // Calculate shipping charges with correct order type
             // NOTE: RateCardService expects weight in GRAMS (as per service implementation)
             // Frontend sends weight in grams, so we pass it directly
             // The service will recalculate volumetric weight internally and use chargeable weight
-            const result = await RateCardService.calculateShippingCharges(
-                userCategory,
-                weight, // Already in grams from frontend
-                dimensions,
-                finalZone,
-                cod_amount || 0,
-                order_type
-            );
+            let result;
+            if (selectedCarrierId) {
+                result = await RateCardService.calculateShippingChargesByCarrier(
+                    userCategory,
+                    weight, // Already in grams from frontend
+                    dimensions,
+                    finalZone,
+                    cod_amount || 0,
+                    order_type,
+                    selectedCarrierId
+                );
+            } else {
+                // Legacy: no carrier specified, use default (Surface)
+                result = await RateCardService.calculateShippingCharges(
+                    userCategory,
+                    weight,
+                    dimensions,
+                    finalZone,
+                    cod_amount || 0,
+                    order_type
+                );
+            }
 
             // Log rate calculation for audit
             console.log('💰 Rate calculated:', {
@@ -1269,6 +1352,7 @@ router.post('/calculate-rate-card',
                 zone: finalZone,
                 cod_amount: cod_amount || 0,
                 total_charges: result.totalCharges,
+                service_type: carrierServiceType || service_type || 'surface',
                 zone_source: zone ? 'provided' : 'delhivery_api',
                 timestamp: new Date().toISOString()
             });
@@ -1280,7 +1364,8 @@ router.post('/calculate-rate-card',
                     ...result,
                     zone: finalZone, // Include zone in response
                     user_category: userCategory,
-                    rate_card_applied: rateCard.userCategory
+                    rate_card_applied: rateCard.userCategory,
+                    service_type: carrierServiceType || service_type || 'surface'
                 }
             });
         } catch (error) {

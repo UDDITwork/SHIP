@@ -231,41 +231,65 @@ router.post('/v1/delhivery/qc-image', webhookAuth, validateQCImage, async (req, 
   }
 });
 
-router.post('/delhivery/cod-remittance', async (req, res) => {
+router.post('/delhivery/cod-remittance', webhookAuth, async (req, res) => {
     try {
         const { waybill, cod_amount, remittance_date, utr_number } = req.body;
 
+        // Basic validation
+        if (!waybill || typeof waybill !== 'string') {
+          return res.status(200).json({
+            success: false,
+            message: 'Invalid payload: waybill is required'
+          });
+        }
+
+        if (cod_amount == null || isNaN(Number(cod_amount))) {
+          return res.status(200).json({
+            success: false,
+            message: 'Invalid payload: cod_amount must be a number'
+          });
+        }
+
         const order = await Order.findOne({
-            'delhivery_data.waybill': waybill
+            'delhivery_data.waybill': String(waybill).trim()
         });
 
         if (!order) {
-            return res.status(404).json({
+            // Return 200 to prevent Delhivery retries
+            logger.warn('COD remittance — order not found', { waybill });
+            return res.status(200).json({
                 success: false,
                 message: 'Order not found'
             });
         }
 
         order.payment_info.cod_remitted = true;
-        order.payment_info.cod_remittance_date = new Date(remittance_date);
-        order.payment_info.cod_utr_number = utr_number;
-        order.payment_info.cod_remitted_amount = cod_amount;
+        order.payment_info.cod_remittance_date = remittance_date ? new Date(remittance_date) : new Date();
+        order.payment_info.cod_utr_number = utr_number ? String(utr_number).trim() : null;
+        order.payment_info.cod_remitted_amount = Number(cod_amount);
 
         await order.save();
 
-        console.log(`COD remittance updated for order ${order.order_id}: ${cod_amount}`);
+        logger.info('COD remittance updated', {
+          orderId: order.order_id,
+          waybill,
+          codAmount: cod_amount
+        });
 
-        res.json({
+        res.status(200).json({
             success: true,
             message: 'COD remittance updated successfully'
         });
 
     } catch (error) {
-        console.error('COD remittance webhook error:', error);
-        res.status(500).json({
+        logger.error('COD remittance webhook error', {
+          error: error.message,
+          stack: error.stack
+        });
+        // Always return 200 to prevent Delhivery retries
+        res.status(200).json({
             success: false,
-            message: 'Internal server error',
-            error: error.message
+            message: 'Webhook received (processing error logged)'
         });
     }
 });

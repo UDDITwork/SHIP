@@ -107,6 +107,12 @@ shipmentTrackingEventSchema.index({ processed: 1, createdAt: -1 });
 // Compound index for tracking history
 shipmentTrackingEventSchema.index({ waybill: 1, createdAt: -1 });
 
+// Unique compound index to prevent duplicate webhook events at DB level
+shipmentTrackingEventSchema.index(
+  { waybill: 1, status: 1, status_date_time: 1 },
+  { unique: true }
+);
+
 // Static method to get tracking history for a waybill
 shipmentTrackingEventSchema.statics.getTrackingHistory = function(waybill) {
   return this.find({ waybill })

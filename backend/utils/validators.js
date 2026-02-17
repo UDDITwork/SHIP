@@ -129,6 +129,19 @@ class WebhookValidators {
 
     if (!payload.Weight_images || typeof payload.Weight_images !== 'string') {
       errors.push('Weight_images (base64 image) is required and must be a string');
+    } else {
+      // Validate base64 format
+      const base64Regex = /^data:image\/[a-z]+;base64,/i;
+      if (!payload.Weight_images.match(/^[A-Za-z0-9+/=]+$/) && !base64Regex.test(payload.Weight_images)) {
+        errors.push('Weight_images must be a valid base64 encoded string');
+      }
+
+      // Check size (max 10MB)
+      const sizeInBytes = (payload.Weight_images.length * 3) / 4;
+      const maxSize = 10 * 1024 * 1024;
+      if (sizeInBytes > maxSize) {
+        errors.push(`Weight_images too large: ${(sizeInBytes / 1024 / 1024).toFixed(2)}MB (max 10MB)`);
+      }
     }
 
     return {
@@ -159,6 +172,19 @@ class WebhookValidators {
 
     if (!payload.Image || typeof payload.Image !== 'string') {
       errors.push('Image (base64 image) is required and must be a string');
+    } else {
+      // Validate base64 format
+      const base64Regex = /^data:image\/[a-z]+;base64,/i;
+      if (!payload.Image.match(/^[A-Za-z0-9+/=]+$/) && !base64Regex.test(payload.Image)) {
+        errors.push('Image must be a valid base64 encoded string');
+      }
+
+      // Check size (max 10MB)
+      const sizeInBytes = (payload.Image.length * 3) / 4;
+      const maxSize = 10 * 1024 * 1024;
+      if (sizeInBytes > maxSize) {
+        errors.push(`Image too large: ${(sizeInBytes / 1024 / 1024).toFixed(2)}MB (max 10MB)`);
+      }
     }
 
     return {

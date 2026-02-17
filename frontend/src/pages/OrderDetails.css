@@ -263,6 +263,26 @@
   color: #AD1457;
 }
 
+.status-badge.rto_in_transit {
+  background-color: #ffedd5;
+  color: #9a3412;
+}
+
+.status-badge.rto_delivered {
+  background-color: #FCE4EC;
+  color: #AD1457;
+}
+
+.status-badge.lost {
+  background-color: #FEE2E2;
+  color: #991B1B;
+}
+
+.status-badge.cancelled {
+  background-color: #F3F4F6;
+  color: #6B7280;
+}
+
 .status-badge.pending {
   background-color: #FFF3E0;
   color: #E65100;

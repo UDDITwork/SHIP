@@ -237,11 +237,6 @@
   color: #111827;
 }
 
-.status-badge.waiting_customer {
-  background-color: #FEF3C7;
-  color: #111827;
-}
-
 .status-badge.escalated {
   background-color: #FECACA;
   color: #111827;

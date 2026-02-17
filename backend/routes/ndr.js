@@ -63,7 +63,7 @@ router.get('/', auth, [
           filterQuery.status = 'delivered';
           break;
         case 'rto':
-          filterQuery.status = 'rto';
+          filterQuery.status = { $in: ['rto', 'rto_in_transit', 'rto_delivered'] };
           break;
       }
     }
@@ -462,7 +462,7 @@ router.get('/statistics/counts', auth, async (req, res) => {
       rto: await Order.countDocuments({
         user_id: userId,
         'ndr_info.is_ndr': true,
-        status: 'rto'
+        status: { $in: ['rto', 'rto_in_transit', 'rto_delivered'] }
       })
     };
 

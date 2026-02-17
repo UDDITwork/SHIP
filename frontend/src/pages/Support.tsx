@@ -44,14 +44,20 @@ const formatStatusLabel = (status: string) => {
     .join(' ');
 };
 
-// Format date in DD/MM/YYYY format
+// Format date in DD/MM/YYYY format (IST)
 const formatDate = (dateString: string | undefined) => {
   if (!dateString) return 'N/A';
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return 'N/A';
-  const day = date.getDate().toString().padStart(2, '0');
-  const month = (date.getMonth() + 1).toString().padStart(2, '0');
-  const year = date.getFullYear();
+  const parts = new Intl.DateTimeFormat('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  }).formatToParts(date);
+  const day = parts.find(p => p.type === 'day')?.value || '';
+  const month = parts.find(p => p.type === 'month')?.value || '';
+  const year = parts.find(p => p.type === 'year')?.value || '';
   return `${day}/${month}/${year}`;
 };
 

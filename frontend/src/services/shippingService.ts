@@ -15,6 +15,7 @@ export interface ShippingCalculationRequest {
   payment_mode?: 'Prepaid' | 'COD' | 'Pre-paid'; // For zone calculation
   cod_amount?: number;
   order_type?: 'forward' | 'rto';
+  service_type?: 'surface' | 'air'; // Delhivery Surface or Air (affects rate card selection)
 }
 
 export interface ShippingCalculationResult {

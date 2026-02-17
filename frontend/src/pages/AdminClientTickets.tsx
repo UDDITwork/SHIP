@@ -351,8 +351,6 @@ const AdminClientTickets: React.FC = () => {
         return <span className="w-3 h-3 bg-blue-500 rounded-full"></span>;
       case 'in_progress':
         return <span className="w-3 h-3 bg-yellow-500 rounded-full"></span>;
-      case 'waiting_customer':
-        return <span className="w-3 h-3 bg-orange-500 rounded-full"></span>;
       case 'resolved':
         return <span className="w-3 h-3 bg-green-500 rounded-full"></span>;
       case 'closed':
@@ -370,8 +368,6 @@ const AdminClientTickets: React.FC = () => {
         return 'bg-blue-100 text-blue-800 border-blue-200';
       case 'in_progress':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'waiting_customer':
-        return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'resolved':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'closed':
@@ -476,7 +472,6 @@ const AdminClientTickets: React.FC = () => {
             <option value="">All Status</option>
             <option value="open">Open</option>
             <option value="in_progress">In Progress</option>
-            <option value="waiting_customer">Waiting Customer</option>
             <option value="resolved">Resolved</option>
             <option value="closed">Closed</option>
             <option value="escalated">Escalated</option>
@@ -786,7 +781,6 @@ const AdminClientTickets: React.FC = () => {
                     >
                       <option value="open">Open</option>
                       <option value="in_progress">In Progress</option>
-                      <option value="waiting_customer">Waiting Customer</option>
                       <option value="resolved">Resolved</option>
                       <option value="closed">Closed</option>
                       <option value="escalated">Escalated</option>
@@ -799,11 +793,6 @@ const AdminClientTickets: React.FC = () => {
                       {updatingStatus ? 'Updating...' : 'Confirm'}
                     </button>
                   </div>
-                  {selectedTicket.status === 'waiting_customer' && (
-                    <p className="status-hint">
-                      Currently waiting on client response. You can move to another status once ready.
-                    </p>
-                  )}
                 </div>
 
                 <div className="action-group">

@@ -238,12 +238,14 @@ const AccountSettings: React.FC = () => {
   }, [fetchUserData]);
 
   const handleInputChange = (section: string, field: string, value: string) => {
+    // Auto-uppercase IFSC code to match backend validation
+    const processedValue = (field === 'ifsc_code') ? value.toUpperCase() : value;
     if (section === 'address' || section === 'bank_details') {
       setFormData(prev => ({
         ...prev,
         [section]: {
           ...(prev as any)[section],
-          [field]: value
+          [field]: processedValue
         }
       }));
     } else {

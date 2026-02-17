@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
+import { apiService } from '../services/api';
 import { adminService } from '../services/adminService';
 import './AdminRemittances.css';
 
@@ -28,12 +29,13 @@ const AdminTracking: React.FC = () => {
   const formatDate = (dateStr: string) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleString('en-IN', {
+      timeZone: 'Asia/Kolkata',
       day: '2-digit', month: '2-digit', year: 'numeric',
       hour: '2-digit', minute: '2-digit'
     });
   };
 
-  const trackShipment = async (awb: string) => {
+  const trackShipment = useCallback(async (awb: string) => {
     if (!awb.trim()) return;
     setLoading(true);
     setError(null);
@@ -41,9 +43,8 @@ const AdminTracking: React.FC = () => {
     setOrderDetails(null);
 
     try {
-      // Fetch tracking from public API
-      const response = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/shipping/public/track/${encodeURIComponent(awb.trim())}`);
-      const data = await response.json();
+      // Fetch tracking from public API using apiService (handles base URL correctly)
+      const data = await apiService.get<any>(`/shipping/public/track/${encodeURIComponent(awb.trim())}`);
 
       if (data.success) {
         setTracking(data.data || data);
@@ -54,32 +55,25 @@ const AdminTracking: React.FC = () => {
       setError(err.message || 'Failed to fetch tracking data');
     }
 
-    // Also try to fetch order details from admin
+    // Also try to fetch order details from admin global search
     try {
-      const adminHeaders = {
-        'x-admin-email': localStorage.getItem('admin_email') || localStorage.getItem('staff_email') || '',
-        'x-admin-password': localStorage.getItem('admin_password') || 'jpmcA123'
-      };
-      const orderRes = await fetch(`${process.env.REACT_APP_API_URL || ''}/api/admin/global-search?query=${encodeURIComponent(awb.trim())}`, {
-        headers: { ...adminHeaders, 'Content-Type': 'application/json' }
-      });
-      const orderData = await orderRes.json();
-      if (orderData.success && orderData.data?.orders?.length > 0) {
-        setOrderDetails(orderData.data.orders[0]);
+      const searchResults = await adminService.globalSearch(awb.trim());
+      if (searchResults?.orders?.length > 0) {
+        setOrderDetails(searchResults.orders[0]);
       }
     } catch {
       // Silently ignore — order details are optional
     }
 
     setLoading(false);
-  };
+  }, []);
 
   useEffect(() => {
     if (urlAwb) {
       setAwbInput(urlAwb);
       trackShipment(urlAwb);
     }
-  }, [urlAwb]);
+  }, [urlAwb, trackShipment]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

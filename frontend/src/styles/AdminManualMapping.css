@@ -1,0 +1,279 @@
+.admin-manual-mapping {
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header h1 {
+  font-size: 28px;
+  font-weight: 600;
+  color: #002B59;
+  margin-bottom: 8px;
+}
+
+.page-header .subtitle {
+  color: #666;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: white;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.instructions-card {
+  background: #f8f9fa;
+  border-left: 4px solid #002B59;
+  padding: 20px;
+  margin-bottom: 24px;
+  border-radius: 4px;
+}
+
+.instructions-card h3 {
+  color: #002B59;
+  margin-bottom: 16px;
+  font-size: 18px;
+}
+
+.instructions-card ol {
+  margin: 0 0 20px 20px;
+  padding: 0;
+}
+
+.instructions-card li {
+  margin-bottom: 8px;
+  color: #333;
+  line-height: 1.6;
+}
+
+.btn-download-template {
+  background: #F68723;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-download-template:hover {
+  background: #d66f1a;
+}
+
+.upload-section h3 {
+  color: #002B59;
+  margin-bottom: 20px;
+  font-size: 18px;
+}
+
+.file-input-wrapper {
+  margin-bottom: 20px;
+}
+
+.file-input-wrapper input[type="file"] {
+  display: none;
+}
+
+.file-label {
+  display: inline-block;
+  padding: 12px 24px;
+  background: #f8f9fa;
+  border: 2px dashed #ccc;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #666;
+  width: 100%;
+  text-align: center;
+  max-width: 400px;
+}
+
+.file-label:hover {
+  border-color: #002B59;
+  background: #f0f0f0;
+}
+
+.btn-upload {
+  background: #002B59;
+  color: white;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-upload:hover:not(:disabled) {
+  background: #003d7a;
+}
+
+.btn-upload:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.error-message {
+  background: #fee;
+  color: #c00;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 16px 0;
+  border-left: 4px solid #c00;
+}
+
+.success-message {
+  background: #efe;
+  color: #060;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 16px 0;
+  border-left: 4px solid #0c0;
+  font-weight: 500;
+}
+
+.loading-indicator {
+  text-align: center;
+  padding: 24px;
+  color: #666;
+}
+
+.spinner {
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #002B59;
+  border-radius: 50%;
+  width: 40px;
+  height: 40px;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.results-section h3 {
+  color: #002B59;
+  margin-bottom: 24px;
+  font-size: 20px;
+}
+
+.results-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  text-align: center;
+  border: 2px solid #e0e0e0;
+}
+
+.stat-card.success {
+  background: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.stat-card.error {
+  background: #ffebee;
+  border-color: #f44336;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: 700;
+  color: #002B59;
+}
+
+.stat-card.success .stat-value {
+  color: #2e7d32;
+}
+
+.stat-card.error .stat-value {
+  color: #c62828;
+}
+
+.errors-table {
+  margin-top: 24px;
+}
+
+.errors-table h4 {
+  color: #c00;
+  margin-bottom: 16px;
+  font-size: 16px;
+}
+
+.errors-table table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.errors-table th {
+  background: #f8f9fa;
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 2px solid #ddd;
+  font-size: 14px;
+}
+
+.errors-table td {
+  padding: 12px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+}
+
+.errors-table tr:hover {
+  background: #f9f9f9;
+}
+
+.awb-cell {
+  font-family: 'Courier New', monospace;
+  color: #002B59;
+  font-weight: 500;
+}
+
+.error-cell {
+  color: #c00;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-manual-mapping {
+    padding: 16px;
+  }
+
+  .results-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .errors-table {
+    overflow-x: auto;
+  }
+
+  .errors-table table {
+    min-width: 600px;
+  }
+}

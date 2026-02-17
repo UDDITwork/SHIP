@@ -264,6 +264,8 @@ router.get('/shipment-status', auth, async (req, res) => {
           statusCounts.ndr_pending += stat.count;
           break;
         case 'rto':
+        case 'rto_in_transit':
+        case 'rto_delivered':
           statusCounts.rto += stat.count;
           break;
       }
@@ -364,7 +366,7 @@ router.get('/ndr-status', auth, async (req, res) => {
       ndrCounts.total_ndr += stat.count;
       if (stat._id.status === 'delivered') {
         ndrCounts.ndr_delivered += stat.count;
-      } else if (stat._id.status === 'rto') {
+      } else if (['rto', 'rto_in_transit', 'rto_delivered'].includes(stat._id.status)) {
         ndrCounts.rto += stat.count;
       } else if (stat._id.resolution_action === null) {
         ndrCounts.action_required += stat.count;
@@ -857,7 +859,7 @@ router.get('/performance', auth, async (req, res) => {
       totalOrders += stat.count;
       if (stat._id === 'delivered') deliveredOrders += stat.count;
       if (stat._id === 'ndr') ndrOrders += stat.count;
-      if (stat._id === 'rto') rtoOrders += stat.count;
+      if (['rto', 'rto_in_transit', 'rto_delivered'].includes(stat._id)) rtoOrders += stat.count;
     });
 
     const deliverySuccessRate = totalOrders > 0 ? ((deliveredOrders / totalOrders) * 100).toFixed(2) : 0;
