@@ -249,18 +249,18 @@
   }
   
   .tab-btn.active {
-    background-color: #002B59;
-    color: #FFFFFF;
-    border: 0.5px solid #002B59;
-    border-bottom: 4px solid #1F4068;
+    background-color: #002B59 !important;
+    color: #FFFFFF !important;
+    border: 0.5px solid #002B59 !important;
+    border-bottom: 4px solid #1F4068 !important;
     border-radius: 20px;
   }
 
   .tab-btn.active:hover {
-    background-color: #002B59;
-    color: #FFFFFF;
-    border: 0.5px solid #002B59;
-    border-bottom: 4px solid #1F4068;
+    background-color: #002B59 !important;
+    color: #FFFFFF !important;
+    border: 0.5px solid #002B59 !important;
+    border-bottom: 4px solid #1F4068 !important;
   }
   
   /* Filters Section */
