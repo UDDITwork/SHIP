@@ -107,14 +107,13 @@ class OrderService {
     const cacheKey = `${this.CACHE_KEY}_${userPrefix}_${JSON.stringify(filters)}`;
 
     // Try to load from cache first for instant display
+    // NOTE: Background refresh is handled by the component (Orders.tsx) — not here.
+    // The component calls getOrders(filters, true) for instant cache, then
+    // getOrders(filters, false) for fresh data, and updates UI with both.
     if (useCache) {
       const cached = DataCache.get<Order[]>(cacheKey);
       if (cached && cached.length > 0) {
         console.log(`📦 Orders loaded from cache (${cached.length} orders)`, { filters });
-        // Still fetch fresh data in background, but return cached immediately
-        this.getOrders(filters, false).catch((error) => {
-          console.warn('Background orders refresh failed, using cached data:', error);
-        });
         return cached;
       }
     }
@@ -192,9 +191,10 @@ class OrderService {
           updatedAt: order.updatedAt
         }));
 
-        // Cache the transformed orders
-        DataCache.set(cacheKey, transformedOrders, this.CACHE_TTL);
-        console.log(`✅ Orders fetched from MongoDB and cached (${transformedOrders.length} orders)`);
+        // Cache the transformed orders (short TTL for empty results to avoid stale empty state)
+        const ttl = transformedOrders.length > 0 ? this.CACHE_TTL : 15 * 1000; // 15s for empty
+        DataCache.set(cacheKey, transformedOrders, ttl);
+        console.log(`✅ Orders fetched from MongoDB and cached (${transformedOrders.length} orders, TTL: ${ttl / 1000}s)`);
 
         return transformedOrders;
       }
@@ -302,9 +302,10 @@ class OrderService {
       const cacheKey = `${this.CACHE_KEY}_${userPrefix}_${JSON.stringify(filters)}`;
       DataCache.clear(cacheKey);
     } else {
-      // Clear all order caches
+      // Clear all order caches — use startsWith for safety (won't hit wallet/dashboard/user caches)
+      const prefix = `app_cache_${this.CACHE_KEY}`;
       Object.keys(localStorage).forEach(key => {
-        if (key.includes(this.CACHE_KEY)) {
+        if (key.startsWith(prefix)) {
           localStorage.removeItem(key);
         }
       });

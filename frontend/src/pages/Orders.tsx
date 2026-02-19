@@ -64,6 +64,7 @@ const Orders: React.FC = () => {
   const [orderType, setOrderType] = useState<OrderType>('forward');
   const [orders, setOrders] = useState<Order[]>([]);
   const ordersRef = useRef<Order[]>([]);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   // Debug orders state changes
   useEffect(() => {
@@ -306,13 +307,10 @@ const Orders: React.FC = () => {
     setActiveTab((prev) => (prev === 'all' ? prev : 'all'));
   }, []);
 
-  const fetchOrders = useCallback(async (): Promise<void> => {
-    // Build filters object - when activeTab is 'all', don't set status filter
+  // Build order filters from current state (shared between fetchOrders and polling)
+  const buildOrderFilters = useCallback(() => {
     const orderFilters: any = {};
-    if (activeTab !== 'all') {
-      orderFilters.status = activeTab;
-    }
-    // When 'all' is selected, explicitly don't set status - this ensures all orders are fetched
+    if (activeTab !== 'all') orderFilters.status = activeTab;
     if (orderType) orderFilters.order_type = orderType;
     if (filters.dateFrom) orderFilters.date_from = filters.dateFrom;
     if (filters.dateTo) orderFilters.date_to = filters.dateTo;
@@ -325,74 +323,55 @@ const Orders: React.FC = () => {
     if (filters.state && filters.state.trim()) orderFilters.state = filters.state.trim();
     if (typeof filters.minAmount === 'number') orderFilters.min_amount = filters.minAmount;
     if (typeof filters.maxAmount === 'number') orderFilters.max_amount = filters.maxAmount;
+    return orderFilters;
+  }, [activeTab, orderType, filters]);
 
-    // Generate cache key based on filters
-    const cacheKey = `orders_${activeTab}_${orderType}_${JSON.stringify(orderFilters)}`;
-    
+  const fetchOrders = useCallback(async (): Promise<void> => {
+    // Cancel any in-flight request from a previous tab/filter switch
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const orderFilters = buildOrderFilters();
+
     try {
-      // Try to load from cache first for instant display
-      const cachedOrders = DataCache.get<Order[]>(cacheKey);
-      
+      // Step 1: Show cached data instantly (stale-while-revalidate pattern)
+      // Uses orderService as SINGLE cache layer — no component-level DataCache
+      const cachedOrders = await orderService.getOrders(orderFilters, true);
+      if (controller.signal.aborted) return; // Tab switched while we were getting cache
+
       if (cachedOrders && cachedOrders.length > 0) {
-        console.log(`📦 Showing cached orders (${cachedOrders.length} orders) for tab: ${activeTab}`);
         setOrders(cachedOrders);
-        setLoading(false); // Don't block UI with loading
+        setLoading(false);
       } else {
-        setLoading(true); // Only show loading if no cache
+        setLoading(true);
       }
 
-      console.log('📡 Fetching orders directly from MongoDB (no WebSocket)...', { 
-        activeTab, 
-        filters: orderFilters,
-        cacheKey 
-      });
+      // Step 2: Fetch fresh data from API (bypasses cache)
+      const freshOrders = await orderService.getOrders(orderFilters, false);
+      if (controller.signal.aborted) return; // Tab switched during API call
 
-      // Fetch from MongoDB using orderService (direct API call, no WebSocket dependency)
-      // useCache = false to force fresh fetch, but we already showed cached above if available
-      const fetchedOrders = await orderService.getOrders(orderFilters, false);
-
-      if (fetchedOrders && fetchedOrders.length > 0) {
-        console.log(`✅ Orders loaded from API (${fetchedOrders.length} orders) for tab: ${activeTab}`);
-        setOrders(fetchedOrders);
-        // Cache the fetched orders
-        DataCache.set(cacheKey, fetchedOrders, 5 * 60 * 1000); // 5 minutes cache
-      } else if (fetchedOrders && fetchedOrders.length === 0) {
-        // API returned empty array - this is valid (no orders found)
-        console.log(`📭 No orders found for tab: ${activeTab}`);
-        setOrders([]);
-        // Cache empty array too (but with shorter TTL)
-        DataCache.set(cacheKey, [], 1 * 60 * 1000); // 1 minute cache for empty results
-      } else if (cachedOrders && cachedOrders.length > 0) {
-        // Fetch returned null/undefined but we have cache - keep showing cache
-        console.log(`⚠️ API fetch failed but keeping cached orders (${cachedOrders.length} orders)`);
-        setOrders(cachedOrders);
-      } else {
-        // No orders, no cache - show empty state
-        console.log('📭 No orders found and no cache available');
-        setOrders([]);
-      }
+      // Step 3: Update UI with fresh data
+      setOrders(freshOrders);
 
     } catch (error: any) {
+      if (controller.signal.aborted) return; // Aborted — ignore silently
       console.error('❌ Error fetching orders:', error);
-      
-      // Try to use stale cache if available
-      const staleOrders = DataCache.getStale<Order[]>(cacheKey);
-      
-      if (staleOrders && staleOrders.length > 0) {
-        console.log(`⚠️ Using stale cached orders due to error (${staleOrders.length} orders) for tab: ${activeTab}`);
-        setOrders(staleOrders);
-      } else if (ordersRef.current.length > 0) {
-        // Keep existing orders on screen - don't clear them on error
+
+      // Keep existing orders on screen if we have any
+      if (ordersRef.current.length > 0) {
         console.log(`⚠️ API error but keeping existing ${ordersRef.current.length} orders on screen`);
       } else {
-        // No cache and no existing orders - show empty state
-        console.warn('⚠️ No orders available (cache or API)');
         setOrders([]);
       }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
-  }, [activeTab, orderType, filters]);
+  }, [buildOrderFilters]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -440,15 +419,30 @@ const Orders: React.FC = () => {
   useEffect(() => {
     fetchOrders();
 
-    const refreshInterval = setInterval(() => {
-      console.log('🔄 Polling orders from MongoDB (no WebSocket)...', { activeTab });
-      fetchOrders();
-    }, 60000); // Every 60 seconds (1 minute) to avoid rate limiting
-    
+    // Polling: always fetch fresh (bypasses cache) to get real-time updates
+    const refreshInterval = setInterval(async () => {
+      console.log('🔄 Polling orders from MongoDB...', { activeTab });
+      try {
+        const orderFilters = buildOrderFilters();
+        const freshOrders = await orderService.getOrders(orderFilters, false);
+        // Only update if this component is still mounted and on same tab
+        if (!abortControllerRef.current?.signal.aborted) {
+          setOrders(freshOrders);
+        }
+      } catch (err) {
+        // Polling errors are silent — don't disturb the UI
+        console.warn('Polling refresh failed:', err);
+      }
+    }, 60000);
+
     return () => {
       clearInterval(refreshInterval);
+      // Abort in-flight requests on unmount or dependency change
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
     };
-  }, [fetchOrders, activeTab]);
+  }, [fetchOrders, activeTab, buildOrderFilters]);
 
   const handleSyncOrders = async () => {
     setLoading(true);
@@ -502,17 +496,10 @@ const Orders: React.FC = () => {
         }
       }
       
-      // Clear ALL caches completely (important!)
+      // Clear ALL order caches completely (important!)
       orderService.clearCache();
-      
-      // Also clear localStorage cache manually
-      Object.keys(localStorage).forEach(key => {
-        if (key.includes('orders') || key.includes('dataCache')) {
-          localStorage.removeItem(key);
-        }
-      });
-      
-      console.log('🗑️ All caches cleared, refreshing orders...');
+
+      console.log('🗑️ Order caches cleared, refreshing orders...');
       
       // Force fresh fetch for current tab
       const currentFilters: any = {};
@@ -752,6 +739,12 @@ const Orders: React.FC = () => {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    // AWB search: force 'all' tab because AWBs don't exist on 'new' orders
+    // Other search types (order, reference, mobile) stay on current tab
+    if (filters.searchQuery.trim() && filters.searchType === 'awb' && activeTab !== 'all') {
+      setActiveTab('all'); // useEffect will trigger fetchOrders with 'all' tab
+      return;
+    }
     fetchOrders();
   };
 
