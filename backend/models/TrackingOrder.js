@@ -69,6 +69,8 @@ const trackingOrderSchema = new mongoose.Schema({
       'delivered',
       'ndr',
       'rto',
+      'rto_in_transit',
+      'rto_delivered',
       'cancelled',
       'lost'
     ],
@@ -236,8 +238,7 @@ trackingOrderSchema.index({
 trackingOrderSchema.statics.getActiveTrackingOrders = function() {
   return this.find({
     is_tracking_active: true,
-    is_delivered: false,
-    pickup_request_id: { $exists: true, $ne: null }
+    is_delivered: false
   }).sort({ last_tracked_at: 1 }); // Track oldest first
 };
 
@@ -312,12 +313,7 @@ trackingOrderSchema.methods.addStatusToHistory = function(statusData) {
 
 // Static method to create or update tracking order from Order model
 trackingOrderSchema.statics.createFromOrder = async function(order) {
-  // Check if pickup request exists
-  if (!order.delhivery_data?.pickup_request_id) {
-    throw new Error('Order does not have a pickup request');
-  }
-
-  // Check if AWB exists
+  // AWB is required; pickup_request_id is optional (orders can have AWB before pickup)
   if (!order.delhivery_data?.waybill) {
     throw new Error('Order does not have an AWB number');
   }
@@ -328,9 +324,9 @@ trackingOrderSchema.statics.createFromOrder = async function(order) {
   if (trackingOrder) {
     // Update existing tracking order
     trackingOrder.awb_number = order.delhivery_data.waybill;
-    trackingOrder.pickup_request_id = order.delhivery_data.pickup_request_id;
-    trackingOrder.pickup_request_date = order.delhivery_data.pickup_request_date;
-    trackingOrder.pickup_request_status = order.delhivery_data.pickup_request_status || 'scheduled';
+    trackingOrder.pickup_request_id = order.delhivery_data.pickup_request_id || trackingOrder.pickup_request_id;
+    trackingOrder.pickup_request_date = order.delhivery_data.pickup_request_date || trackingOrder.pickup_request_date;
+    trackingOrder.pickup_request_status = order.delhivery_data.pickup_request_status || trackingOrder.pickup_request_status || 'pending';
     trackingOrder.is_tracking_active = !trackingOrder.is_delivered;
   } else {
     // Create new tracking order
@@ -339,10 +335,10 @@ trackingOrderSchema.statics.createFromOrder = async function(order) {
       user_id: order.user_id,
       awb_number: order.delhivery_data.waybill,
       reference_id: order.reference_id,
-      pickup_request_id: order.delhivery_data.pickup_request_id,
-      pickup_request_date: order.delhivery_data.pickup_request_date,
-      pickup_request_status: order.delhivery_data.pickup_request_status || 'scheduled',
-      current_status: order.status || 'pickups_manifests',
+      pickup_request_id: order.delhivery_data.pickup_request_id || null,
+      pickup_request_date: order.delhivery_data.pickup_request_date || null,
+      pickup_request_status: order.delhivery_data.pickup_request_status || 'pending',
+      current_status: order.status || 'ready_to_ship',
       is_tracking_active: true,
       is_delivered: false
     });

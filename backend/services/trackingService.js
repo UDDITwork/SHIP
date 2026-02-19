@@ -190,7 +190,7 @@ class TrackingService {
                                 rawApiStatus: statusValue
                             });
                             
-                            const mappedStatus = this.mapDelhiveryStatus(statusValue);
+                            const mappedStatus = this.mapDelhiveryStatus(statusValue, statusObj.StatusType || extractedStatus.statusType);
                             
                             // Log mapping result
                             if (mappedStatus) {
@@ -522,7 +522,7 @@ class TrackingService {
             if (trackingResult.success && trackingResult.data) {
                 const trackingData = trackingResult.data;
                 const extractedStatus = this.extractStatusFromResponse(trackingData);
-                const newStatus = this.mapDelhiveryStatus(extractedStatus.apiStatus);
+                const newStatus = this.mapDelhiveryStatus(extractedStatus.apiStatus, extractedStatus.statusType);
                 const oldStatus = order.status;
                 
                 if (newStatus && newStatus !== oldStatus) {
@@ -690,24 +690,65 @@ class TrackingService {
      * - "In-Transit" (hyphen) → "in_transit"
      * - "in_transit" (underscore) → "in_transit"
      */
-    mapDelhiveryStatus(delhiveryStatus) {
+    mapDelhiveryStatus(delhiveryStatus, statusType = null) {
         if (!delhiveryStatus) {
             logger.warn('⚠️ mapDelhiveryStatus called with null/undefined status');
             return null;
         }
-        
+
         // Normalize status string (case-insensitive matching)
         // Remove extra whitespace and normalize to lowercase
         const normalizedStatus = String(delhiveryStatus).trim();
         const lowerStatus = normalizedStatus.toLowerCase();
-        
+        const normalizedType = statusType ? String(statusType).trim().toUpperCase() : null;
+
         // Log raw status for debugging
         logger.debug('🔄 Mapping Delhivery status', {
             rawStatus: delhiveryStatus,
             normalizedStatus: normalizedStatus,
-            lowerStatus: lowerStatus
+            lowerStatus: lowerStatus,
+            statusType: normalizedType
         });
-        
+
+        // IMPORTANT: Check StatusType FIRST for ambiguous statuses like "Dispatched", "Pending", "In Transit"
+        // These statuses mean different things depending on whether it's forward (UD) or reverse (RT) shipment
+        // Ported from webhookService.mapDelhiveryStatus for consistency
+        if (normalizedType) {
+            // PP - Pickup Request statuses
+            if (normalizedType === 'PP') {
+                const ppMap = { 'open': 'pickups_manifests', 'scheduled': 'pickups_manifests', 'dispatched': 'out_for_delivery' };
+                if (ppMap[lowerStatus]) return ppMap[lowerStatus];
+                return 'pickups_manifests';
+            }
+
+            // PU - Pickup Shipment statuses (after physical pickup)
+            if (normalizedType === 'PU') {
+                const puMap = { 'in transit': 'in_transit', 'pending': 'in_transit', 'dispatched': 'out_for_delivery' };
+                if (puMap[lowerStatus]) return puMap[lowerStatus];
+                return 'in_transit';
+            }
+
+            // RT - Return statuses (forward shipment converted to return / RTO)
+            if (normalizedType === 'RT') {
+                const rtMap = { 'in transit': 'rto_in_transit', 'pending': 'rto_in_transit', 'dispatched': 'rto_in_transit' };
+                if (rtMap[lowerStatus]) return rtMap[lowerStatus];
+                return 'rto_in_transit';
+            }
+
+            // CN - Canceled statuses
+            if (normalizedType === 'CN') {
+                return 'cancelled';
+            }
+
+            // DL - Delivered statuses (both forward and reverse)
+            if (normalizedType === 'DL') {
+                if (lowerStatus.includes('rto')) return 'rto_delivered';
+                if (lowerStatus === 'dto') return 'delivered';
+                return 'delivered';
+            }
+        }
+
+        // Text-based mapping fallback (when StatusType is null or UD)
         const statusMap = {
             // Delivered - FINAL STATUS (stops tracking)
             'delivered': 'delivered',
@@ -784,19 +825,33 @@ class TrackingService {
         const mappedStatus = statusMap[lowerStatus] || null;
         
         if (!mappedStatus) {
+            // StatusType-based final fallback (when text lookup fails but we have StatusType)
+            if (normalizedType) {
+                const typeFallback = { 'UD': 'in_transit', 'DL': 'delivered', 'RT': 'rto_in_transit', 'PP': 'pickups_manifests', 'PU': 'in_transit', 'CN': 'cancelled' };
+                if (typeFallback[normalizedType]) {
+                    logger.warn('⚠️ Text mapping failed, using StatusType fallback', {
+                        rawStatus: delhiveryStatus,
+                        statusType: normalizedType,
+                        fallbackStatus: typeFallback[normalizedType]
+                    });
+                    return typeFallback[normalizedType];
+                }
+            }
             logger.warn('⚠️ Unmapped Delhivery status', {
                 rawStatus: delhiveryStatus,
                 normalizedStatus: normalizedStatus,
                 lowerStatus: lowerStatus,
+                statusType: normalizedType,
                 suggestion: 'Status not found in mapping table - may need to add it'
             });
         } else {
             logger.debug('✅ Status mapped successfully', {
                 rawStatus: delhiveryStatus,
-                mappedStatus: mappedStatus
+                mappedStatus: mappedStatus,
+                statusType: normalizedType
             });
         }
-        
+
         return mappedStatus;
     }
 
@@ -814,6 +869,8 @@ class TrackingService {
             'delivered': 'DELIVERED',
             'ndr': 'NDR',
             'rto': 'RTO',
+            'rto_in_transit': 'RTO',
+            'rto_delivered': 'RTO',
             'cancelled': 'CANCELLED',
             'lost': 'LOST'
         };
@@ -826,7 +883,7 @@ class TrackingService {
      * Once delivered, cancelled, RTO, or lost - stop tracking
      */
     shouldStopTracking(status) {
-        const finalStatuses = ['delivered', 'cancelled', 'rto', 'lost'];
+        const finalStatuses = ['delivered', 'cancelled', 'rto', 'rto_delivered', 'lost'];
         return finalStatuses.includes(status);
     }
 
@@ -890,7 +947,7 @@ class TrackingService {
                 // Validate status against Order model enum before updating
                 const validStatuses = [
                     'new', 'ready_to_ship', 'pickups_manifests', 'in_transit',
-                    'out_for_delivery', 'delivered', 'ndr', 'rto', 'cancelled', 'lost'
+                    'out_for_delivery', 'delivered', 'ndr', 'rto', 'rto_in_transit', 'rto_delivered', 'cancelled', 'lost'
                 ];
                 
                 if (!validStatuses.includes(status)) {
@@ -1065,13 +1122,41 @@ class TrackingService {
     async forceRefreshAllOrders() {
         try {
             logger.info('🔄 Starting force refresh of all tracking orders...');
-            
-            // Get all tracking orders (including delivered ones that might need status update)
+
+            // Step 0: Backfill — create TrackingOrders for orders with AWBs but no TrackingOrder
+            try {
+                const ordersWithAWBs = await Order.find({
+                    'delhivery_data.waybill': { $exists: true, $ne: null },
+                    status: { $nin: ['new'] }
+                }).select('order_id user_id reference_id delhivery_data status').lean();
+
+                const existingTOs = await TrackingOrder.find({}).select('order_id').lean();
+                const existingSet = new Set(existingTOs.map(t => t.order_id));
+                const missing = ordersWithAWBs.filter(o => o.order_id && !existingSet.has(o.order_id));
+
+                if (missing.length > 0) {
+                    logger.info(`📋 Backfilling ${missing.length} missing TrackingOrders...`);
+                    let backfilled = 0;
+                    for (const order of missing) {
+                        try {
+                            await TrackingOrder.createFromOrder(order);
+                            backfilled++;
+                        } catch (err) {
+                            logger.warn(`Backfill skip: ${order.order_id} — ${err.message}`);
+                        }
+                    }
+                    logger.info(`✅ Backfilled ${backfilled} TrackingOrders`);
+                }
+            } catch (backfillErr) {
+                logger.warn('⚠️ Backfill step failed (non-critical, continuing with refresh):', backfillErr.message);
+            }
+
+            // Step 1: Get all tracking orders with AWBs (not just those with pickup_request_id)
             // Don't use .lean() - we need Mongoose documents for trackSingleTrackingOrder
             const trackingOrders = await TrackingOrder.find({
-                pickup_request_id: { $exists: true, $ne: null }
+                awb_number: { $exists: true, $ne: null }
             });
-            
+
             logger.info(`📊 Found ${trackingOrders.length} tracking orders to refresh`);
             
             let refreshedCount = 0;

@@ -3126,8 +3126,19 @@ router.post('/:id/generate-awb', auth, async (req, res) => {
 
     // Update status to ready_to_ship
     order.status = 'ready_to_ship';
-    
+
     await order.save();
+
+    // Create TrackingOrder for automated tracking (don't require pickup request)
+    try {
+      await TrackingOrder.createFromOrder(order);
+      logger.info('✅ TrackingOrder created at AWB generation', { orderId: order.order_id, awb: awbNumber });
+    } catch (trackingErr) {
+      // Non-critical — don't fail the AWB generation
+      logger.warn('⚠️ Failed to create TrackingOrder at AWB generation (non-critical)', {
+        orderId: order.order_id, error: trackingErr.message
+      });
+    }
 
     logger.info('✅ AWB generated successfully', {
       orderId: order.order_id,
@@ -4320,7 +4331,7 @@ router.post('/:id/request-pickup', auth, async (req, res) => {
 
     // Create or update TrackingOrder for automated tracking
     try {
-      if (order.delhivery_data.waybill && order.delhivery_data.pickup_request_id) {
+      if (order.delhivery_data.waybill) {
         await TrackingOrder.createFromOrder(order);
         logger.info('✅ TrackingOrder created for automated tracking', {
           orderId: order.order_id,
