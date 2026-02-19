@@ -13,6 +13,7 @@ import { DataCache } from '../utils/dataCache';
 import { environmentConfig } from '../config/environment';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
 import AWBLink from '../components/AWBLink';
+import OrderDetailPanel from '../components/OrderDetailPanel';
 import { Inbox, Calendar, X, Plus, AlertTriangle } from 'lucide-react';
 import { User } from '../services/userService';
 import './Orders.css';
@@ -76,6 +77,10 @@ const Orders: React.FC = () => {
   }, [orders]);
   const [loading, setLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+
+  // Order detail panel (slide-in drawer)
+  const [detailPanelOrder, setDetailPanelOrder] = useState<Order | null>(null);
+  const [isDetailPanelOpen, setIsDetailPanelOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
 
   // Toast notification state
@@ -925,8 +930,15 @@ const Orders: React.FC = () => {
 
   // Action button handlers
   const handleViewOrder = (orderId: string) => {
-    // Navigate to order details page in the same tab
-    navigate(`/orders/${orderId}`);
+    // Open inline detail panel instead of navigating away
+    const order = orders.find(o => o._id === orderId);
+    if (order) {
+      setDetailPanelOrder(order);
+      setIsDetailPanelOpen(true);
+    } else {
+      // Fallback: navigate to full page if order not in local list
+      navigate(`/orders/${orderId}`);
+    }
   };
 
   const handleEditOrder = (orderId: string) => {
@@ -2351,6 +2363,16 @@ const Orders: React.FC = () => {
       )}
         </>
       )}
+
+      {/* Order Detail Slide-in Panel */}
+      <OrderDetailPanel
+        order={detailPanelOrder}
+        isOpen={isDetailPanelOpen}
+        onClose={() => {
+          setIsDetailPanelOpen(false);
+          setDetailPanelOrder(null);
+        }}
+      />
     </Layout>
   );
 };

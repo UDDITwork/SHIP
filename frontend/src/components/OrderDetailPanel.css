@@ -1,0 +1,321 @@
+/* ============================================
+   OrderDetailPanel — Slide-in Drawer
+   ============================================ */
+
+/* Backdrop */
+.odp-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.odp-backdrop-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Panel */
+.odp-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 480px;
+  max-width: 92vw;
+  height: 100vh;
+  background: #FFFFFF;
+  z-index: 1000;
+  transform: translateX(100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
+}
+.odp-panel-open {
+  transform: translateX(0);
+}
+
+/* ---- Header ---- */
+.odp-header {
+  background: #002B59;
+  color: #FFFFFF;
+  padding: 16px 20px 12px;
+  flex-shrink: 0;
+}
+.odp-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.odp-header-top h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+.odp-close-btn {
+  background: transparent;
+  border: none;
+  color: #FFFFFF;
+  font-size: 28px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+}
+.odp-close-btn:hover {
+  opacity: 1;
+}
+.odp-header-actions {
+  display: flex;
+  gap: 8px;
+}
+.odp-action-btn {
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1.5px solid transparent;
+}
+.odp-track-btn {
+  background: #F68723;
+  color: #FFFFFF;
+  border-color: #F68723;
+}
+.odp-track-btn:hover {
+  background: #e57610;
+}
+.odp-fullpage-btn {
+  background: transparent;
+  color: #FFFFFF;
+  border-color: rgba(255,255,255,0.5);
+}
+.odp-fullpage-btn:hover {
+  border-color: #FFFFFF;
+  background: rgba(255,255,255,0.1);
+}
+
+/* ---- Scrollable Body ---- */
+.odp-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px 24px;
+}
+.odp-body::-webkit-scrollbar {
+  width: 5px;
+}
+.odp-body::-webkit-scrollbar-thumb {
+  background: #CCC;
+  border-radius: 4px;
+}
+
+/* ---- Summary Strip ---- */
+.odp-summary {
+  background: #FFF6ED;
+  border: 1px solid #FFE0B2;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+.odp-summary-row {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+.odp-summary-row + .odp-summary-row {
+  margin-top: 10px;
+}
+.odp-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.odp-order-id {
+  font-family: 'Courier New', monospace;
+  color: #F68723 !important;
+  font-weight: 700 !important;
+  font-size: 14px !important;
+  word-break: break-all;
+}
+
+/* ---- Sections ---- */
+.odp-section {
+  border: 1px solid #E5E7EB;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.odp-section-header {
+  background: #002B59;
+  color: #FFFFFF;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+}
+.odp-section-body {
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* AWB Section accent */
+.odp-awb-section {
+  border-color: #F68723;
+}
+.odp-awb-section .odp-section-header {
+  background: #F68723;
+}
+.odp-awb-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.odp-awb-link {
+  font-family: 'Courier New', monospace !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.5px;
+}
+.odp-copy-btn {
+  padding: 4px 12px;
+  background: #F5F5F5;
+  border: 1px solid #DDD;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #002B59;
+  transition: background 0.2s;
+  flex-shrink: 0;
+}
+.odp-copy-btn:hover {
+  background: #E9ECEF;
+}
+
+/* ---- Detail Rows ---- */
+.odp-detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.odp-detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.odp-label {
+  font-size: 12px;
+  color: #6B7280;
+  font-weight: 500;
+}
+.odp-value {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 600;
+  text-align: right;
+}
+.odp-detail-col .odp-value {
+  text-align: left;
+}
+.odp-address {
+  line-height: 1.6;
+  font-weight: 500;
+  color: #374151;
+}
+.odp-amount {
+  color: #16A34A !important;
+  font-weight: 700 !important;
+  font-size: 15px !important;
+}
+
+/* ---- Status Badges ---- */
+.odp-status-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: capitalize;
+  letter-spacing: 0.2px;
+}
+.odp-status-new { background: #DBEAFE; color: #1D4ED8; }
+.odp-status-ready_to_ship { background: #FEF3C7; color: #B45309; }
+.odp-status-pickup_pending { background: #FEF3C7; color: #B45309; }
+.odp-status-pickups_manifests,
+.odp-status-manifested,
+.odp-status-scheduled { background: #D1FAE5; color: #065F46; }
+.odp-status-in_transit { background: #DBEAFE; color: #1E40AF; }
+.odp-status-out_for_delivery { background: #FEF9C3; color: #A16207; }
+.odp-status-delivered { background: #D1FAE5; color: #166534; }
+.odp-status-ndr { background: #FEE2E2; color: #B91C1C; }
+.odp-status-rto { background: #FCE7F3; color: #9D174D; }
+.odp-status-rto_in_transit { background: #FFEDD5; color: #9A3412; }
+.odp-status-rto_delivered { background: #FCE7F3; color: #9D174D; }
+.odp-status-cancelled { background: #F3F4F6; color: #6B7280; }
+.odp-status-lost { background: #FEE2E2; color: #991B1B; }
+.odp-status-pending { background: #FEF3C7; color: #92400E; }
+.odp-status-completed { background: #D1FAE5; color: #065F46; }
+.odp-status-failed { background: #FEE2E2; color: #991B1B; }
+
+/* Payment Badge */
+.odp-payment-badge {
+  display: inline-block;
+  padding: 3px 12px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.odp-pay-prepaid { background: #D1FAE5; color: #166534; }
+.odp-pay-cod { background: #FEF3C7; color: #92400E; }
+
+/* Copy Toast */
+.odp-copy-toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #002B59;
+  color: #FFFFFF;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 10001;
+  animation: odpFadeInOut 2s ease forwards;
+}
+@keyframes odpFadeInOut {
+  0% { opacity: 0; transform: translate(-50%, 16px); }
+  15% { opacity: 1; transform: translate(-50%, 0); }
+  80% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -12px); }
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 520px) {
+  .odp-panel {
+    width: 100vw;
+    max-width: 100vw;
+  }
+  .odp-summary-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+  .odp-detail-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .odp-value {
+    text-align: left;
+  }
+}
