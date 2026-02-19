@@ -40,6 +40,10 @@ export interface Order {
   pickupRequestStatus?: 'pending' | 'scheduled' | 'in_transit' | 'completed' | 'failed';
   pickupRequestDate?: Date;
   pickupRequestTime?: string;
+  deliveredDate?: Date | string;
+  rtoDeliveredDate?: Date | string;
+  cancelledDate?: Date | string;
+  orderType?: 'forward' | 'reverse';
   delhivery_data?: {
     waybill?: string;
     cancellation_status?: string;
@@ -172,6 +176,10 @@ class OrderService {
             phone: order.pickup_address.phone
           } : undefined,
           status: order.status,
+          deliveredDate: order.delivered_date,
+          rtoDeliveredDate: order.rto_delivered_date,
+          cancelledDate: order.cancelled_date,
+          orderType: order.order_type,
           awb: order.delhivery_data?.waybill || order.shipping_info?.awb_number || '',
           trackingUrl: order.delhivery_data?.tracking_url || '',
           pickupRequestId: order.delhivery_data?.pickup_request_id || '',
@@ -256,6 +264,10 @@ class OrderService {
             phone: order.pickup_address.phone
           } : undefined,
           status: order.status,
+          deliveredDate: order.delivered_date,
+          rtoDeliveredDate: order.rto_delivered_date,
+          cancelledDate: order.cancelled_date,
+          orderType: order.order_type,
           awb: order.delhivery_data?.waybill || order.shipping_info?.awb_number || '',
           trackingUrl: order.delhivery_data?.tracking_url || '',
           pickupRequestId: order.delhivery_data?.pickup_request_id || '',

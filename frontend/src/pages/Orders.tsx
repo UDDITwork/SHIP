@@ -1886,10 +1886,10 @@ const Orders: React.FC = () => {
                       </td>
                     )}
                     {activeTab === 'delivered' && (
-                      <td>{order.delhivery_data?.delivered_date ? formatDate(order.delhivery_data.delivered_date) : (order.delhivery_data?.status_datetime ? formatDate(order.delhivery_data.status_datetime) : 'N/A')}</td>
+                      <td>{order.deliveredDate ? formatDate(order.deliveredDate) : 'N/A'}</td>
                     )}
                     {activeTab === 'rto' && (
-                      <td>{order.delhivery_data?.rto_date ? formatDate(order.delhivery_data.rto_date) : (order.delhivery_data?.status_datetime ? formatDate(order.delhivery_data.status_datetime) : 'N/A')}</td>
+                      <td>{order.rtoDeliveredDate ? formatDate(order.rtoDeliveredDate) : 'N/A'}</td>
                     )}
                     {activeTab === 'all' && (
                       <td>

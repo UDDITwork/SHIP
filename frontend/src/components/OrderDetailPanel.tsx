@@ -132,6 +132,31 @@ const OrderDetailPanel: React.FC<OrderDetailPanelProps> = ({ order, isOpen, onCl
                 <span className="odp-value">{order.referenceId || 'N/A'}</span>
               </div>
             </div>
+            {/* Conditional date row based on status */}
+            {order.status === 'delivered' && order.deliveredDate && (
+              <div className="odp-summary-row">
+                <div className="odp-summary-item">
+                  <span className="odp-label">Delivered On</span>
+                  <span className="odp-value">{formatDateTime(order.deliveredDate)}</span>
+                </div>
+              </div>
+            )}
+            {['rto', 'rto_in_transit', 'rto_delivered'].includes(order.status) && order.rtoDeliveredDate && (
+              <div className="odp-summary-row">
+                <div className="odp-summary-item">
+                  <span className="odp-label">RTO Completed</span>
+                  <span className="odp-value">{formatDateTime(order.rtoDeliveredDate)}</span>
+                </div>
+              </div>
+            )}
+            {order.status === 'cancelled' && order.cancelledDate && (
+              <div className="odp-summary-row">
+                <div className="odp-summary-item">
+                  <span className="odp-label">Cancelled On</span>
+                  <span className="odp-value">{formatDateTime(order.cancelledDate)}</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* AWB Section */}

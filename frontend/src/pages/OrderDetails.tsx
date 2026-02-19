@@ -148,6 +148,24 @@ const OrderDetails: React.FC = () => {
                 {formatStatus(order.status)}
               </span>
             </div>
+            {order.status === 'delivered' && order.deliveredDate && (
+              <div className="summary-item">
+                <span className="label">Delivered On</span>
+                <span className="value">{formatDate(order.deliveredDate)}</span>
+              </div>
+            )}
+            {['rto', 'rto_in_transit', 'rto_delivered'].includes(order.status) && order.rtoDeliveredDate && (
+              <div className="summary-item">
+                <span className="label">RTO Completed</span>
+                <span className="value">{formatDate(order.rtoDeliveredDate)}</span>
+              </div>
+            )}
+            {order.status === 'cancelled' && order.cancelledDate && (
+              <div className="summary-item">
+                <span className="label">Cancelled On</span>
+                <span className="value">{formatDate(order.cancelledDate)}</span>
+              </div>
+            )}
           </div>
         </div>
 
