@@ -103,12 +103,25 @@ class WebhookService {
       }
     }
 
-    // Check StatusCode for EOD (End-of-Day) delivery failures → NDR
-    // EOD-* codes are delivery failures (NDR events)
-    // FMEOD-* codes are pickup failures (NOT NDR) — do NOT match those
+    // Official Delhivery NDR StatusCodes (from Delhivery NDR API docs)
+    // Only these specific codes are NDR events — NOT all EOD-* codes
+    // (e.g. EOD-135, EOD-38 are delivery codes, not NDR)
     if (statusCode) {
+      const NDR_STATUS_CODES = new Set([
+        'EOD-3',   // Delivery Rescheduled by Customer
+        'EOD-6',   // Consignee Unavailable
+        'EOD-11',  // Address Incomplete / Incorrect
+        'EOD-15',  // Customer not available
+        'EOD-16',  // Refused by Customer — COD not ready
+        'EOD-43',  // Cash not ready
+        'EOD-69',  // Customer wants open delivery
+        'EOD-74',  // Consignee Refused
+        'EOD-86',  // Door Locked / Premises Closed
+        'EOD-104', // Customer wants to reschedule
+        'ST-108',  // Shipment seized by customer
+      ]);
       const code = String(statusCode).trim().toUpperCase();
-      if (code.startsWith('EOD-') && !code.startsWith('FMEOD-')) {
+      if (NDR_STATUS_CODES.has(code)) {
         return 'ndr';
       }
     }

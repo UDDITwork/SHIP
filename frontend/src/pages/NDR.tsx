@@ -396,7 +396,10 @@ const NDR: React.FC = () => {
                     </td>
                     <td>
                       <div className="ndr-details-cell">
-                        <div className="ndr-reason">{order.ndr_info.ndr_reason}</div>
+                        <div className="ndr-reason">
+                          {ndrService.getNDRDisplayReason(order.ndr_info.nsl_code, order.ndr_info.ndr_reason)}
+                        </div>
+                        <div className="ndr-code-badge">{order.ndr_info.nsl_code}</div>
                         <div className="ndr-date">
                           {formatDate(order.ndr_info.last_ndr_date)}
                         </div>

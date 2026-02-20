@@ -114,6 +114,21 @@ export interface CustomerInfoUpdate {
   customer_notes?: string;
 }
 
+// Official Delhivery NDR StatusCode → Human-readable reason mapping
+export const NDR_REASON_MAP: Record<string, string> = {
+  'EOD-3':  'Delivery Rescheduled by Customer',
+  'EOD-6':  'Consignee Unavailable',
+  'EOD-11': 'Address Incomplete / Incorrect',
+  'EOD-15': 'Customer Not Available',
+  'EOD-16': 'Refused by Customer — COD Not Ready',
+  'EOD-43': 'Cash Not Ready',
+  'EOD-69': 'Customer Wants Open Delivery',
+  'EOD-74': 'Consignee Refused',
+  'EOD-86': 'Door Locked / Premises Closed',
+  'EOD-104': 'Customer Wants to Reschedule',
+  'ST-108': 'Shipment Seized by Customer',
+};
+
 class NDRService {
   // Get all NDR orders with filters and pagination
   async getNDROrders(filters: NDRFilters = {}): Promise<{
@@ -226,6 +241,15 @@ class NDRService {
     }>(`/ndr/${orderId}/customer-info`, customerInfo);
     
     return response.data;
+  }
+
+  // Get human-readable NDR reason from StatusCode (nsl_code)
+  // Falls back to raw ndr_reason if code not in the official map
+  getNDRDisplayReason(nslCode: string, rawReason?: string): string {
+    const mapped = NDR_REASON_MAP[nslCode?.toUpperCase()];
+    if (mapped) return mapped;
+    if (rawReason) return rawReason;
+    return nslCode || 'Unknown';
   }
 
   // Validate NSL code for action

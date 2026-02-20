@@ -283,6 +283,19 @@
   margin-bottom: 3px;
 }
 
+.ndr-code-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  background-color: #FDECEA;
+  color: #B71C1C;
+  border: 1px solid #F5C6CB;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: monospace;
+  margin-bottom: 3px;
+}
+
 .ndr-date {
   font-size: 12px;
   color: #666666;
