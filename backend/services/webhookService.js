@@ -16,7 +16,7 @@ class WebhookService {
    * Based on Delhivery B2C webhook status tables
    * StatusType: UD (Update), DL (Delivered), RT (Return), PP (Pickup), PU (Pickup Shipment), CN (Canceled)
    */
-  mapDelhiveryStatus(delhiveryStatus, statusType = null) {
+  mapDelhiveryStatus(delhiveryStatus, statusType = null, statusCode = null) {
     // Normalize status string and type
     const normalizedStatus = String(delhiveryStatus || '').trim();
     const normalizedType = statusType ? String(statusType).trim().toUpperCase() : null;
@@ -100,6 +100,16 @@ class WebhookService {
           return 'rto_delivered';
         }
         return 'delivered';
+      }
+    }
+
+    // Check StatusCode for EOD (End-of-Day) delivery failures → NDR
+    // EOD-* codes are delivery failures (NDR events)
+    // FMEOD-* codes are pickup failures (NOT NDR) — do NOT match those
+    if (statusCode) {
+      const code = String(statusCode).trim().toUpperCase();
+      if (code.startsWith('EOD-') && !code.startsWith('FMEOD-')) {
+        return 'ndr';
       }
     }
 
@@ -288,10 +298,11 @@ class WebhookService {
           }
 
           if (order) {
-            // Map status using both Status and StatusType for accurate mapping
+            // Map status using Status, StatusType, and StatusCode for accurate mapping
             const mappedStatus = this.mapDelhiveryStatus(
-              statusData?.Status || '', 
-              statusData?.StatusType || null
+              statusData?.Status || '',
+              statusData?.StatusType || null,
+              statusData?.StatusCode || null
             );
             
             // Prevent backward transitions from terminal states (late/out-of-order webhooks)
