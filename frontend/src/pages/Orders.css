@@ -1450,11 +1450,11 @@
     border-color: #000000;
   }
   
-  /* Button Labels (replace emojis) */
-  .view-btn::before { content: "View"; }
-  .edit-btn::before { content: "Edit"; }
-  .track-btn::before { content: "Track"; }
-  .print-btn::before { content: "Print"; }
+  /* Button Labels (replace emojis) — scoped to Orders page */
+  .action-icon-btn.view-btn::before { content: "View"; }
+  .action-icon-btn.edit-btn::before { content: "Edit"; }
+  .action-icon-btn.track-btn::before { content: "Track"; }
+  .action-icon-btn.print-btn::before { content: "Print"; }
   
   /* Loading and No Data States */
   .loading-cell,
