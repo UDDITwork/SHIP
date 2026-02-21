@@ -598,7 +598,7 @@
   overflow: visible;
 }
 
-/* Extension into content area with concave curves on right edge */
+/* Extension into content area — rounded right edge */
 .sidebar-item.active::after {
   content: '';
   position: absolute;
@@ -606,8 +606,8 @@
   top: 0;
   width: 42px;
   height: 100%;
-  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 42 74' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0 L24 0 C33 0 42 9 42 18 L42 56 C42 65 33 74 24 74 L0 74 Z' fill='%23FCE1C8'/%3E%3C/svg%3E") no-repeat;
-  background-size: 100% 100%;
+  background-color: #FCE1C8;
+  border-radius: 0 37px 37px 0;
   z-index: 999;
   pointer-events: none;
 }
