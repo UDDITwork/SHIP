@@ -1752,7 +1752,7 @@ router.get('/:id/print', auth, async (req, res) => {
     const labelFormat = labelSettings.label_types?.[0] || 'Thermal';
 
     // Generate comprehensive HTML shipping label using labelRenderer for consistency
-    const html = labelRenderer.generateLabelHTML(delhiveryLabelData, order.delhivery_data?.waybill, order, labelSettings, labelFormat);
+    const html = await labelRenderer.generateLabelHTML(delhiveryLabelData, order.delhivery_data?.waybill, order, labelSettings, labelFormat);
 
     res.setHeader('Content-Type', 'text/html');
     return res.send(html);
@@ -3595,7 +3595,7 @@ router.get('/:id/label', auth, async (req, res) => {
         }
 
         // Convert JSON to HTML label, pass waybill as fallback and labelSettings
-        const html = labelRenderer.generateLabelHTML(labelResult.json_data, waybill, order, labelSettings);
+        const html = await labelRenderer.generateLabelHTML(labelResult.json_data, waybill, order, labelSettings);
 
         res.setHeader('Content-Type', 'text/html');
         return res.send(html);
@@ -5105,7 +5105,7 @@ router.get('/bulk/labels', auth, async (req, res) => {
 
         if (labelResult.success && labelResult.json_data) {
           // Generate label HTML using labelRenderer with user's label settings
-          const labelHtml = labelRenderer.renderLabel(order, labelResult.json_data, format, labelSettings);
+          const labelHtml = await labelRenderer.renderLabel(order, labelResult.json_data, format, labelSettings);
           labelsHtml.push(labelHtml);
         }
 

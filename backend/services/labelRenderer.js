@@ -1,4 +1,57 @@
 const logger = require('../utils/logger');
+const bwipjs = require('bwip-js');
+
+/**
+ * Sanitize barcode source from Delhivery API response.
+ * Delhivery may return: data URI, external URL, HTML <img> tag, or raw base64.
+ */
+function sanitizeBarcodeSource(raw) {
+  if (!raw || typeof raw !== 'string') return '';
+  const trimmed = raw.trim();
+
+  // Case 1: Already a data URI — use as-is
+  if (trimmed.startsWith('data:image/')) return trimmed;
+
+  // Case 2: External URL — use as-is
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+
+  // Case 3: HTML <img> tag from Delhivery — extract the src attribute
+  if (trimmed.toLowerCase().startsWith('<img')) {
+    const srcMatch = trimmed.match(/src\s*=\s*['"]([^'"]+)['"]/i);
+    if (srcMatch && srcMatch[1]) return srcMatch[1];
+  }
+
+  // Case 4: Raw base64 string (no data URI prefix) — add it
+  if (/^[A-Za-z0-9+/=]{50,}$/.test(trimmed)) {
+    return `data:image/png;base64,${trimmed}`;
+  }
+
+  // Unrecognized format — return as-is
+  return trimmed;
+}
+
+/**
+ * Generate a Code 128 barcode as data:image/png;base64 from AWB number.
+ * Used as reliable fallback when Delhivery barcode is missing/invalid.
+ */
+async function generateBarcode(awbNumber) {
+  if (!awbNumber || awbNumber === 'N/A') return '';
+  try {
+    const png = await bwipjs.toBuffer({
+      bcid: 'code128',
+      text: String(awbNumber).trim(),
+      scale: 3,
+      height: 12,
+      includetext: true,
+      textxalign: 'center',
+      textsize: 10
+    });
+    return `data:image/png;base64,${png.toString('base64')}`;
+  } catch (err) {
+    logger.warn('⚠️ Barcode generation failed:', { awb: awbNumber, error: err.message });
+    return '';
+  }
+}
 
 /**
  * Label Renderer Service
@@ -87,7 +140,7 @@ class LabelRenderer {
    * @param {string} format - Label format type (Thermal, Standard, 2 In One, 4 In One)
    * @returns {string} HTML string for the label
    */
-  static generateLabelHTML(labelData, waybill = null, order = null, labelSettings = {}, format = 'Thermal') {
+  static async generateLabelHTML(labelData, waybill = null, order = null, labelSettings = {}, format = 'Thermal') {
     try {
       logger.info('🎨 Generating label HTML from Delhivery data');
 
@@ -217,12 +270,9 @@ class LabelRenderer {
       // Log package structure
       logger.info('📦 Package keys:', Object.keys(pkg));
 
-      // Extract barcode image (base64 or URL)
-      const barcodeImage = pkg.Barcode ||
-                          pkg.barcode ||
-                          pkg.barcode_image ||
-                          pkg.barcodeImage ||
-                          '';
+      // Extract and sanitize barcode image (handles data URI, URL, HTML <img> tag, raw base64)
+      const rawBarcode = pkg.Barcode || pkg.barcode || pkg.barcode_image || pkg.barcodeImage || '';
+      const barcodeImage = sanitizeBarcodeSource(rawBarcode);
 
       const delhiveryLogo = pkg['Delhivery logo'] ||
                            pkg.logo ||
@@ -240,8 +290,16 @@ class LabelRenderer {
                  waybill ||
                  'N/A';
 
+      // If Delhivery barcode is missing/invalid, self-generate Code 128 from AWB
+      let finalBarcode = barcodeImage;
+      if (!finalBarcode && awb && awb !== 'N/A') {
+        finalBarcode = await generateBarcode(awb);
+        if (finalBarcode) logger.info('🔲 Self-generated barcode for AWB:', awb);
+      }
+
       logger.info('📦 Package data extracted', {
-        hasBarcode: !!barcodeImage,
+        hasBarcode: !!finalBarcode,
+        barcodeSource: barcodeImage ? 'delhivery' : (finalBarcode ? 'self-generated' : 'none'),
         hasLogo: !!delhiveryLogo,
         awb: awb,
         allKeys: Object.keys(pkg)
@@ -668,6 +726,10 @@ class LabelRenderer {
     @media print {
       body { padding: 0; margin: 0; }
       .label-container { border: 1px solid #000; }
+      img, .awb-barcode img, .order-barcode img {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
     }
   </style>
 </head>
@@ -701,7 +763,7 @@ class LabelRenderer {
       <div class="order-info-section">
         <div class="order-id-row"><span>Order ID:</span> ${orderId}</div>
         <div class="order-barcode">
-          ${barcodeImage ? `<img src="${barcodeImage}" alt="Order Barcode">` : '<div style="height:10.583mm;width:47.625mm;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
+          ${finalBarcode ? `<img src="${finalBarcode}" alt="Order Barcode">` : '<div style="height:10.583mm;width:47.625mm;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
         </div>
         <div class="reference-id"><span>Ref ID:</span> ${referenceId}</div>
       </div>
@@ -717,7 +779,7 @@ class LabelRenderer {
       <div class="courier-section">
         <div class="courier-name"><strong>Courier:</strong> <span>${courierName}</span></div>
         <div class="awb-barcode">
-          ${barcodeImage ? `<img src="${barcodeImage}" alt="AWB Barcode">` : '<div style="height:22mm;width:100%;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
+          ${finalBarcode ? `<img src="${finalBarcode}" alt="AWB Barcode">` : '<div style="height:22mm;width:100%;background:repeating-linear-gradient(90deg,#000,#000 2px,#fff 2px,#fff 4px);"></div>'}
         </div>
         <div class="awb-number"><strong>AWB:</strong> <span>${awb}</span></div>
       </div>
@@ -778,12 +840,29 @@ class LabelRenderer {
 
   </div>
 
-  <!-- Auto-print script -->
+  <!-- Auto-print: wait for all images to load before printing -->
   <script>
     window.onload = function() {
-      setTimeout(function() {
-        window.print();
-      }, 1000);
+      var images = document.querySelectorAll('img');
+      var loaded = 0;
+      var total = images.length;
+      var printed = false;
+      function doPrint() {
+        if (printed) return;
+        printed = true;
+        setTimeout(function() { window.print(); }, 300);
+      }
+      function checkLoaded() {
+        loaded++;
+        if (loaded >= total) doPrint();
+      }
+      if (total === 0) { doPrint(); return; }
+      for (var i = 0; i < images.length; i++) {
+        if (images[i].complete) { checkLoaded(); }
+        else { images[i].onload = images[i].onerror = checkLoaded; }
+      }
+      // Safety fallback — print after 5 seconds regardless
+      setTimeout(doPrint, 5000);
     };
   </script>
 </body>
@@ -806,7 +885,7 @@ class LabelRenderer {
    * @param {Object} labelSettings - User's label settings for visibility control
    * @returns {string} HTML string for the label
    */
-  static renderLabel(order, labelData, format = 'Thermal', labelSettings = {}) {
+  static async renderLabel(order, labelData, format = 'Thermal', labelSettings = {}) {
     // Use generateLabelHTML for consistent output with format
     return this.generateLabelHTML(labelData, order?.delhivery_data?.waybill, order, labelSettings, format);
   }
@@ -1064,6 +1143,10 @@ class LabelRenderer {
       .page-container {
         margin-bottom: 0;
       }
+      img, .label-slot .awb-barcode img, .label-slot .order-barcode img {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
     }
 
     @media screen {
@@ -1081,10 +1164,29 @@ class LabelRenderer {
   </div>
   ${combinedContent}
   <script>
-    // Auto-print after 2 seconds
-    setTimeout(function() {
-      window.print();
-    }, 2000);
+    // Auto-print: wait for all images to load before printing
+    window.onload = function() {
+      var images = document.querySelectorAll('img');
+      var loaded = 0;
+      var total = images.length;
+      var printed = false;
+      function doPrint() {
+        if (printed) return;
+        printed = true;
+        setTimeout(function() { window.print(); }, 300);
+      }
+      function checkLoaded() {
+        loaded++;
+        if (loaded >= total) doPrint();
+      }
+      if (total === 0) { doPrint(); return; }
+      for (var i = 0; i < images.length; i++) {
+        if (images[i].complete) { checkLoaded(); }
+        else { images[i].onload = images[i].onerror = checkLoaded; }
+      }
+      // Safety fallback — print after 5 seconds regardless
+      setTimeout(doPrint, 5000);
+    };
   </script>
 </body>
 </html>
