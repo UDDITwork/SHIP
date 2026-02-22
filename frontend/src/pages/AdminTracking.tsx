@@ -46,8 +46,49 @@ const AdminTracking: React.FC = () => {
       // Fetch tracking from public API using apiService (handles base URL correctly)
       const data = await apiService.get<any>(`/shipping/public/track/${encodeURIComponent(awb.trim())}`);
 
-      if (data.success) {
-        setTracking(data.data || data);
+      if (data.success && data.data) {
+        // API returns { ShipmentData: [...], normalized: { AWB, Status, Scans: [{ScanType, ScanDateTime, ...}] } }
+        // Transform to match our TrackingData interface (camelCase fields)
+        const raw = data.data;
+        const normalized = raw.normalized;
+
+        if (normalized) {
+          setTracking({
+            waybill: normalized.AWB || awb,
+            current_status: normalized.Status || '',
+            origin: normalized.Origin || '',
+            destination: normalized.Destination || '',
+            scans: (normalized.Scans || []).map((s: any) => ({
+              status: s.ScanType || '',
+              date: s.ScanDateTime || '',
+              location: s.ScanLocation || '',
+              instructions: s.Remarks || ''
+            }))
+          });
+        } else if (raw.ShipmentData?.[0]?.Shipment) {
+          // Fallback: extract from raw Delhivery response
+          const shipment = raw.ShipmentData[0].Shipment;
+          const scansRaw = shipment.Scans || [];
+          setTracking({
+            waybill: shipment.AWB || awb,
+            current_status: typeof shipment.Status === 'object'
+              ? shipment.Status.Status || ''
+              : shipment.Status || '',
+            origin: typeof shipment.Origin === 'string' ? shipment.Origin : '',
+            destination: typeof shipment.Destination === 'string' ? shipment.Destination : '',
+            scans: scansRaw.map((scan: any) => {
+              const detail = scan.ScanDetail || scan;
+              return {
+                status: detail.Scan || detail.ScanType || '',
+                date: detail.ScanDateTime || detail.ScannedDateTime || '',
+                location: detail.ScannedLocation || detail.ScanLocation || '',
+                instructions: detail.Instructions || detail.Remarks || ''
+              };
+            })
+          });
+        } else {
+          setError('Tracking data format not recognized');
+        }
       } else {
         setError(data.message || 'Failed to fetch tracking data');
       }

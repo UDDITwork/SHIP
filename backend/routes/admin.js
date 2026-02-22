@@ -4446,7 +4446,7 @@ router.get('/dashboard/analytics', async (req, res) => {
       // Courier distribution
       Order.aggregate([
         { $match: dateFilter },
-        { $lookup: { from: 'carriers', localField: 'carrier_id', foreignField: '_id', as: 'carrier' } },
+        { $lookup: { from: 'carriers', localField: 'carrier_used', foreignField: '_id', as: 'carrier' } },
         { $unwind: { path: '$carrier', preserveNullAndEmptyArrays: true } },
         { $group: {
           _id: { $ifNull: ['$carrier.display_name', 'Unknown'] },
@@ -5131,7 +5131,6 @@ router.post('/billing/generate-bulk', adminAuth, async (req, res) => {
 // @desc    Upload manual invoice PDF
 // @route   PATCH /api/admin/billing/invoices/:id/manual-upload
 // @access  Admin
-const upload = multer({ storage: multer.memoryStorage() });
 router.patch('/billing/invoices/:id/manual-upload', adminAuth, upload.single('invoice_pdf'), async (req, res) => {
   try {
     const { id } = req.params;
