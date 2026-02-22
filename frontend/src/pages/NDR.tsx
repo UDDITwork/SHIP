@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 import { ndrService, NDROrder, NDRFilters, NDRStats, NDRActionData, BulkNDRActionData } from '../services/ndrService';
 import { formatDate } from '../utils/dateFormat';
 import AWBLink from '../components/AWBLink';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './NDR.css';
 
 type NDRStatus = 'action_required' | 'action_taken' | 'delivered' | 'rto' | 'all';
@@ -14,14 +15,6 @@ const NDR: React.FC = () => {
   const [ndrOrders, setNdrOrders] = useState<NDROrder[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
-  // Dynamic date range — current month
-  const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  const dateRange = {
-    from: formatDate(firstDay.toISOString()),
-    to: formatDate(lastDay.toISOString())
-  };
 
   // Tab counts
   const [tabCounts, setTabCounts] = useState<NDRStats>({
@@ -49,6 +42,15 @@ const NDR: React.FC = () => {
 
   // Time recommendation
   const [timeRecommendation, setTimeRecommendation] = useState('');
+
+  // Date filter handlers
+  const handleDateFilterApply = (startDate: string, endDate: string) => {
+    setFilters(prev => ({ ...prev, date_from: startDate, date_to: endDate, page: 1 }));
+  };
+
+  const handleDateFilterReset = () => {
+    setFilters(prev => ({ ...prev, date_from: undefined, date_to: undefined, page: 1 }));
+  };
 
   const fetchNDROrders = useCallback(async () => {
     setLoading(true);
@@ -278,11 +280,10 @@ const NDR: React.FC = () => {
 
         {/* Filters Section */}
         <div className="ndr-filters">
-          <div className="date-filter">
-            <button className="calendar-btn">
-              📅 {dateRange.from} to {dateRange.to}
-            </button>
-          </div>
+          <DateRangeFilter
+            onApply={handleDateFilterApply}
+            onReset={handleDateFilterReset}
+          />
 
           <button className="more-filters-btn">
             🎚️ More Filter

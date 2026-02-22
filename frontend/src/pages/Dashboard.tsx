@@ -13,6 +13,7 @@ import CartIcon from '../dashboardvectors/Cart.svg';
 import WalletIcon from '../dashboardvectors/Wallet.svg';
 import TruckIcon from '../dashboardvectors/Truck.svg';
 import CalendarSettingsIcon from '../dashboardvectors/CalendarSettings.svg';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './Dashboard.css';
 
 /**
@@ -46,59 +47,11 @@ const Dashboard: React.FC = () => {
     };
   };
 
-  // Date preset options
-  type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'custom';
-
-  const getDateRangeForPreset = (preset: DatePreset): { startDate: string; endDate: string } => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-
-    switch (preset) {
-      case 'today': {
-        return { startDate: todayStr, endDate: todayStr };
-      }
-      case 'yesterday': {
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-        return { startDate: yesterdayStr, endDate: yesterdayStr };
-      }
-      case 'last7days': {
-        const last7 = new Date(today);
-        last7.setDate(last7.getDate() - 7);
-        return { startDate: last7.toISOString().split('T')[0], endDate: todayStr };
-      }
-      case 'last30days': {
-        const last30 = new Date(today);
-        last30.setDate(last30.getDate() - 30);
-        return { startDate: last30.toISOString().split('T')[0], endDate: todayStr };
-      }
-      case 'thisMonth': {
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        return { startDate: firstDayOfMonth.toISOString().split('T')[0], endDate: todayStr };
-      }
-      case 'lastMonth': {
-        const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-        return {
-          startDate: firstDayLastMonth.toISOString().split('T')[0],
-          endDate: lastDayLastMonth.toISOString().split('T')[0]
-        };
-      }
-      case 'custom':
-      default:
-        return getDefaultDateRange();
-    }
-  };
-
   const defaultRange = getDefaultDateRange();
   const [dateFilter, setDateFilter] = useState({
     startDate: defaultRange.startDate,
     endDate: defaultRange.endDate
   });
-  const [selectedPreset, setSelectedPreset] = useState<DatePreset>('last30days');
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [ndrStatus, setNdrStatus] = useState<any>(null);
   const [codStatus, setCodStatus] = useState<any>(null);
@@ -111,7 +64,6 @@ const Dashboard: React.FC = () => {
   
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const dateIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const datePickerRef = useRef<HTMLDivElement>(null);
   const dashboardDataRef = useRef<DashboardData | null>(null);
   const dateFilterRef = useRef(dateFilter);
   const [isDateFiltering, setIsDateFiltering] = useState(false);
@@ -361,62 +313,17 @@ const Dashboard: React.FC = () => {
     navigate('/orders?status=all');
   };
 
-  // Format date range for display (DD-MM-YYYY format)
-  const formatDateRange = () => {
-    const formatDate = (dateString: string) => {
-      const date = new Date(dateString + 'T00:00:00');
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}-${month}-${year}`;
-    };
-    
-    return `${formatDate(dateFilter.startDate)} to ${formatDate(dateFilter.endDate)}`;
-  };
-
-  // Handle date filter change
-  const handleDateFilterChange = (startDate: string, endDate: string, preset?: DatePreset) => {
+  // Handle date filter change from DateRangeFilter component
+  const handleDateFilterApply = (startDate: string, endDate: string) => {
     setDateFilter({ startDate, endDate });
-    if (preset) {
-      setSelectedPreset(preset);
-    }
-    setShowDatePicker(false);
-    // Refresh dashboard data with new date range
     fetchAllDashboardData(false, { startDate, endDate });
   };
 
-  // Handle preset selection
-  const handlePresetSelect = (preset: DatePreset) => {
-    if (preset === 'custom') {
-      setSelectedPreset('custom');
-      // Keep date picker open for custom selection
-      return;
-    }
-    const range = getDateRangeForPreset(preset);
-    handleDateFilterChange(range.startDate, range.endDate, preset);
+  const handleDateFilterReset = () => {
+    const range = getDefaultDateRange();
+    setDateFilter(range);
+    fetchAllDashboardData(false, range);
   };
-
-  // Reset date filter to default (last 30 days)
-  const handleResetDateFilter = () => {
-    const defaultRange = getDefaultDateRange();
-    handleDateFilterChange(defaultRange.startDate, defaultRange.endDate, 'last30days');
-  };
-
-  // Close date picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
-        setShowDatePicker(false);
-      }
-    };
-
-    if (showDatePicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
-      };
-    }
-  }, [showDatePicker]);
 
   // Format current time
   const formatCurrentTime = () => {
@@ -599,116 +506,12 @@ const Dashboard: React.FC = () => {
           <div className="toolbar-separator"></div>
 
           {/* Date Range Display */}
-          <div className="date-range-display" ref={datePickerRef} style={{ position: 'relative' }}>
-            <span className="calendar-icon"></span>
-            <span
-              className="date-text"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-              style={{ cursor: 'pointer' }}
-            >
-              {formatDateRange()}
-            </span>
-
-            {/* Date Picker Dropdown */}
-            {showDatePicker && (
-              <div className="date-picker-dropdown">
-                <div className="date-picker-header">
-                  <h3>Select Date Range</h3>
-                  <button
-                    className="close-date-picker"
-                    onClick={() => setShowDatePicker(false)}
-                  >
-                    ×
-                  </button>
-                </div>
-                <div className="date-presets">
-                  <button
-                    className={`preset-btn ${selectedPreset === 'today' ? 'active' : ''}`}
-                    onClick={() => handlePresetSelect('today')}
-                  >
-                    Today
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedPreset === 'yesterday' ? 'active' : ''}`}
-                    onClick={() => handlePresetSelect('yesterday')}
-                  >
-                    Yesterday
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedPreset === 'last7days' ? 'active' : ''}`}
-                    onClick={() => handlePresetSelect('last7days')}
-                  >
-                    This Week
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedPreset === 'last30days' ? 'active' : ''}`}
-                    onClick={() => handlePresetSelect('last30days')}
-                  >
-                    Last Week
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedPreset === 'thisMonth' ? 'active' : ''}`}
-                    onClick={() => handlePresetSelect('thisMonth')}
-                  >
-                    This Month
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedPreset === 'lastMonth' ? 'active' : ''}`}
-                    onClick={() => handlePresetSelect('lastMonth')}
-                  >
-                    Last Month
-                  </button>
-                </div>
-                <div className="date-picker-body">
-                  <div className="date-input-group">
-                    <label>From Date</label>
-                    <input
-                      type="date"
-                      value={dateFilter.startDate}
-                      max={dateFilter.endDate}
-                      onChange={(e) => {
-                        setDateFilter({ ...dateFilter, startDate: e.target.value });
-                        setSelectedPreset('custom');
-                      }}
-                    />
-                  </div>
-                  <div className="date-input-group">
-                    <label>To Date</label>
-                    <input
-                      type="date"
-                      value={dateFilter.endDate}
-                      min={dateFilter.startDate}
-                      max={new Date().toISOString().split('T')[0]}
-                      onChange={(e) => {
-                        setDateFilter({ ...dateFilter, endDate: e.target.value });
-                        setSelectedPreset('custom');
-                      }}
-                    />
-                  </div>
-                </div>
-                <div className="date-picker-footer">
-                  <button
-                    className="reset-date-filter-btn"
-                    onClick={handleResetDateFilter}
-                  >
-                    Reset
-                  </button>
-                  <button
-                    className="cancel-date-filter-btn"
-                    onClick={() => setShowDatePicker(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="apply-date-filter-btn"
-                    onClick={() => handleDateFilterChange(dateFilter.startDate, dateFilter.endDate, 'custom')}
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <DateRangeFilter
+            onApply={handleDateFilterApply}
+            onReset={handleDateFilterReset}
+            defaultStartDate={defaultRange.startDate}
+            defaultEndDate={defaultRange.endDate}
+          />
 
           {/* Time Display */}
           <div className="current-time-compact">

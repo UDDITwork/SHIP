@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { invoiceService, Invoice, InvoiceFilters } from '../services/invoiceService';
 import { formatDate as formatDateUtil } from '../utils/dateFormat';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './InvoiceList.css';
 
 const InvoiceList: React.FC = () => {
@@ -30,25 +31,10 @@ const InvoiceList: React.FC = () => {
   };
   const [activeTab, setActiveTab] = useState<'invoices' | 'credit-notes' | 'debit-notes'>(getActiveTabFromPath());
   
-  // Date range picker state
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
   // Update active tab when route changes
   useEffect(() => {
     setActiveTab(getActiveTabFromPath());
   }, [location.pathname]);
-
-  // Set default date range (last 30 days)
-  useEffect(() => {
-    if (!dateFrom && !dateTo) {
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
-      
-      setDateFrom(startDate.toISOString().split('T')[0]);
-      setDateTo(endDate.toISOString().split('T')[0]);
-    }
-  }, []);
 
   // Fetch invoices
   const fetchInvoices = useCallback(async () => {
@@ -237,44 +223,18 @@ const InvoiceList: React.FC = () => {
             />
           </div>
           <div className="filter-right">
-            <button
-              className="date-range-badge"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-            >
-              Date Range : {formatDateRange()}
-            </button>
-            {showDatePicker && (
-              <div className="date-picker-dropdown">
-                <div className="date-picker-inputs">
-                  <label>
-                    From:
-                    <input
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                    />
-                  </label>
-                  <label>
-                    To:
-                    <input
-                      type="date"
-                      value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
-                    />
-                  </label>
-                  <button
-                    className="apply-date-btn"
-                    onClick={() => {
-                      setShowDatePicker(false);
-                      setPage(1);
-                      fetchInvoices();
-                    }}
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            )}
+            <DateRangeFilter
+              onApply={(startDate, endDate) => {
+                setDateFrom(startDate);
+                setDateTo(endDate);
+                setPage(1);
+              }}
+              onReset={() => {
+                setDateFrom('');
+                setDateTo('');
+                setPage(1);
+              }}
+            />
           </div>
         </div>
 

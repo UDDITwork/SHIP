@@ -7,6 +7,7 @@ import { notificationService } from '../services/notificationService';
 import { DataCache } from '../utils/dataCache';
 import { useAuth } from '../contexts/AuthContext';
 import ProfileDropdown from './ProfileDropdown';
+import ClientNotificationBell from './ClientNotificationBell';
 import './Layout.css';
 
 // Import sidebar vector icons
@@ -672,9 +673,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <button className="tickets-button" onClick={handleTickets}>
             Tickets
           </button>
-          <button className="notification-button">
-            🔔
-          </button>
+          <ClientNotificationBell />
           
           {/* Profile Circle - Always visible and always clickable */}
           {/* Profile is ALWAYS fetched from MongoDB, independent of WebSocket */}

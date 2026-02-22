@@ -1,0 +1,201 @@
+/* ============================================
+   DateRangeFilter — Shared Component Styles
+   Matches Dashboard's date picker design exactly
+   ============================================ */
+
+/* Trigger Button */
+.drf-container {
+  display: inline-block;
+}
+
+.drf-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background-color: #FFFFFF;
+  border: 1px solid #002B59;
+  border-radius: 8px;
+  font-size: 12px;
+  color: #002B59;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.drf-trigger:hover {
+  background-color: #F5F7FA;
+}
+
+.drf-calendar-icon {
+  font-size: 14px;
+}
+
+.drf-date-text {
+  user-select: none;
+}
+
+/* Dropdown */
+.drf-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  background-color: #FFFFFF;
+  border: 1px solid #E5E5E5;
+  border-radius: 12px;
+  z-index: 1000;
+  min-width: 320px;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Header */
+.drf-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background-color: #FF8C42;
+  color: #FFFFFF;
+  border-bottom: 1px solid #E5E5E5;
+}
+
+.drf-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.drf-close {
+  background: none;
+  border: none;
+  color: #FFFFFF;
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.drf-close:hover {
+  opacity: 0.8;
+}
+
+/* Presets */
+.drf-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 20px;
+  border-bottom: 1px solid #E5E5E5;
+  background-color: #F9FAFB;
+}
+
+.drf-preset-btn {
+  padding: 8px 14px;
+  border: 1px solid #E5E5E5;
+  border-radius: 20px;
+  background-color: #FFFFFF;
+  color: #2C4563;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drf-preset-btn:hover {
+  border-color: #FF8C42;
+  color: #FF8C42;
+}
+
+.drf-preset-btn.active {
+  background-color: #FF8C42;
+  color: #FFFFFF;
+  border-color: #FF8C42;
+}
+
+/* Date Inputs */
+.drf-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.drf-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.drf-input-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #2C4563;
+}
+
+.drf-input-group input[type="date"] {
+  padding: 10px 12px;
+  border: 1px solid #E5E5E5;
+  border-radius: 6px;
+  font-size: 14px;
+  color: #2C4563;
+  background-color: #FFFFFF;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.drf-input-group input[type="date"]:focus {
+  outline: none;
+  border-color: #FF8C42;
+}
+
+/* Footer */
+.drf-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #E5E5E5;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.drf-reset-btn,
+.drf-cancel-btn,
+.drf-apply-btn {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.drf-apply-btn {
+  background-color: #FF8C42;
+  color: #FFFFFF;
+}
+
+.drf-apply-btn:hover {
+  background-color: #E57A35;
+}
+
+.drf-reset-btn,
+.drf-cancel-btn {
+  background-color: #FFFFFF;
+  color: #2C4563;
+  border: 1px solid #E5E5E5;
+}
+
+.drf-reset-btn:hover,
+.drf-cancel-btn:hover {
+  background-color: #F5F7FA;
+  border-color: #CCCCCC;
+}

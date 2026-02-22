@@ -5,6 +5,7 @@ import Layout from '../components/Layout';
 import { apiService } from '../services/api';
 import { formatDateSmart } from '../utils/dateFormat';
 import AWBLink from '../components/AWBLink';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './Billing.css';
 
 interface WalletTransaction {
@@ -572,23 +573,18 @@ const Billing: React.FC = () => {
           </div>
 
           <div className="filter-group date-range-group">
-            <label>Date Range</label>
-            <div className="date-range-inputs">
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="filter-input"
-                max={dateTo || undefined}
-              />
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="filter-input"
-                min={dateFrom || undefined}
-              />
-            </div>
+            <DateRangeFilter
+              onApply={(startDate, endDate) => {
+                setDateFrom(startDate);
+                setDateTo(endDate);
+              }}
+              onReset={() => {
+                const d = new Date();
+                d.setDate(d.getDate() - 30);
+                setDateFrom(d.toISOString().split('T')[0]);
+                setDateTo(new Date().toISOString().split('T')[0]);
+              }}
+            />
           </div>
 
           <div className="filter-group">

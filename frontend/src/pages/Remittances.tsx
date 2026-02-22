@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { remittanceService, Remittance } from '../services/remittanceService';
 import { formatDate as formatDateUtil } from '../utils/dateFormat';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './Remittances.css';
 
 const Remittances: React.FC = () => {
@@ -16,66 +17,9 @@ const Remittances: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const datePickerRef = useRef<HTMLDivElement>(null);
   const [upcoming, setUpcoming] = useState<{total_amount: number; total_orders: number; count: number; remittances: any[]} | null>(null);
 
   const limit = 25;
-
-  // Quick date select options
-  const getQuickDateRange = (option: string) => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const from = new Date();
-    from.setHours(0, 0, 0, 0);
-
-    switch (option) {
-      case 'today':
-        return { from: from.toISOString().split('T')[0], to: today.toISOString().split('T')[0] };
-      case 'yesterday':
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        yesterday.setHours(0, 0, 0, 0);
-        return { from: yesterday.toISOString().split('T')[0], to: yesterday.toISOString().split('T')[0] };
-      case 'thisWeek':
-        const weekStart = new Date(from);
-        weekStart.setDate(from.getDate() - from.getDay()); // Start of week (Sunday)
-        return { from: weekStart.toISOString().split('T')[0], to: today.toISOString().split('T')[0] };
-      case 'thisMonth':
-        const monthStart = new Date(from.getFullYear(), from.getMonth(), 1);
-        return { from: monthStart.toISOString().split('T')[0], to: today.toISOString().split('T')[0] };
-      case 'lastWeek':
-        const lastWeekEnd = new Date(from);
-        lastWeekEnd.setDate(from.getDate() - from.getDay() - 1);
-        const lastWeekStart = new Date(lastWeekEnd);
-        lastWeekStart.setDate(lastWeekStart.getDate() - 6);
-        return { from: lastWeekStart.toISOString().split('T')[0], to: lastWeekEnd.toISOString().split('T')[0] };
-      case 'lastMonth':
-        const lastMonthEnd = new Date(from.getFullYear(), from.getMonth(), 0);
-        const lastMonthStart = new Date(from.getFullYear(), from.getMonth() - 1, 1);
-        return { from: lastMonthStart.toISOString().split('T')[0], to: lastMonthEnd.toISOString().split('T')[0] };
-      case 'last90Days':
-        const ninetyDaysAgo = new Date(from);
-        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
-        return { from: ninetyDaysAgo.toISOString().split('T')[0], to: today.toISOString().split('T')[0] };
-      default:
-        return null;
-    }
-  };
-
-  const handleQuickDateSelect = (option: string) => {
-    const range = getQuickDateRange(option);
-    if (range) {
-      setDateFrom(range.from);
-      setDateTo(range.to);
-      setPage(1);
-    }
-  };
-
-  const formatDateForDisplay = (dateString: string) => {
-    if (!dateString) return '';
-    return formatDateUtil(dateString);
-  };
 
   const fetchRemittances = useCallback(async () => {
     try {
@@ -123,33 +67,19 @@ const Remittances: React.FC = () => {
     fetchUpcoming();
   }, []);
 
-  // Close date picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (datePickerRef.current && !datePickerRef.current.contains(event.target as Node)) {
-        setShowDatePicker(false);
-      }
-    };
-
-    if (showDatePicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [showDatePicker]);
-
   const handleRemittanceClick = (remittanceNumber: string) => {
     navigate(`/remittances/${remittanceNumber}`);
   };
 
-  const handleClearDateFilter = () => {
-    setDateFrom('');
-    setDateTo('');
+  const handleDateFilterApply = (startDate: string, endDate: string) => {
+    setDateFrom(startDate);
+    setDateTo(endDate);
     setPage(1);
-    setShowDatePicker(false);
   };
 
-  const handleApplyDateFilter = () => {
-    setShowDatePicker(false);
+  const handleDateFilterReset = () => {
+    setDateFrom('');
+    setDateTo('');
     setPage(1);
   };
 
@@ -203,53 +133,10 @@ const Remittances: React.FC = () => {
               <option value="settled">Settled</option>
             </select>
           </div>
-          <div className="date-filter" ref={datePickerRef}>
-            <button
-              className="calendar-btn"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-            >
-              📅 Processed On {dateFrom ? formatDateForDisplay(dateFrom) : ''} {dateTo && dateFrom ? `to ${formatDateForDisplay(dateTo)}` : ''}
-              {!dateFrom && !dateTo && ' (Select Date)'}
-            </button>
-            {showDatePicker && (
-              <div className="date-picker-dropdown">
-                <div className="date-picker-header">
-                  <h4>Select Date Range</h4>
-                  <button className="close-btn" onClick={() => setShowDatePicker(false)}>✕</button>
-                </div>
-                <div className="quick-select-options">
-                  <button onClick={() => handleQuickDateSelect('today')}>Today</button>
-                  <button onClick={() => handleQuickDateSelect('yesterday')}>Yesterday</button>
-                  <button onClick={() => handleQuickDateSelect('thisWeek')}>This Week</button>
-                  <button onClick={() => handleQuickDateSelect('thisMonth')}>This Month</button>
-                  <button onClick={() => handleQuickDateSelect('lastWeek')}>Last Week</button>
-                  <button onClick={() => handleQuickDateSelect('lastMonth')}>Last Month</button>
-                  <button onClick={() => handleQuickDateSelect('last90Days')}>Last 90 Days</button>
-                </div>
-                <div className="custom-date-range">
-                  <label>From:</label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                  />
-                  <label>To:</label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    min={dateFrom}
-                  />
-                </div>
-                <div className="date-picker-actions">
-                  <button onClick={handleApplyDateFilter} disabled={!dateFrom || !dateTo}>
-                    Done
-                  </button>
-                  <button onClick={handleClearDateFilter}>Clear</button>
-                </div>
-              </div>
-            )}
-          </div>
+          <DateRangeFilter
+            onApply={handleDateFilterApply}
+            onReset={handleDateFilterReset}
+          />
         </div>
 
         {/* Remittances Table */}

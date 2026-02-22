@@ -16,6 +16,7 @@ import AWBLink from '../components/AWBLink';
 import OrderDetailPanel from '../components/OrderDetailPanel';
 import { Inbox, Calendar, X, Plus, AlertTriangle } from 'lucide-react';
 import { User } from '../services/userService';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './Orders.css';
 
 // Simple warehouse interface for dropdown
@@ -131,79 +132,7 @@ const Orders: React.FC = () => {
     searchType: 'order',
   });
 
-  // Date picker states
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
-
-  // Date preset type and handler
-  type DatePreset = 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'last30days' | 'thisMonth' | 'lastMonth' | 'custom';
-  const [selectedDatePreset, setSelectedDatePreset] = useState<DatePreset>('last30days');
-
-  const getDateRangeForPreset = (preset: DatePreset): { from: string; to: string } => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-
-    switch (preset) {
-      case 'today': {
-        return { from: todayStr, to: todayStr };
-      }
-      case 'yesterday': {
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const yesterdayStr = yesterday.toISOString().split('T')[0];
-        return { from: yesterdayStr, to: yesterdayStr };
-      }
-      case 'thisWeek': {
-        const last7 = new Date(today);
-        last7.setDate(last7.getDate() - 7);
-        return { from: last7.toISOString().split('T')[0], to: todayStr };
-      }
-      case 'lastWeek': {
-        // Last 7 days before this week
-        const startLastWeek = new Date(today);
-        startLastWeek.setDate(startLastWeek.getDate() - 14);
-        const endLastWeek = new Date(today);
-        endLastWeek.setDate(endLastWeek.getDate() - 7);
-        return { from: startLastWeek.toISOString().split('T')[0], to: endLastWeek.toISOString().split('T')[0] };
-      }
-      case 'last30days': {
-        const last30 = new Date(today);
-        last30.setDate(last30.getDate() - 30);
-        return { from: last30.toISOString().split('T')[0], to: todayStr };
-      }
-      case 'thisMonth': {
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        return { from: firstDayOfMonth.toISOString().split('T')[0], to: todayStr };
-      }
-      case 'lastMonth': {
-        const firstDayLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-        const lastDayLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
-        return {
-          from: firstDayLastMonth.toISOString().split('T')[0],
-          to: lastDayLastMonth.toISOString().split('T')[0]
-        };
-      }
-      case 'custom':
-      default:
-        return getDefaultDateRange();
-    }
-  };
-
-  const handleDatePresetSelect = (preset: DatePreset) => {
-    if (preset === 'custom') {
-      setSelectedDatePreset('custom');
-      // Keep date picker open for custom selection
-      return;
-    }
-    const range = getDateRangeForPreset(preset);
-    setFilters(prev => ({
-      ...prev,
-      dateFrom: range.from,
-      dateTo: range.to
-    }));
-    setSelectedDatePreset(preset);
-    setShowDatePicker(false);
-  };
 
   // Modal States
   const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
@@ -868,33 +797,16 @@ const Orders: React.FC = () => {
     }
   };
 
-  // Date helper functions
-  const getDefaultDateRange = () => {
-    const today = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(today.getDate() - 30);
-    
-    return {
-      from: thirtyDaysAgo.toISOString().split('T')[0],
-      to: today.toISOString().split('T')[0]
-    };
-  };
-
-  const formatDateForDisplay = (dateString: string) => {
-    if (!dateString) return '';
-    return formatDate(dateString);
-  };
-
-  const handleDateRangeChange = (from: string, to: string) => {
+  // Date filter handler for DateRangeFilter component
+  const handleDateFilterApply = (startDate: string, endDate: string) => {
     setFilters(prev => ({
       ...prev,
-      dateFrom: from,
-      dateTo: to
+      dateFrom: startDate,
+      dateTo: endDate
     }));
-    setShowDatePicker(false);
   };
 
-  const handleClearDateFilter = () => {
+  const handleDateFilterReset = () => {
     setFilters(prev => ({
       ...prev,
       dateFrom: '',
@@ -1462,119 +1374,10 @@ const Orders: React.FC = () => {
 
         {/* Filters Section */}
         <div className="filters-section">
-          <div className="date-filter">
-            <button
-              className="calendar-btn"
-              onClick={() => setShowDatePicker(!showDatePicker)}
-            >
-              <Calendar size={14} /> {filters.dateFrom ? formatDateForDisplay(filters.dateFrom) : 'Select Date Range'}
-              {filters.dateTo && ` to ${formatDateForDisplay(filters.dateTo)}`}
-              {!filters.dateFrom && !filters.dateTo && ' (Last 30 days)'}
-            </button>
-            {showDatePicker && (
-              <div className="date-picker-dropdown">
-                <div className="date-picker-header">
-                  <h4>Select Date Range</h4>
-                  <button
-                    className="close-btn"
-                    onClick={() => setShowDatePicker(false)}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="date-presets">
-                  <button
-                    className={`preset-btn ${selectedDatePreset === 'today' ? 'active' : ''}`}
-                    onClick={() => handleDatePresetSelect('today')}
-                  >
-                    Today
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedDatePreset === 'yesterday' ? 'active' : ''}`}
-                    onClick={() => handleDatePresetSelect('yesterday')}
-                  >
-                    Yesterday
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedDatePreset === 'thisWeek' ? 'active' : ''}`}
-                    onClick={() => handleDatePresetSelect('thisWeek')}
-                  >
-                    This Week
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedDatePreset === 'lastWeek' ? 'active' : ''}`}
-                    onClick={() => handleDatePresetSelect('lastWeek')}
-                  >
-                    Last Week
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedDatePreset === 'thisMonth' ? 'active' : ''}`}
-                    onClick={() => handleDatePresetSelect('thisMonth')}
-                  >
-                    This Month
-                  </button>
-                  <button
-                    className={`preset-btn ${selectedDatePreset === 'lastMonth' ? 'active' : ''}`}
-                    onClick={() => handleDatePresetSelect('lastMonth')}
-                  >
-                    Last Month
-                  </button>
-                </div>
-                <div className="date-inputs">
-                  <div className="date-input-group">
-                    <label>From Date</label>
-                    <input
-                      type="date"
-                      value={filters.dateFrom}
-                      onChange={(e) => {
-                        setFilters(prev => ({...prev, dateFrom: e.target.value}));
-                        setSelectedDatePreset('custom');
-                      }}
-                      max={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                  <div className="date-input-group">
-                    <label>To Date</label>
-                    <input
-                      type="date"
-                      value={filters.dateTo}
-                      onChange={(e) => {
-                        setFilters(prev => ({...prev, dateTo: e.target.value}));
-                        setSelectedDatePreset('custom');
-                      }}
-                      max={new Date().toISOString().split('T')[0]}
-                    />
-                  </div>
-                </div>
-                <div className="date-picker-actions">
-                  <button
-                    className="clear-btn"
-                    onClick={handleClearDateFilter}
-                  >
-                    Reset
-                  </button>
-                  <button
-                    className="cancel-btn"
-                    onClick={() => setShowDatePicker(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    className="apply-btn"
-                    onClick={() => {
-                      if (filters.dateFrom && filters.dateTo) {
-                        fetchOrders();
-                        setShowDatePicker(false);
-                      }
-                    }}
-                    disabled={!filters.dateFrom || !filters.dateTo}
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+          <DateRangeFilter
+            onApply={handleDateFilterApply}
+            onReset={handleDateFilterReset}
+          />
 
           <form onSubmit={handleSearch} className="search-filter">
             <select

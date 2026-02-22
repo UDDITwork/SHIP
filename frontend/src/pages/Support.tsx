@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Layout from '../components/Layout';
 import { ticketService, Ticket, TicketStatusCounts, TicketFilters } from '../services/ticketService';
 import AWBLink from '../components/AWBLink';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './Support.css';
 
 type TicketStatus = 'open' | 'in_progress' | 'escalated' | 'resolved' | 'closed' | 'all';
@@ -419,9 +420,9 @@ const Support: React.FC = () => {
 
             {/* Filters and Actions */}
             <div className="ticket-filters">
-              <div className="date-filter">
-                <input type="date" /> to <input type="date" />
-              </div>
+              <DateRangeFilter
+                onApply={() => { /* Date filtering to be wired when backend supports it */ }}
+              />
               <div className="search-filters">
                 <input type="text" placeholder="Search by AWB" className="search-input" />
                 <input type="text" placeholder="Search by order id" className="search-input" />
