@@ -11,6 +11,7 @@ const { connectDB, checkDBHealth } = require('./config/db');
 const logger = require('./utils/logger');
 const trackingService = require('./services/trackingService');
 const websocketService = require('./services/websocketService');
+const { ensureCarriersExist } = require('./utils/initCarriers');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -389,6 +390,9 @@ async function startServer() {
     await connectDB();
     logger.info('✅ Connected to MongoDB');
     console.log('✅ Connected to MongoDB');
+
+    // Ensure required carriers exist (idempotent)
+    await ensureCarriersExist();
 
     // Start Server only after DB is connected
     server.listen(PORT, () => {
