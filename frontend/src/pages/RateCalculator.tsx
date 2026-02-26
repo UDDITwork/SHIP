@@ -51,12 +51,13 @@ const RateCalculator: React.FC = () => {
         delivery_pincode: deliveryPincode,
         weight: parseFloat(weight),
         dimensions: {
-          length: length ? parseFloat(length) : 0,
-          breadth: breadth ? parseFloat(breadth) : 0,
-          height: height ? parseFloat(height) : 0
+          length: length ? parseFloat(length) : 1,
+          breadth: breadth ? parseFloat(breadth) : 1,
+          height: height ? parseFloat(height) : 1
         },
         payment_mode: paymentType === 'cod' ? 'COD' : 'Prepaid',
-        cod_amount: paymentType === 'cod' && codAmount ? parseFloat(codAmount) : undefined
+        cod_amount: paymentType === 'cod' && codAmount ? parseFloat(codAmount) : undefined,
+        order_type: shipmentType === 'return' ? 'rto' : 'forward'
       };
 
       const response = await shippingService.calculateShippingCharges(request);
@@ -155,16 +156,19 @@ const RateCalculator: React.FC = () => {
 
             {/* Weight */}
             <div className="form-group">
-              <label className="form-label">Actual Weight (kg)</label>
-              <input
-                type="number"
-                className="form-input"
-                placeholder="0.00"
-                value={weight}
-                onChange={(e) => setWeight(e.target.value)}
-                step="0.01"
-                min="0"
-              />
+              <label className="form-label">Actual Weight</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="0.00"
+                  value={weight}
+                  onChange={(e) => setWeight(e.target.value)}
+                  step="any"
+                  min="0"
+                />
+                <span style={{ fontSize: '0.8rem', color: '#6b7280', fontWeight: 500 }}>kg</span>
+              </div>
             </div>
 
             {/* Payment Type */}
@@ -209,32 +213,44 @@ const RateCalculator: React.FC = () => {
 
             {/* Dimensions */}
             <div className="form-section">
-              <label className="form-label">Dimensions (cm) - Optional</label>
+              <label className="form-label">Dimensions - Optional</label>
               <div className="dimensions-row">
-                <input
-                  type="number"
-                  className="form-input dimension-input"
-                  placeholder="Length"
-                  value={length}
-                  onChange={(e) => setLength(e.target.value)}
-                  min="0"
-                />
-                <input
-                  type="number"
-                  className="form-input dimension-input"
-                  placeholder="Breadth"
-                  value={breadth}
-                  onChange={(e) => setBreadth(e.target.value)}
-                  min="0"
-                />
-                <input
-                  type="number"
-                  className="form-input dimension-input"
-                  placeholder="Height"
-                  value={height}
-                  onChange={(e) => setHeight(e.target.value)}
-                  min="0"
-                />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <input
+                    type="number"
+                    className="form-input dimension-input"
+                    placeholder="L"
+                    value={length}
+                    onChange={(e) => setLength(e.target.value)}
+                    min="0"
+                    step="any"
+                  />
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>cm</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <input
+                    type="number"
+                    className="form-input dimension-input"
+                    placeholder="B"
+                    value={breadth}
+                    onChange={(e) => setBreadth(e.target.value)}
+                    min="0"
+                    step="any"
+                  />
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>cm</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <input
+                    type="number"
+                    className="form-input dimension-input"
+                    placeholder="H"
+                    value={height}
+                    onChange={(e) => setHeight(e.target.value)}
+                    min="0"
+                    step="any"
+                  />
+                  <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>cm</span>
+                </div>
               </div>
             </div>
 

@@ -144,6 +144,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { path: '/admin/manual-mapping', label: 'Manual AWB Mapping', icon: 'M' },
     { path: '/admin/wallet-recharge', label: 'Wallet Recharge', icon: 'W' },
     { path: '/admin/weight-discrepancies', label: 'Weight Discrepancies', icon: 'WD' },
+    { path: '/admin/notifications', label: 'Notifications', icon: 'NF' },
     // Carriers - only visible to admins
     ...(isStaff ? [] : [{ path: '/admin/carriers', label: 'Carriers', icon: 'CR' }]),
     // Staff Management - only visible to admins

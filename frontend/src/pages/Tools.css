@@ -256,6 +256,30 @@
   font-family: monospace;
 }
 
+.input-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input-with-unit input {
+  flex: 1;
+  min-width: 0;
+}
+
+.unit-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.optional-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
 .package-select {
   cursor: pointer;
 }

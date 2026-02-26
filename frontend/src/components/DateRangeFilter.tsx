@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './DateRangeFilter.css';
 
-type DatePreset = 'today' | 'yesterday' | 'last7days' | 'last30days' | 'thisMonth' | 'lastMonth' | 'custom';
+type DatePreset = 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom';
 
 interface DateRangeFilterProps {
   onApply: (startDate: string, endDate: string) => void;
@@ -33,15 +33,21 @@ const getDateRangeForPreset = (preset: DatePreset): { startDate: string; endDate
       yesterday.setDate(yesterday.getDate() - 1);
       return { startDate: yesterday.toISOString().split('T')[0], endDate: yesterday.toISOString().split('T')[0] };
     }
-    case 'last7days': {
-      const last7 = new Date(today);
-      last7.setDate(last7.getDate() - 7);
-      return { startDate: last7.toISOString().split('T')[0], endDate: todayStr };
+    case 'thisWeek': {
+      const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ...
+      const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const monday = new Date(today);
+      monday.setDate(today.getDate() - diffToMonday);
+      return { startDate: monday.toISOString().split('T')[0], endDate: todayStr };
     }
-    case 'last30days': {
-      const last30 = new Date(today);
-      last30.setDate(last30.getDate() - 30);
-      return { startDate: last30.toISOString().split('T')[0], endDate: todayStr };
+    case 'lastWeek': {
+      const dayOfWeek = today.getDay();
+      const diffToLastMonday = dayOfWeek === 0 ? 6 + 7 : dayOfWeek - 1 + 7;
+      const lastMonday = new Date(today);
+      lastMonday.setDate(today.getDate() - diffToLastMonday);
+      const lastSunday = new Date(lastMonday);
+      lastSunday.setDate(lastMonday.getDate() + 6);
+      return { startDate: lastMonday.toISOString().split('T')[0], endDate: lastSunday.toISOString().split('T')[0] };
     }
     case 'thisMonth': {
       const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -72,7 +78,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   onReset,
   defaultStartDate,
   defaultEndDate,
-  defaultPreset = 'last30days'
+  defaultPreset = 'custom'
 }) => {
   const defaultRange = getDefaultDateRange();
   const [dateFilter, setDateFilter] = useState({
@@ -115,7 +121,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
   const handleReset = () => {
     const range = getDefaultDateRange();
     setDateFilter(range);
-    setSelectedPreset('last30days');
+    setSelectedPreset('custom');
     if (onReset) {
       onReset();
     } else {
@@ -163,14 +169,14 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
               Yesterday
             </button>
             <button
-              className={`drf-preset-btn ${selectedPreset === 'last7days' ? 'active' : ''}`}
-              onClick={() => handlePresetSelect('last7days')}
+              className={`drf-preset-btn ${selectedPreset === 'thisWeek' ? 'active' : ''}`}
+              onClick={() => handlePresetSelect('thisWeek')}
             >
               This Week
             </button>
             <button
-              className={`drf-preset-btn ${selectedPreset === 'last30days' ? 'active' : ''}`}
-              onClick={() => handlePresetSelect('last30days')}
+              className={`drf-preset-btn ${selectedPreset === 'lastWeek' ? 'active' : ''}`}
+              onClick={() => handlePresetSelect('lastWeek')}
             >
               Last Week
             </button>

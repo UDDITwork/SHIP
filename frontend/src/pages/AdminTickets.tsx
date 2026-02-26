@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { adminService, AdminTicket, PrioritySummary } from '../services/adminService';
 import { formatDate } from '../utils/dateFormat';
 import PriorityOverview from '../components/PriorityOverview';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './AdminTickets.css';
 
 type StatusFilter = 'all' | 'open' | 'in_progress' | 'escalated' | 'resolved' | 'closed';
@@ -220,22 +221,15 @@ const AdminTickets: React.FC = () => {
         </div>
 
         <div className="filter-group">
-          <label htmlFor="date-from">Date From</label>
-          <input
-            id="date-from"
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-          />
-        </div>
-
-        <div className="filter-group">
-          <label htmlFor="date-to">Date To</label>
-          <input
-            id="date-to"
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
+          <DateRangeFilter
+            onApply={(startDate, endDate) => {
+              setDateFrom(startDate);
+              setDateTo(endDate);
+            }}
+            onReset={() => {
+              setDateFrom('');
+              setDateTo('');
+            }}
           />
         </div>
 

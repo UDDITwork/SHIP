@@ -1251,6 +1251,21 @@ class AdminService {
     return response;
   }
 
+  async sendBulkNotification(data: {
+    heading: string;
+    message: string;
+    notification_type?: string;
+    recipients: {
+      selection_type: 'manual';
+      client_ids: string[];
+    };
+  }): Promise<{ success: boolean; message: string; data: any }> {
+    const response = await apiService.post<{ success: boolean; message: string; data: any }>(`/admin/notifications/bulk`, data, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
   // Wallet recharge methods
   async rechargeWallet(clientId: string, amount: number, description?: string): Promise<{ success: boolean; message: string; data: any }> {
     const response = await apiService.post<{ success: boolean; message: string; data: any }>(`/admin/wallet-recharge`, {

@@ -476,6 +476,11 @@ const Tools: React.FC = () => {
   // When admin assigns a label, MongoDB is updated and WebSocket notification triggers refresh
   const userCategory = user?.user_category || 'Basic User';
 
+  // Refresh user data on mount to ensure category is up-to-date
+  useEffect(() => {
+    refreshUser().catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Force refresh user data if there's a mismatch
   const handleRefreshUserData = async () => {
     try {
@@ -497,10 +502,14 @@ const Tools: React.FC = () => {
         }
       }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
+      setFormData(prev => {
+        const updated = { ...prev, [field]: value };
+        // Clear COD value when switching to prepaid
+        if (field === 'paymentType' && value === 'prepaid') {
+          updated.codValue = '';
+        }
+        return updated;
+      });
     }
   };
 
@@ -576,9 +585,9 @@ const Tools: React.FC = () => {
     try {
       const weight = parseFloat(formData.actualWeight) * 1000; // Convert kg to grams
       const dimensions = {
-        length: parseFloat(formData.dimensions.length) || 0,
-        breadth: parseFloat(formData.dimensions.breadth) || 0,
-        height: parseFloat(formData.dimensions.height) || 0
+        length: parseFloat(formData.dimensions.length) || 1,
+        breadth: parseFloat(formData.dimensions.breadth) || 1,
+        height: parseFloat(formData.dimensions.height) || 1
       };
 
       const codAmount = formData.paymentType === 'cod' ? parseFloat(formData.codValue) || 0 : 0;
@@ -590,7 +599,7 @@ const Tools: React.FC = () => {
         delivery_pincode: formData.deliveryPincode,
         payment_mode: formData.paymentType === 'cod' ? 'COD' : 'Prepaid',
         cod_amount: codAmount,
-        order_type: formData.shipmentType as 'forward' | 'rto'
+        order_type: formData.shipmentType === 'return' ? 'rto' : 'forward'
       };
 
       // Use the intelligent rate card calculation
@@ -738,15 +747,18 @@ const Tools: React.FC = () => {
 
                     <div className="form-group">
                       <label>Actual Weight</label>
-                      <input
-                        type="number"
-                        placeholder="0.00"
-                        value={formData.actualWeight || ''}
-                        onChange={(e) => handleInputChange('actualWeight', e.target.value)}
-                        step="0.01"
-                        min="0"
-                        className="weight-input"
-                      />
+                      <div className="input-with-unit">
+                        <input
+                          type="number"
+                          placeholder="0.00"
+                          value={formData.actualWeight || ''}
+                          onChange={(e) => handleInputChange('actualWeight', e.target.value)}
+                          step="any"
+                          min="0"
+                          className="weight-input"
+                        />
+                        <span className="unit-label">kg</span>
+                      </div>
                     </div>
 
                     <div className="form-group">
@@ -790,35 +802,44 @@ const Tools: React.FC = () => {
                     <div className="form-group">
                       <label>Dimensions</label>
                       <div className="dimensions-input">
-                        <input
-                          type="number"
-                          placeholder=""
-                          value={formData.dimensions.length}
-                          onChange={(e) => handleInputChange('dimensions.length', e.target.value)}
-                          step="0.1"
-                          min="0"
-                        />
-                        <input
-                          type="number"
-                          placeholder=""
-                          value={formData.dimensions.breadth}
-                          onChange={(e) => handleInputChange('dimensions.breadth', e.target.value)}
-                          step="0.1"
-                          min="0"
-                        />
-                        <input
-                          type="number"
-                          placeholder=""
-                          value={formData.dimensions.height}
-                          onChange={(e) => handleInputChange('dimensions.height', e.target.value)}
-                          step="0.1"
-                          min="0"
-                        />
+                        <div className="input-with-unit">
+                          <input
+                            type="number"
+                            placeholder="L"
+                            value={formData.dimensions.length}
+                            onChange={(e) => handleInputChange('dimensions.length', e.target.value)}
+                            step="any"
+                            min="0"
+                          />
+                          <span className="unit-label">cm</span>
+                        </div>
+                        <div className="input-with-unit">
+                          <input
+                            type="number"
+                            placeholder="B"
+                            value={formData.dimensions.breadth}
+                            onChange={(e) => handleInputChange('dimensions.breadth', e.target.value)}
+                            step="any"
+                            min="0"
+                          />
+                          <span className="unit-label">cm</span>
+                        </div>
+                        <div className="input-with-unit">
+                          <input
+                            type="number"
+                            placeholder="H"
+                            value={formData.dimensions.height}
+                            onChange={(e) => handleInputChange('dimensions.height', e.target.value)}
+                            step="any"
+                            min="0"
+                          />
+                          <span className="unit-label">cm</span>
+                        </div>
                       </div>
                     </div>
 
                     <div className="form-group">
-                      <label>Shipment Value</label>
+                      <label>Shipment Value <span className="optional-label">(Optional)</span></label>
                       <input
                         type="number"
                         placeholder="Enter Shipment Value"
@@ -829,17 +850,19 @@ const Tools: React.FC = () => {
                       />
                     </div>
 
-                    <div className="form-group">
-                      <label>Cash on Delivery Value</label>
-                      <input
-                        type="number"
-                        placeholder="Enter Cash on Delivery Value"
-                        value={formData.codValue}
-                        onChange={(e) => handleInputChange('codValue', e.target.value)}
-                        min="0"
-                        step="0.01"
-                      />
-                    </div>
+                    {formData.paymentType === 'cod' && (
+                      <div className="form-group">
+                        <label>Cash on Delivery Value</label>
+                        <input
+                          type="number"
+                          placeholder="Enter Cash on Delivery Value"
+                          value={formData.codValue}
+                          onChange={(e) => handleInputChange('codValue', e.target.value)}
+                          min="0"
+                          step="0.01"
+                        />
+                      </div>
+                    )}
 
                     <div className="form-actions">
                       <button 

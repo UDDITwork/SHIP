@@ -132,6 +132,30 @@ const AdminKYC: React.FC = () => {
     }
   };
 
+  const handleSendKYCReminder = async () => {
+    if (!clientId) return;
+
+    setActionLoading(true);
+    setError(null);
+
+    try {
+      await adminService.sendBulkNotification({
+        heading: 'Complete Your KYC Verification',
+        message: 'Please complete your KYC verification. Upload pending documents to continue using Shipsarthi services. Go to Settings > KYC to upload your documents.',
+        notification_type: 'kyc_update',
+        recipients: {
+          selection_type: 'manual',
+          client_ids: [clientId]
+        }
+      });
+      alert('KYC reminder sent successfully!');
+    } catch (err: any) {
+      setError(err.message || 'Failed to send KYC reminder');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="admin-kyc">
@@ -193,6 +217,16 @@ const AdminKYC: React.FC = () => {
           </div>
         </div>
         <div className="header-right">
+          {client.kyc_status.status === 'pending' && (
+            <button
+              className="btn-primary"
+              onClick={handleSendKYCReminder}
+              disabled={actionLoading}
+              style={{ marginRight: 8 }}
+            >
+              {actionLoading ? 'Sending...' : 'Send KYC Reminder'}
+            </button>
+          )}
           <button
             className="btn-secondary"
             onClick={() => navigate(`/admin/clients/${client._id}/dashboard`)}

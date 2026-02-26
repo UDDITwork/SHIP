@@ -57,6 +57,7 @@ import AdminRateCard from './pages/AdminRateCard';
 import AdminRateCardCategory from './pages/AdminRateCardCategory';
 import AdminWalletRecharge from './pages/AdminWalletRecharge';
 import AdminWeightDiscrepancies from './pages/AdminWeightDiscrepancies';
+import AdminNotifications from './pages/AdminNotifications';
 import AdminBilling from './pages/AdminBilling';
 import AdminRemittances from './pages/AdminRemittances';
 import AdminRemittanceDetail from './pages/AdminRemittanceDetail';
@@ -380,6 +381,14 @@ function App() {
               element={
                 <AdminLayout>
                   <AdminTickets />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/notifications"
+              element={
+                <AdminLayout>
+                  <AdminNotifications />
                 </AdminLayout>
               }
             />

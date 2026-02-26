@@ -7371,7 +7371,7 @@ router.patch('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
  */
 router.post('/notifications/bulk', adminAuth, async (req, res) => {
   try {
-    const { heading, message, recipients } = req.body;
+    const { heading, message, recipients, notification_type } = req.body;
 
     // Validation
     if (!heading || !message) {
@@ -7474,14 +7474,20 @@ router.post('/notifications/bulk', adminAuth, async (req, res) => {
       sender_name: req.staff ? req.staff.name : (req.admin ? req.admin.email : 'Admin')
     };
 
+    // Determine notification type (default to bulk_announcement)
+    const validTypes = ['bulk_announcement', 'kyc_update', 'ticket_update', 'billing_generated', 'order_update', 'general'];
+    const resolvedType = validTypes.includes(notification_type) ? notification_type : 'bulk_announcement';
+
     // Create bulk notifications
     const notifications = await Notification.createBulkNotifications(
       validUserIds,
       {
-        notification_type: 'bulk_announcement',
+        notification_type: resolvedType,
         heading,
         message,
-        related_entity: { entity_type: 'none', entity_id: null }
+        related_entity: resolvedType === 'kyc_update'
+          ? { entity_type: 'kyc', entity_id: null }
+          : { entity_type: 'none', entity_id: null }
       },
       senderInfo
     );
@@ -7519,6 +7525,49 @@ router.post('/notifications/bulk', adminAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error sending bulk notification',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/admin/notifications/history
+ * Get sent notification history for admin
+ */
+router.get('/notifications/history', adminAuth, async (req, res) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const notifications = await Notification.find({
+      'sender_info.sender_type': { $in: ['admin', 'staff', 'system'] }
+    })
+      .sort({ created_at: -1 })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .select('heading message notification_type created_at bulk_send_id sender_info delivery_status');
+
+    const total = await Notification.countDocuments({
+      'sender_info.sender_type': { $in: ['admin', 'staff', 'system'] }
+    });
+
+    res.json({
+      success: true,
+      data: {
+        notifications,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          totalPages: Math.ceil(total / parseInt(limit))
+        }
+      }
+    });
+  } catch (error) {
+    logger.error('Error fetching notification history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching notification history',
       error: error.message
     });
   }
