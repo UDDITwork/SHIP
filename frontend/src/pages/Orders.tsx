@@ -1135,8 +1135,7 @@ const Orders: React.FC = () => {
     );
   };
 
-  const handleBulkLabel = (format: string) => {
-    // Open label format modal
+  const handleBulkLabel = () => {
     setShowLabelFormatModal(true);
   };
 
