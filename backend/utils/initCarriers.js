@@ -1,8 +1,8 @@
 /**
  * Carrier Initialization Utility
  *
- * Ensures required carriers exist on server startup.
- * Idempotent — safe to run on every restart.
+ * One-time check: creates missing carriers and links orphaned rate cards.
+ * If both carriers already exist and no orphaned rate cards, exits immediately.
  */
 
 const Carrier = require('../models/Carrier');
@@ -11,6 +11,23 @@ const logger = require('./logger');
 
 async function ensureCarriersExist() {
   try {
+    // Quick check — if both carriers exist, skip everything
+    const existingCount = await Carrier.countDocuments({
+      carrier_code: { $in: ['DELHIVERY_SURFACE', 'DELHIVERY_AIR'] }
+    });
+
+    const orphanedCount = await RateCard.countDocuments({
+      $or: [
+        { carrier_id: { $exists: false } },
+        { carrier_id: null }
+      ]
+    });
+
+    if (existingCount >= 2 && orphanedCount === 0) {
+      // Everything is already set up — nothing to do
+      return;
+    }
+
     // 1. Ensure DELHIVERY_SURFACE exists
     let surfaceCarrier = await Carrier.findOne({ carrier_code: 'DELHIVERY_SURFACE' });
     if (!surfaceCarrier) {
