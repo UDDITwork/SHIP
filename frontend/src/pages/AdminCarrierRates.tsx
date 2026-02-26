@@ -104,9 +104,9 @@ const AdminCarrierRates: React.FC = () => {
   const getDefaultWeightSlabs = () => [
     { condition: '0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
     { condition: '250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
-    { condition: 'Add. 500 gm till 5 kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
-    { condition: 'Upto 5 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
-    { condition: 'Add. 1 kgs till 10 kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'Upto 5kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'Add. 1 kgs till 10kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
     { condition: 'Upto 10 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
     { condition: 'Add. 1 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } }
   ];
@@ -114,9 +114,9 @@ const AdminCarrierRates: React.FC = () => {
   const getDefaultRTOSlabs = () => [
     { condition: 'DTO 0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
     { condition: 'DTO 250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
-    { condition: 'DTO Add. 500 gm till 5 kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
-    { condition: 'DTO Upto 5 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
-    { condition: 'DTO Add. 1 kgs till 10 kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO Upto 5kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO Add. 1 kgs till 10k', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
     { condition: 'DTO Upto 10 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
     { condition: 'DTO Add. 1 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } }
   ];
@@ -214,9 +214,9 @@ const AdminCarrierRates: React.FC = () => {
   return (
     <div className="admin-carrier-rates">
       <div className="page-header">
-        <button className="back-btn" onClick={() => navigate('/admin/carriers')}>
+        <button className="back-btn" onClick={() => navigate('/admin/ratecard')}>
           <ArrowLeft size={18} />
-          Back to Carriers
+          Back to Rate Cards
         </button>
         <div className="header-info">
           <h1>{carrier.display_name}</h1>
