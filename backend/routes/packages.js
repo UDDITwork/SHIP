@@ -135,6 +135,96 @@ router.get('/', auth, [
   }
 });
 
+// @desc    Search packages
+// @route   GET /api/packages/search
+// @access  Private
+router.get('/search', auth, [
+  query('q').trim().notEmpty().withMessage('Search query is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Validation failed',
+        errors: errors.array()
+      });
+    }
+
+    const userId = req.user._id;
+    const searchTerm = req.query.q;
+
+    const packages = await Package.searchPackages(userId, searchTerm);
+
+    res.json({
+      status: 'success',
+      data: packages
+    });
+
+  } catch (error) {
+    console.error('Search packages error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error searching packages'
+    });
+  }
+});
+
+// @desc    Get popular packages
+// @route   GET /api/packages/popular
+// @access  Private
+router.get('/popular', auth, [
+  query('limit').optional().isInt({ min: 1, max: 50 })
+], async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const limit = parseInt(req.query.limit) || 10;
+
+    const packages = await Package.getPopularPackages(userId, limit);
+
+    res.json({
+      status: 'success',
+      data: packages
+    });
+
+  } catch (error) {
+    console.error('Get popular packages error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error fetching popular packages'
+    });
+  }
+});
+
+// @desc    Get package statistics
+// @route   GET /api/packages/statistics
+// @access  Private
+router.get('/statistics', auth, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const stats = await Package.getPackageCountByType(userId);
+    const totalPackages = await Package.countDocuments({ user_id: userId, is_active: true });
+    const popularPackages = await Package.getPopularPackages(userId, 5);
+
+    res.json({
+      status: 'success',
+      data: {
+        total_packages: totalPackages,
+        count_by_type: stats,
+        popular_packages: popularPackages
+      }
+    });
+
+  } catch (error) {
+    console.error('Get package statistics error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error fetching package statistics'
+    });
+  }
+});
+
 // @desc    Get single package by ID
 // @route   GET /api/packages/:id
 // @access  Private

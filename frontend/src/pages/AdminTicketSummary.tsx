@@ -189,11 +189,14 @@ const AdminTicketSummary: React.FC = () => {
     }
   }, [masterPage, masterLimit, statusFilter, priorityFilter, categoryFilter, searchTerm, sortBy, sortOrder]);
 
-  // Load data based on view mode
+  // Load summary data (needed for Priority Overview in both views)
   useEffect(() => {
-    if (viewMode === 'summary') {
-      loadSummary();
-    } else {
+    loadSummary();
+  }, []);
+
+  // Load master tickets when in master view
+  useEffect(() => {
+    if (viewMode === 'master') {
       loadAllTickets();
     }
   }, [viewMode, loadAllTickets]);
@@ -384,44 +387,42 @@ const AdminTicketSummary: React.FC = () => {
         })}
       </div>
 
-      {/* Priority Overview - only show in summary view */}
-      {viewMode === 'summary' && (
-        <div className="priority-cards">
-          <div className="priority-header">
-            <h2>Priority Overview</h2>
-            <span className="priority-subtitle">Understand workload urgency across clients</span>
-          </div>
-          <div className="priority-grid">
-            {PRIORITY_ORDER.map((priorityKey) => {
-              const config = PRIORITY_CONFIG[priorityKey];
-              const totalForPriority = summary?.priorityTotals?.[priorityKey] ?? 0;
-              return (
-                <div
-                  key={priorityKey}
-                  className={`priority-card ${config.className} ${priorityFilter === priorityKey ? 'active' : ''}`}
-                  onClick={() => handlePriorityCardFilter(priorityKey)}
-                >
-                  <div className="priority-card-header">
-                    <span className="priority-icon">{config.icon}</span>
-                    <button
-                      className="priority-card-action"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handlePriorityCardFilter(priorityKey);
-                      }}
-                    >
-                      {priorityFilter === priorityKey ? 'Show All' : 'Filter'}
-                    </button>
-                  </div>
-                  <p className="priority-label">{config.label}</p>
-                  <p className="priority-count">{formatNumber(totalForPriority)}</p>
-                  <span className="priority-meta">{config.description}</span>
-                </div>
-              );
-            })}
-          </div>
+      {/* Priority Overview */}
+      <div className="priority-cards">
+        <div className="priority-header">
+          <h2>Priority Overview</h2>
+          <span className="priority-subtitle">Understand workload urgency across clients</span>
         </div>
-      )}
+        <div className="priority-grid">
+          {PRIORITY_ORDER.map((priorityKey) => {
+            const config = PRIORITY_CONFIG[priorityKey];
+            const totalForPriority = summary?.priorityTotals?.[priorityKey] ?? 0;
+            return (
+              <div
+                key={priorityKey}
+                className={`priority-card ${config.className} ${priorityFilter === priorityKey ? 'active' : ''}`}
+                onClick={() => handlePriorityCardFilter(priorityKey)}
+              >
+                <div className="priority-card-header">
+                  <span className="priority-icon">{config.icon}</span>
+                  <button
+                    className="priority-card-action"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePriorityCardFilter(priorityKey);
+                    }}
+                  >
+                    {priorityFilter === priorityKey ? 'Show All' : 'Filter'}
+                  </button>
+                </div>
+                <p className="priority-label">{config.label}</p>
+                <p className="priority-count">{formatNumber(totalForPriority)}</p>
+                <span className="priority-meta">{config.description}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
 
       {/* Filters Section */}
       <div className="ticket-summary-filters">

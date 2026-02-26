@@ -6,6 +6,7 @@ const https = require('https');
 const http = require('http');
 const { auth } = require('../middleware/auth');
 const SupportTicket = require('../models/Support');
+const Order = require('../models/Order');
 const websocketService = require('../services/websocketService');
 const cloudinaryService = require('../services/cloudinaryService');
 
@@ -358,6 +359,98 @@ router.get('/:ticketId/attachments/:attachmentId/download', auth, async (req, re
   }
 });
 
+// @desc    Get ticket statistics
+// @route   GET /api/support/statistics/overview
+// @access  Private
+router.get('/statistics/overview', auth, async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { period = '30' } = req.query;
+    const startDate = moment().subtract(parseInt(period), 'days').startOf('day');
+
+    const stats = await SupportTicket.getTicketStats(userId, startDate.toDate(), new Date());
+    const categoryStats = await SupportTicket.getCategoryStats(startDate.toDate(), new Date());
+
+    const summary = {
+      total_tickets: 0,
+      avg_resolution_time: 0,
+      status_breakdown: {},
+      category_breakdown: categoryStats.filter(cat => cat._id) // Filter out null categories
+    };
+
+    stats.forEach(stat => {
+      summary.total_tickets += stat.count;
+      summary.status_breakdown[stat._id] = {
+        count: stat.count,
+        avg_resolution_time: stat.avg_resolution_time || 0
+      };
+    });
+
+    if (stats.length > 0) {
+      summary.avg_resolution_time = stats.reduce((acc, stat) => acc + (stat.avg_resolution_time || 0), 0) / stats.length;
+    }
+
+    const statusCounts = formatStatusCounts(stats);
+
+    res.json({
+      status: 'success',
+      data: {
+        period_days: parseInt(period),
+        summary,
+        status_counts: statusCounts,
+        detailed_stats: stats
+      }
+    });
+
+  } catch (error) {
+    console.error('Ticket statistics error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error fetching ticket statistics'
+    });
+  }
+});
+
+// @desc    Get SLA report
+// @route   GET /api/support/sla-report
+// @access  Private
+router.get('/sla-report', auth, async (req, res) => {
+  try {
+    const slaReport = await SupportTicket.getSLAReport();
+
+    // Filter by user
+    const userSLAData = slaReport.filter(ticket => ticket.user_id && ticket.user_id.toString() === req.user._id.toString());
+
+    const slaMetrics = {
+      total_tickets: userSLAData.length,
+      sla_breached: userSLAData.filter(t => t.breached_sla).length,
+      avg_response_time: 0,
+      on_time_percentage: 0
+    };
+
+    if (userSLAData.length > 0) {
+      const totalResponseTime = userSLAData.reduce((acc, ticket) => acc + (ticket.response_time_minutes || 0), 0);
+      slaMetrics.avg_response_time = totalResponseTime / userSLAData.length;
+      slaMetrics.on_time_percentage = ((userSLAData.length - slaMetrics.sla_breached) / userSLAData.length * 100).toFixed(2);
+    }
+
+    res.json({
+      status: 'success',
+      data: {
+        metrics: slaMetrics,
+        detailed_tickets: userSLAData
+      }
+    });
+
+  } catch (error) {
+    console.error('SLA report error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error fetching SLA report'
+    });
+  }
+});
+
 // @desc    Get single ticket by ID
 // @route   GET /api/support/:id
 // @access  Private
@@ -429,7 +522,8 @@ router.post('/', auth, upload.array('attachments', 5), [
       }
       return true;
     }),
-  body('contact_preference').optional().isIn(['email', 'phone', 'whatsapp', 'portal'])
+  body('contact_preference').optional().isIn(['email', 'phone', 'whatsapp', 'portal']),
+  body('ndr_order_id').optional().isMongoId().withMessage('Invalid NDR order ID')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -546,6 +640,7 @@ router.post('/', auth, upload.array('attachments', 5), [
     const ticketData = {
       ...req.body,
       user_id: userId,
+      ndr_order_id: req.body.ndr_order_id || null,
       customer_info: {
         name: user.your_name,
         email: user.email,
@@ -590,6 +685,37 @@ router.post('/', auth, upload.array('attachments', 5), [
       subject: ticket.subject,
       description: ticket.description
     });
+
+    // Update NDR order if this ticket was raised from NDR page
+    if (req.body.ndr_order_id &&
+        ['shipment_ndr_rto', 'edit_shipment_info'].includes(req.body.category)) {
+      try {
+        const ndrOrder = await Order.findOne({
+          _id: req.body.ndr_order_id,
+          user_id: userId,
+          'ndr_info.is_ndr': true
+        });
+
+        if (ndrOrder) {
+          const resAction = req.body.category === 'shipment_ndr_rto' ? 'rto' : 'edit_requested';
+          ndrOrder.ndr_info.resolution_action = resAction;
+          ndrOrder.ndr_info.action_history.push({
+            action: resAction === 'rto' ? 'RTO_TICKET' : 'EDIT_BUYER_TICKET',
+            timestamp: new Date(),
+            upl_id: '',
+            status: 'TICKET_RAISED',
+            remarks: `Ticket ${ticket.ticket_id} raised for ${resAction === 'rto' ? 'RTO request' : 'buyer info edit'}`,
+            ticket_id: ticket.ticket_id,
+            ticket_object_id: ticket._id.toString()
+          });
+          await ndrOrder.save();
+          console.log(`📦 NDR order updated for ticket ${ticket.ticket_id}: resolution_action=${resAction}`);
+        }
+      } catch (ndrError) {
+        console.error('Failed to update NDR order for ticket:', ndrError);
+        // Non-blocking — ticket is already created successfully
+      }
+    }
 
     res.status(201).json({
       status: 'success',
@@ -948,98 +1074,6 @@ router.post('/:id/rating', auth, [
     res.status(500).json({
       status: 'error',
       message: 'Server error submitting rating'
-    });
-  }
-});
-
-// @desc    Get ticket statistics
-// @route   GET /api/support/statistics/overview
-// @access  Private
-router.get('/statistics/overview', auth, async (req, res) => {
-  try {
-    const userId = req.user._id;
-    const { period = '30' } = req.query;
-    const startDate = moment().subtract(parseInt(period), 'days').startOf('day');
-
-    const stats = await SupportTicket.getTicketStats(userId, startDate.toDate(), new Date());
-    const categoryStats = await SupportTicket.getCategoryStats(startDate.toDate(), new Date());
-
-    const summary = {
-      total_tickets: 0,
-      avg_resolution_time: 0,
-      status_breakdown: {},
-      category_breakdown: categoryStats.filter(cat => cat._id) // Filter out null categories
-    };
-
-    stats.forEach(stat => {
-      summary.total_tickets += stat.count;
-      summary.status_breakdown[stat._id] = {
-        count: stat.count,
-        avg_resolution_time: stat.avg_resolution_time || 0
-      };
-    });
-
-    if (stats.length > 0) {
-      summary.avg_resolution_time = stats.reduce((acc, stat) => acc + (stat.avg_resolution_time || 0), 0) / stats.length;
-    }
-
-    const statusCounts = formatStatusCounts(stats);
-
-    res.json({
-      status: 'success',
-      data: {
-        period_days: parseInt(period),
-        summary,
-        status_counts: statusCounts,
-        detailed_stats: stats
-      }
-    });
-
-  } catch (error) {
-    console.error('Ticket statistics error:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Server error fetching ticket statistics'
-    });
-  }
-});
-
-// @desc    Get SLA report
-// @route   GET /api/support/sla-report
-// @access  Private
-router.get('/sla-report', auth, async (req, res) => {
-  try {
-    const slaReport = await SupportTicket.getSLAReport();
-
-    // Filter by user
-    const userSLAData = slaReport.filter(ticket => ticket.user_id && ticket.user_id.toString() === req.user._id.toString());
-
-    const slaMetrics = {
-      total_tickets: userSLAData.length,
-      sla_breached: userSLAData.filter(t => t.breached_sla).length,
-      avg_response_time: 0,
-      on_time_percentage: 0
-    };
-
-    if (userSLAData.length > 0) {
-      const totalResponseTime = userSLAData.reduce((acc, ticket) => acc + (ticket.response_time_minutes || 0), 0);
-      slaMetrics.avg_response_time = totalResponseTime / userSLAData.length;
-      slaMetrics.on_time_percentage = ((userSLAData.length - slaMetrics.sla_breached) / userSLAData.length * 100).toFixed(2);
-    }
-
-    res.json({
-      status: 'success',
-      data: {
-        metrics: slaMetrics,
-        detailed_tickets: userSLAData
-      }
-    });
-
-  } catch (error) {
-    console.error('SLA report error:', error);
-    res.status(500).json({
-      status: 'error',
-      message: 'Server error fetching SLA report'
     });
   }
 });

@@ -7,6 +7,20 @@ import './AdminTickets.css';
 
 type StatusFilter = 'all' | 'open' | 'in_progress' | 'escalated' | 'resolved' | 'closed';
 type PriorityFilter = 'all' | 'urgent' | 'high' | 'medium' | 'low';
+type CategoryFilter = 'all' | 'pickup_delivery' | 'shipment_ndr_rto' | 'edit_shipment_info' | 'shipment_dispute' | 'finance' | 'billing_taxation' | 'claims' | 'kyc_bank_verification' | 'technical_support' | 'others';
+
+const CATEGORY_LABELS: Record<string, string> = {
+  'pickup_delivery': 'Pickup/Delivery',
+  'shipment_ndr_rto': 'NDR / RTO',
+  'edit_shipment_info': 'Edit Shipment Info',
+  'shipment_dispute': 'Shipment Dispute',
+  'finance': 'Finance',
+  'billing_taxation': 'Billing & Taxation',
+  'claims': 'Claims',
+  'kyc_bank_verification': 'KYC/Bank Verification',
+  'technical_support': 'Technical Support',
+  'others': 'Others'
+};
 
 const AdminTickets: React.FC = () => {
   const navigate = useNavigate();
@@ -25,6 +39,7 @@ const AdminTickets: React.FC = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
@@ -51,6 +66,7 @@ const AdminTickets: React.FC = () => {
         limit,
         status: statusFilter === 'all' ? '' : statusFilter,
         priority: priorityFilter === 'all' ? '' : priorityFilter,
+        category: categoryFilter === 'all' ? '' : categoryFilter,
         date_from: dateFrom,
         date_to: dateTo,
         search: searchTerm.trim()
@@ -65,7 +81,7 @@ const AdminTickets: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, statusFilter, priorityFilter, dateFrom, dateTo, searchTerm]);
+  }, [page, limit, statusFilter, priorityFilter, categoryFilter, dateFrom, dateTo, searchTerm]);
 
   useEffect(() => {
     fetchTickets();
@@ -74,7 +90,7 @@ const AdminTickets: React.FC = () => {
   // Reset to page 1 when filters change
   useEffect(() => {
     setPage(1);
-  }, [statusFilter, priorityFilter, searchTerm, dateFrom, dateTo]);
+  }, [statusFilter, priorityFilter, categoryFilter, searchTerm, dateFrom, dateTo]);
 
   const handleTicketClick = (ticket: AdminTicket) => {
     navigate(`/admin/clients/${ticket.user_id._id}/tickets/${ticket._id}`);
@@ -106,6 +122,7 @@ const AdminTickets: React.FC = () => {
   const handleClearFilters = () => {
     setStatusFilter('all');
     setPriorityFilter('all');
+    setCategoryFilter('all');
     setSearchTerm('');
     setDateFrom('');
     setDateTo('');
@@ -185,6 +202,20 @@ const AdminTickets: React.FC = () => {
             <option value="high">High</option>
             <option value="medium">Medium</option>
             <option value="low">Low</option>
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label htmlFor="category-filter">Category</label>
+          <select
+            id="category-filter"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as CategoryFilter)}
+          >
+            <option value="all">All Categories</option>
+            {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
           </select>
         </div>
 
@@ -300,7 +331,7 @@ const AdminTickets: React.FC = () => {
                       </div>
                     </td>
                     <td>
-                      <span className="category-badge">{ticket.category}</span>
+                      <span className="category-badge">{CATEGORY_LABELS[ticket.category] || ticket.category}</span>
                     </td>
                     <td>
                       {ticket.awb_numbers && ticket.awb_numbers.length > 0 ? (

@@ -1,0 +1,1102 @@
+================================================================================
+                         SHIPSARTHI — PROJECT MAP
+              AI-Friendly Codebase Navigation & Context Reference
+================================================================================
+Last Updated: 2026-02-17
+Tech Stack: Node.js/Express + React 19/TypeScript + MongoDB/Mongoose + Tailwind CSS
+Deployment: Google Cloud Run (backend) + Vercel (frontend)
+Primary Courier: Delhivery | Payment Gateway: HDFC SmartGateway (Juspay)
+
+================================================================================
+TABLE OF CONTENTS
+================================================================================
+1.  PROJECT STRUCTURE OVERVIEW
+2.  BACKEND — ENTRY POINT & CONFIG
+3.  BACKEND — MODELS (Database Schemas)
+4.  BACKEND — ROUTES (API Endpoints)
+5.  BACKEND — SERVICES (Business Logic)
+6.  BACKEND — MIDDLEWARE
+7.  BACKEND — UTILITIES
+8.  BACKEND — SCRIPTS (Admin/Maintenance)
+9.  FRONTEND — ENTRY POINT & CONFIG
+10. FRONTEND — CONTEXTS (Global State)
+11. FRONTEND — SERVICES (API Layer)
+12. FRONTEND — PAGES (Route Components)
+13. FRONTEND — COMPONENTS (Reusable UI)
+14. FRONTEND — UTILITIES & HELPERS
+15. FRONTEND — TYPES & INTERFACES
+16. KEY DATA FLOWS & ARCHITECTURE
+17. KNOWN ISSUES & STUBS
+18. QUICK LOOKUP INDEX
+
+================================================================================
+1. PROJECT STRUCTURE OVERVIEW
+================================================================================
+
+SHIP/
+├── backend/
+│   ├── server.js                  # Express entry point
+│   ├── config/                    # DB connection
+│   ├── models/        (21 files)  # Mongoose schemas
+│   ├── routes/        (24 files)  # REST API endpoints
+│   ├── services/      (13 files)  # Business logic layer
+│   ├── middleware/     (5 files)   # Auth, webhook, DB checks
+│   ├── utils/         (4 files)   # Logger, validators, queue
+│   └── scripts/       (16 files)  # Seed, sync, migration scripts
+├── frontend/
+│   ├── src/
+│   │   ├── App.tsx                # Main routing (all routes defined here)
+│   │   ├── index.tsx              # React entry point
+│   │   ├── config/                # Environment detection
+│   │   ├── contexts/              # AuthContext (global auth state)
+│   │   ├── services/  (16 files)  # API client layer
+│   │   ├── pages/     (45 files)  # Route page components
+│   │   ├── components/(28 files)  # Reusable UI modules
+│   │   ├── utils/     (7 files)   # Cache, logger, formatting
+│   │   └── types/                 # TypeScript interfaces
+│   └── package.json
+├── package.json                   # Root (puppeteer, xlsx)
+├── vercel.json                    # Frontend deployment config
+└── CLOUDRUN_ENV_VARIABLES.txt     # Backend deployment secrets ref
+
+================================================================================
+2. BACKEND — ENTRY POINT & CONFIG
+================================================================================
+
+FILE: backend/server.js (441 lines)
+PURPOSE: Express app initialization, middleware setup, route mounting, WebSocket
+WHAT IT DOES:
+  - Connects to MongoDB via connectDB()
+  - Configures CORS, helmet, rate limiting, compression
+  - Mounts 22+ API route modules at /api/* endpoints
+  - Initializes WebSocket service for real-time updates
+  - Graceful shutdown handlers (SIGTERM, SIGINT)
+  - Global error handling middleware
+WHEN TO LOOK HERE: Adding new route files, changing middleware order, server config
+
+FILE: backend/config/db.js (76 lines)
+PURPOSE: Primary MongoDB Atlas connection with pool config
+EXPORTS: connectDB(), checkDBHealth()
+WHEN TO LOOK HERE: DB connection issues, connection pool tuning, health checks
+
+FILE: backend/config/database.js (44 lines)
+PURPOSE: Legacy/fallback DB connection handler
+NOTE: db.js is the primary config; this is kept for compatibility
+
+================================================================================
+3. BACKEND — MODELS (Database Schemas)
+================================================================================
+
+--- CORE DOMAIN ---
+
+FILE: backend/models/Order.js (859 lines) ★ LARGEST & MOST IMPORTANT MODEL
+PURPOSE: Central order entity — single document contains ALL order context
+EMBEDDED SCHEMAS:
+  - customerSchema: buyer name, phone, email, GSTIN
+  - addressSchema: delivery/pickup with pincode validation
+  - productSchema: items, quantity, pricing, HSN, SKU
+  - packageSchema: weight, L×W×H, volumetric calc
+  - paymentSchema: mode (Prepaid/COD/Pickup/REPL), amounts
+  - delhiverySchema: waybill, tracking URL, pickup status, cancellation
+  - mpsSchema: multi-package shipment tracking
+  - ndrSchema: NDR info (★ SINGLE SOURCE OF TRUTH for NDR — not NDR.js)
+  - billingInfoSchema: zone, weight (grams), charges breakdown, billing status
+KEY INDEXES: user_id+status, user_id+order_date, delhivery_data.waybill (unique)
+VIRTUALS: total_products, total_products_quantity
+PRE-SAVE HOOKS: volumetric weight calc, status history tracking
+INSTANCE METHODS: canBeCancelled(), isInTransit(), updateStatus()
+STATIC METHODS: getOrdersByStatus(), getOrdersCountByStatus()
+WHEN TO LOOK HERE: Any order-related feature, status changes, billing, NDR
+
+FILE: backend/models/User.js (578 lines)
+PURPOSE: Seller/business accounts with KYC, API keys, wallet, documents
+KEY FIELDS: user_type (e-commerce/D2C/manufacturers/enterprise/courier/individual),
+  company_name, GSTIN, phone/email (unique), bank_details (encrypted),
+  KYC status + verification history, API keys (encrypted), wallet_balance,
+  account_status, user_category (New User/Basic/Lite/Advanced)
+KEY INDEXES: phone_number, client_id, api_details.public_key
+PRE-SAVE: client_id generation (SS#####), API key generation, password hashing
+INSTANCE METHODS: comparePassword(), createPasswordResetToken(),
+  createEmailVerificationToken(), OTP management (create, verify, increment, reset)
+STATIC: findByEmailOrPhone()
+VIRTUAL: can_create_shipments (based on KYC + account status)
+WHEN TO LOOK HERE: Auth, registration, KYC, wallet, user categories, API keys
+
+FILE: backend/models/Customer.js (287 lines)
+PURPOSE: End-customer (buyer) database — many customers per seller
+KEY FIELDS: user_id (ref to User), name, phone, email, address, channel,
+  order statistics, tags, social links
+STATICS: findOrCreate(), getCustomersByUser(), getCustomerStats()
+WHEN TO LOOK HERE: Customer management, order creation (buyer info)
+
+FILE: backend/models/NDR.js (430 lines) ⚠ UNUSED BY ROUTES
+PURPOSE: Standalone NDR model for future advanced features
+NOTE: Routes query Order.ndr_info instead. This model has customer comms,
+  agent assignment, auto-resolution rules — none currently wired up.
+WHEN TO LOOK HERE: Planning future NDR features (not current functionality)
+
+FILE: backend/models/Carrier.js (152 lines)
+PURPOSE: Shipping carriers/service types (Delhivery Surface, Air, DTDC, etc.)
+KEY FIELDS: carrier_code (unique, e.g. 'DELHIVERY_SURFACE'), display_name,
+  carrier_group, service_type (surface/air/premium/express),
+  zone_type (standard A-F or regional), weight_slab_type, API config
+STATICS: findActive(), findByCode(), findByGroup()
+WHEN TO LOOK HERE: Adding carriers, rate card association, service types
+
+--- BILLING & FINANCIAL ---
+
+FILE: backend/models/Invoice.js (464 lines)
+PURPOSE: Generated invoices for 15-day billing cycles
+KEY FIELDS: invoice_number (unique), billing_period (start/end, cycle 1-2),
+  GST info (GSTIN, place of supply, IGST flag, SAC code),
+  amount breakdown (subtotal, CGST/SGST/IGST, grand_total),
+  shipment charges array, COD collection, payment status
+WHEN TO LOOK HERE: Invoice generation, GST calculation, billing reports
+
+FILE: backend/models/Transaction.js (402 lines)
+PURPOSE: Wallet transactions (credit/debit) with payment gateway integration
+KEY FIELDS: transaction_id (unique), transaction_type, transaction_category
+  (wallet_recharge, shipping_charge, cod_remittance, refund, penalties, etc.),
+  payment_info (method, gateway HDFC/Razorpay/Cashfree, status),
+  wallet_info (pre/post balance, running balance)
+WHEN TO LOOK HERE: Wallet operations, payment flow, transaction history
+
+FILE: backend/models/BillingCycle.js (282 lines)
+PURPOSE: 15-day billing periods for grouping orders
+KEY FIELDS: cycle_id (unique), period (year, month, cycle_number 1-2),
+  status (open/closed/invoiced), running summary, zone distribution
+WHEN TO LOOK HERE: Billing cycle management, invoice generation triggers
+
+FILE: backend/models/RateCard.js (234 lines)
+PURPOSE: Shipping charges lookup with versioning per user category & carrier
+KEY FIELDS: userCategory, carrier_id, version, effective_from/to, is_current,
+  forwardCharges (weight slabs × zones A-F), rtoCharges, COD charges
+WEIGHT SLABS: 0-250gm, 250-500gm, Add 500gm till 5kg, Upto 5kg,
+  Add 1kg till 10kg, Upto 10kg, Add 1kg
+STATICS: findByCategory(), findByCarrierAndCategory(), createNewVersion()
+WHEN TO LOOK HERE: Pricing, rate changes, weight-based charge calculation
+
+FILE: backend/models/Remittance.js (202 lines)
+PURPOSE: COD collection remittance tracking from courier
+WHEN TO LOOK HERE: COD settlement, remittance reports
+
+FILE: backend/models/WeightDiscrepancy.js (167 lines)
+PURPOSE: Track weight differences (declared vs courier-measured)
+WHEN TO LOOK HERE: Weight dispute handling, charge adjustments
+
+--- LOGISTICS & TRACKING ---
+
+FILE: backend/models/TrackingOrder.js (358 lines)
+PURPOSE: Delhivery tracking data snapshot with event history
+WHEN TO LOOK HERE: Tracking timeline, delivery events
+
+FILE: backend/models/ShipmentTrackingEvent.js (136 lines)
+PURPOSE: Individual tracking event log from webhook
+WHEN TO LOOK HERE: Webhook event storage, scan history
+
+FILE: backend/models/ShipmentDocument.js (127 lines)
+PURPOSE: Shipping labels, POD, EPOD, manifest documents
+WHEN TO LOOK HERE: Document storage, label generation results
+
+--- SUPPORT & COMMUNICATION ---
+
+FILE: backend/models/Support.js (568 lines)
+PURPOSE: Support tickets with conversation threads and file attachments
+EMBEDDED: fileAttachmentSchema, conversationSchema (message_type: user/admin/system)
+AUTO-GEN: ticket_id with category prefix (PD, NR, ES, etc.)
+WHEN TO LOOK HERE: Ticket creation, conversation flow, file uploads
+
+FILE: backend/models/Ticket.js (306 lines)
+PURPOSE: Alternative/legacy ticket system (similar to Support.js)
+WHEN TO LOOK HERE: Legacy ticket references
+
+FILE: backend/models/Notification.js (286 lines)
+PURPOSE: User notifications (order status, wallet, system)
+WHEN TO LOOK HERE: Notification creation, read status tracking
+
+--- OTHER ---
+
+FILE: backend/models/Warehouse.js (290 lines)
+PURPOSE: Seller warehouse/pickup locations
+KEY FIELDS: address, contact person, delhivery_registration_id, is_primary
+WHEN TO LOOK HERE: Warehouse CRUD, Delhivery registration
+
+FILE: backend/models/Product.js (143 lines)
+PURPOSE: Seller product master for quick selection in orders
+WHEN TO LOOK HERE: Product templates, SKU management
+
+FILE: backend/models/Package.js (286 lines)
+PURPOSE: Reusable package templates (dimensions, weight)
+WHEN TO LOOK HERE: Package presets, order creation defaults
+
+FILE: backend/models/Staff.js (111 lines)
+PURPOSE: Admin panel staff accounts with role-based permissions
+KEY FIELDS: role (admin/staff), permissions object (menu + action permissions)
+WHEN TO LOOK HERE: Admin auth, staff management, permission checks
+
+================================================================================
+4. BACKEND — ROUTES (API Endpoints)
+================================================================================
+
+--- MAJOR ROUTES (1000+ lines each) ---
+
+FILE: backend/routes/admin.js (7,669 lines) ★ LARGEST ROUTE FILE
+PURPOSE: Admin panel — manage clients, carriers, rate cards, staff, reports
+KEY ENDPOINTS:
+  GET/POST /dashboard         → Admin stats
+  GET/POST /users             → Client management (list, KYC, category change)
+  GET/POST /carriers          → Carrier management
+  GET/POST /rate-cards        → Rate card upload/edit (Excel support)
+  GET/POST /staff             → Staff accounts + permissions
+  POST /bulk-operations       → Bulk user ops (category, wallet)
+  GET /reports                → Business reports
+  POST /webhook-test          → Simulate Delhivery webhooks
+AUTH: X-Admin-Email + X-Admin-Password headers (or custom middleware)
+WHEN TO LOOK HERE: Any admin panel feature, KYC approval, user management
+
+FILE: backend/routes/orders.js (5,107 lines)
+PURPOSE: Order lifecycle (create, list, update, cancel, bulk import)
+KEY ENDPOINTS:
+  POST /                      → Create single order (rate calc + Delhivery API)
+  GET /                       → List with filters (status, date, payment, search)
+  GET /:order_id              → Order details + tracking
+  PUT /:order_id              → Update order (pre-pickup only)
+  DELETE /:order_id           → Cancel order (auto wallet refund)
+  POST /bulk-import           → Excel/CSV import with validation
+  POST /cancel-bulk           → Batch cancel
+  GET /export                 → Download as Excel
+  POST /regenerate-label      → Regenerate shipping label
+FLOW: Validate → Calculate charges → Create Order → Call Delhivery → Update waybill
+WHEN TO LOOK HERE: Order creation bugs, status issues, bulk operations
+
+FILE: backend/routes/shipping.js (1,476 lines)
+PURPOSE: Shipping operations (rates, tracking, manifests, zone lookup)
+KEY ENDPOINTS:
+  POST /get-rates             → Calculate shipping rates ("Get quote")
+  GET /track/:waybill         → Live tracking
+  POST /generate-manifest     → Pickup manifest
+  GET /zone-lookup            → Zone from pincode pair (Delhivery API)
+  GET /get-waybills           → Pre-allocate waybill numbers
+  POST /bulk-cancel           → Batch cancel at Delhivery
+WHEN TO LOOK HERE: Rate calculation, tracking, zone determination
+
+FILE: backend/routes/auth.js (1,440 lines)
+PURPOSE: Registration, login, password reset, email verification
+KEY ENDPOINTS:
+  POST /register              → New account (with OTP)
+  POST /login                 → Email/phone + password or OTP
+  POST /forgot-password       → Password reset email
+  POST /reset-password        → Reset with token
+  POST /verify-email          → Email token verification
+AUTH: JWT with 24-hour expiry, OTP via MSG91
+WHEN TO LOOK HERE: Login/register bugs, token issues, OTP flow
+
+FILE: backend/routes/users.js (1,420 lines)
+PURPOSE: User profile, KYC documents, wallet, API keys, label settings
+KEY ENDPOINTS:
+  GET /profile                → User profile + KYC status
+  PUT /profile                → Update profile
+  POST /upload-document       → KYC documents (PAN, Aadhar, GST, bank)
+  GET /wallet                 → Wallet balance + history
+  POST /wallet-recharge       → Initiate HDFC payment
+  GET /api-keys               → Get API keys
+  POST /regenerate-api-keys   → Rotate API keys
+  PUT /label-settings         → Label template preferences
+WHEN TO LOOK HERE: Profile updates, KYC flow, wallet recharge
+
+--- MID-SIZE ROUTES (600-1300 lines) ---
+
+FILE: backend/routes/billing.js (1,307 lines)
+PURPOSE: Billing cycles and invoice management
+KEY ENDPOINTS:
+  GET /cycles                 → List billing cycles
+  POST /generate-invoice      → Trigger invoice for cycle
+  GET /invoices               → Invoice list with download
+  GET /remittances            → COD remittance list
+WHEN TO LOOK HERE: Billing bugs, invoice generation, cycle management
+
+FILE: backend/routes/ndr.js (605 lines)
+PURPOSE: NDR (Non-Delivery Report) management
+KEY ENDPOINTS:
+  GET /                       → List NDR orders (tabs: action_required/action_taken/delivered/rto)
+  GET /:order_id              → NDR details
+  POST /:order_id/reattempt   → Submit re-attempt to Delhivery
+  POST /:order_id/rto         → Submit RTO to Delhivery
+  POST /:order_id/hold        → Hold shipment
+  GET /:order_id/actions      → Allowed actions (by NSL code)
+FLOW: User picks action → delhiveryService.updateNDR() → Update Order.ndr_info
+NOTE: Queries Order collection (ndr_info), NOT standalone NDR collection
+WHEN TO LOOK HERE: NDR actions, re-attempt/RTO flow, NSL code handling
+
+FILE: backend/routes/dashboard.js (919 lines)
+PURPOSE: Dashboard analytics and KPIs
+KEY ENDPOINTS:
+  GET /stats                  → Order counts by status
+  GET /revenue                → Revenue metrics
+  GET /performance            → On-time delivery %, NDR rate
+  GET /orders-timeline        → Volume trends
+WHEN TO LOOK HERE: Dashboard data issues, new metrics
+
+FILE: backend/routes/support.js (1,102 lines)
+PURPOSE: Support ticket management
+KEY ENDPOINTS:
+  POST /tickets               → Create ticket
+  GET /tickets                → List with filters
+  POST /tickets/:id/reply     → Add message
+  POST /tickets/:id/close     → Resolve ticket
+WHEN TO LOOK HERE: Ticket flow, conversation threads, file attachments
+
+FILE: backend/routes/warehouses.js (944 lines)
+PURPOSE: Warehouse/pickup location CRUD + Delhivery registration
+WHEN TO LOOK HERE: Warehouse creation, Delhivery warehouse sync
+
+FILE: backend/routes/user.js (702 lines)
+PURPOSE: Single user profile routes (similar to users.js, singular mount)
+WHEN TO LOOK HERE: Profile operations for logged-in user
+
+--- SMALLER ROUTES ---
+
+FILE: backend/routes/tools.js (628 lines)        → Misc utilities
+FILE: backend/routes/tickets.js (537 lines)       → Alt ticket system
+FILE: backend/routes/otp.js (495 lines)           → OTP generation/verification
+FILE: backend/routes/packages.js (484 lines)      → Package template CRUD
+FILE: backend/routes/invoices.js (422 lines)      → Invoice list/download
+FILE: backend/routes/customers.js (367 lines)     → Customer CRUD
+FILE: backend/routes/products.js (259 lines)      → Product master CRUD
+FILE: backend/routes/remittances.js               → COD remittance tracking
+FILE: backend/routes/weightDiscrepancies.js       → Weight dispute reports
+FILE: backend/routes/notifications.js (304 lines) → Notification management
+FILE: backend/routes/enquiry.js                   → Landing page lead form
+FILE: backend/routes/sitemap.js                   → XML sitemap for SEO
+
+--- WEBHOOK ROUTES ---
+
+FILE: backend/routes/webhooks.js (304 lines)
+PURPOSE: Delhivery webhook receivers
+KEY ENDPOINTS:
+  POST /delhivery/status-update     → Legacy webhook (direct processing)
+  POST /v1/delhivery/scan-status    → v1 webhook (queued via webhookQueue)
+  POST /delhivery/epod              → Proof of delivery
+  POST /delhivery/sorter-image      → Weight images
+  POST /delhivery/qc-image          → QC images
+AUTH: webhookAuth middleware (X-API-Key + optional Bearer token)
+⚠ v1 webhook does NOT populate Order.ndr_info when status='ndr' (known issue)
+WHEN TO LOOK HERE: Webhook processing, status mapping, NDR creation gaps
+
+================================================================================
+5. BACKEND — SERVICES (Business Logic)
+================================================================================
+
+FILE: backend/services/delhiveryService.js (2,566 lines) ★ LARGEST SERVICE
+PURPOSE: ALL Delhivery API integrations
+KEY METHODS:
+  createShipment()    → Create SPS with pre-fetched waybill
+  getWaybill()        → Pre-allocate waybill numbers
+  trackShipment()     → Get tracking info for waybill
+  requestPickup()     → Schedule pickup
+  createManifest()    → Generate manifest
+  cancelShipment()    → Cancel at Delhivery
+  updateNDR()         → Submit NDR action via POST /api/p/update {waybill, act}
+  checkNDRStatus()    → Poll via GET /api/cmu/get_bulk_upl/{UPL_ID}
+AUTH: Bearer Token (Token {API_KEY})
+API: Handles staging + production URLs, retries, 30sec timeout
+WHEN TO LOOK HERE: Any Delhivery API call, shipment creation, NDR submission
+
+FILE: backend/services/rateCardService.js (469 lines)
+PURPOSE: Calculate shipping charges (weight × zone × category × carrier)
+KEY METHODS:
+  getRateCard()                    → Fetch rate card (5-min cache)
+  calculateShippingCharges()       → Legacy (Surface default)
+  calculateShippingChargesByCarrier() → New (carrier-specific)
+  calculateForwardCharges()        → Weight-slab logic
+  calculateRTOCharges()            → Return shipment charges
+WEIGHT: All stored in GRAMS internally; volumetric = L×B×H/5000 kg → grams
+ZONES: A-F standard (or regional: City/Regional/Metro/RestOfIndia/SpecialZone)
+COD: Percentage + minimum + 18% GST if flag set
+WHEN TO LOOK HERE: Pricing bugs, rate card changes, charge calculation logic
+
+FILE: backend/services/webhookService.js (794 lines)
+PURPOSE: Process Delhivery webhooks → update Order + tracking entities
+KEY METHODS:
+  mapDelhiveryStatus()           → Map Delhivery codes to internal statuses
+  processScanPushWebhook()       → Handle scan status (v1 path)
+  processEPODWebhook()           → Handle proof of delivery
+  processSorterImageWebhook()    → Handle weight images
+  processQCImageWebhook()        → Handle QC images
+STATUS MAPPING: Distinguishes forward vs reverse by StatusType (UD/DL/RT/PP/PU/CN)
+⚠ Does NOT populate Order.ndr_info when status maps to 'ndr'
+WHEN TO LOOK HERE: Webhook processing bugs, status mapping, missing NDR data
+
+FILE: backend/services/trackingService.js (1,259 lines)
+PURPOSE: Unified tracking interface with caching
+KEY METHODS:
+  getTracking()           → Current status for waybill
+  trackShipmentByAWB()    → Query Delhivery API
+  getShipmentStatus()     → Consolidated status + timeline
+WHEN TO LOOK HERE: Tracking display issues, stale data, API errors
+
+FILE: backend/services/labelRenderer.js (1,097 lines)
+PURPOSE: Generate shipping labels (SVG/PNG) via Puppeteer
+FORMATS: Standard, 2-in-1, 4-in-1, Thermal
+OUTPUT: Base64 or Cloudinary URL
+WHEN TO LOOK HERE: Label generation, format issues, missing fields
+
+FILE: backend/services/emailService.js (450 lines)
+PURPOSE: Transactional emails via Nodemailer (Gmail/SendGrid)
+TEMPLATES: Order confirm, shipping notify, delivery confirm, NDR updates, payment
+
+FILE: backend/services/websocketService.js (319 lines)
+PURPOSE: Real-time order updates via WebSocket
+WHEN TO LOOK HERE: Live tracking, real-time notification delivery
+
+FILE: backend/services/invoiceService.js (299 lines)
+PURPOSE: Generate invoice documents from billing cycles
+WHEN TO LOOK HERE: Invoice PDF generation, tax calculation
+
+FILE: backend/services/msg91Service.js (295 lines)
+PURPOSE: SMS via MSG91 (OTP, order updates, NDR notifications)
+WHEN TO LOOK HERE: OTP delivery, SMS template issues
+
+FILE: backend/services/googleAuthService.js (291 lines)
+PURPOSE: Google OAuth2 integration
+WHEN TO LOOK HERE: Google login issues, token validation
+
+FILE: backend/services/hdfcPaymentService.js (223 lines)
+PURPOSE: HDFC SmartGateway payment integration (Juspay)
+METHODS: createSession(), handleCallback(), verifyStatus()
+WHEN TO LOOK HERE: Payment flow, wallet recharge, callback handling
+
+FILE: backend/services/excelService.js (180 lines)
+PURPOSE: Parse/generate Excel (XLSX) files
+WHEN TO LOOK HERE: Bulk import parsing, data export
+
+FILE: backend/services/cloudinaryService.js (134 lines)
+PURPOSE: Image upload to Cloudinary (logos, documents)
+WHEN TO LOOK HERE: File upload issues, image transformation
+
+================================================================================
+6. BACKEND — MIDDLEWARE
+================================================================================
+
+FILE: backend/middleware/auth.js (104 lines)
+PURPOSE: JWT authentication for user routes
+EXPORTS: auth() (required), adminAuth(), optionalAuth() (no-throw)
+CHECKS: Valid JWT, user exists, account not suspended
+SETS ON REQ: user object, userId
+WHEN TO LOOK HERE: 401 errors, auth flow, token issues
+
+FILE: backend/middleware/dbReady.js (75 lines)
+PURPOSE: Check MongoDB connection before processing requests
+RETURNS: 503 if DB not connected (state !== 1)
+WHEN TO LOOK HERE: DB connection errors, 503 responses
+
+FILE: backend/middleware/webhookAuth.js (168 lines)
+PURPOSE: Authenticate Delhivery webhooks
+VALIDATES: X-API-Key header, optional Bearer token, optional IP whitelist
+WHEN TO LOOK HERE: Webhook auth failures, IP whitelist config
+
+================================================================================
+7. BACKEND — UTILITIES
+================================================================================
+
+FILE: backend/utils/logger.js (181 lines)
+PURPOSE: Centralized logging with file output + color console
+LOG FILES: app-DATE.log, error-DATE.log (auto-rotated)
+EXPORTS: Singleton logger.error(), .warn(), .info(), .debug()
+WHEN TO LOOK HERE: Logging config, adding structured log categories
+
+FILE: backend/utils/validators.js (177 lines)
+PURPOSE: Webhook payload validation and sanitization
+VALIDATES: ScanPush, EPOD (base64), Sorter images, QC images
+WHEN TO LOOK HERE: Webhook payload issues, data sanitization
+
+FILE: backend/utils/webhookQueue.js (229 lines)
+PURPOSE: In-memory async webhook processing with retry
+FEATURES: Max queue size, exponential backoff (3 retries: 1s, 2s, 4s),
+  30sec job timeout, event loop yielding via setImmediate
+WHEN TO LOOK HERE: Webhook processing delays, retry logic, queue overflow
+
+FILE: backend/utils/orderIdGenerator.js
+PURPOSE: Generate unique order IDs (timestamp/UUID based)
+WHEN TO LOOK HERE: Order ID format, collision issues
+
+================================================================================
+8. BACKEND — SCRIPTS (Admin/Maintenance)
+================================================================================
+
+DIR: backend/scripts/
+
+seedDelhiveryAir.js          → Seed Delhivery Air carrier + rate card
+seedRateCards.js             → Seed initial rate cards for all user categories
+sync-all-orders-from-delhivery.js → Bulk sync order status with Delhivery
+track-all-awb.js             → Bulk tracking refresh for all AWBs
+fetch-raw-delhivery-status.js → Debug: fetch raw Delhivery API responses
+captureHdfcCallback.js       → Handle HDFC payment callbacks
+reconcileHdfcTransactions.js → Reconcile HDFC transactions with wallet
+migrateCarriers.js           → Migrate rate cards to new Carrier model
+testHdfcUat.js               → Test HDFC payment gateway (UAT)
+cleanup-unregistered-warehouses.js → Clean orphaned warehouses
+delete-users.js              → Remove test users
+sync-order-by-awb.js         → Sync single order by AWB
+fix-warehouse-index.js       → Fix warehouse DB indexes
+update-user-categories.js    → Bulk update user pricing tiers
+
+WHEN TO LOOK HERE: DB seeding, data migration, payment reconciliation
+
+================================================================================
+9. FRONTEND — ENTRY POINT & CONFIG
+================================================================================
+
+FILE: frontend/src/index.tsx (main.tsx)
+PURPOSE: React app entry point
+INITIALIZES: React root, error handler, reportWebVitals
+
+FILE: frontend/src/App.tsx ★ ALL ROUTES DEFINED HERE
+PURPOSE: Main router with all application routes
+ROUTE CATEGORIES:
+  Public:    Landing, Login, Register, ForgotPassword, About, Contact,
+             Tracking, PublicRateCalculator, Policies
+  Protected: Dashboard, Orders, NDR, Billing, Invoices, Warehouses,
+             Support, Remittances, Tools, Settings, Customers, Notifications
+  Admin:     AdminDashboard, AdminClients, AdminTickets, AdminBilling,
+             AdminOrders, AdminNDR, AdminRateCards, AdminCarriers,
+             AdminStaffManagement, AdminManualMapping
+WRAPPERS: ProtectedRoute (auth check), AdminLayout (admin pages)
+WHEN TO LOOK HERE: Adding new pages/routes, route protection changes
+
+FILE: frontend/src/config/environment.ts
+PURPOSE: Auto-detect dev vs production, configure API/WebSocket URLs
+DEV: http://localhost:5000/api
+PROD: https://shipsarthisolutions-751713877703.europe-west1.run.app/api
+WHEN TO LOOK HERE: API URL issues, environment detection
+
+FILE: frontend/package.json
+KEY DEPS: React 19.1.1, React Router DOM 7.8.2, TypeScript 4.9.5,
+  Tailwind CSS 4.1.13, Axios 1.11.0, Chart.js 4.5.0,
+  React Hook Form 7.62.0, Lucide React 0.542.0, Moment 2.30.1
+
+================================================================================
+10. FRONTEND — CONTEXTS (Global State)
+================================================================================
+
+FILE: frontend/src/contexts/AuthContext.tsx
+PURPOSE: Global auth state management
+EXPORTS: AuthContext, useAuth() hook, AuthProvider component
+STATE: user (User | null), token, loading, error
+METHODS:
+  login()        → Auth with email/password, stores token + user
+  register()     → Registration flow
+  logout()       → Clear auth + localStorage
+  refreshUser()  → Refetch profile from server
+FEATURES: Impersonation token from URL params, auto-init from localStorage
+WHEN TO LOOK HERE: Auth state bugs, login/logout flow, token handling
+
+================================================================================
+11. FRONTEND — SERVICES (API Layer)
+================================================================================
+
+FILE: frontend/src/services/api.ts ★ BASE API CLIENT
+PURPOSE: Centralized Axios client with interceptors, retry, deduplication
+CLASS: apiService (singleton)
+METHODS: get<T>, post<T>, put<T>, patch<T>, delete<T>, uploadFile<T>
+FEATURES:
+  - Auto Bearer token attachment
+  - Exponential backoff retry (3 attempts, max 5sec)
+  - Request deduplication for payments/tickets
+  - Request ID tracking + performance timing
+  - 30sec timeout, no retry on 401/4xx (except 429)
+WHEN TO LOOK HERE: API errors, retry behavior, request logging
+
+FILE: frontend/src/services/authService.ts
+PURPOSE: Auth API methods (login, register, OTP, password reset)
+WHEN TO LOOK HERE: Auth API calls, OTP flow
+
+FILE: frontend/src/services/orderService.ts
+PURPOSE: Order CRUD with 5-min cache
+METHODS: getOrders, getOrderById, createOrder, updateOrder, deleteOrder,
+  generateAWB, requestPickup, cancelOrder, getOrderStats
+WHEN TO LOOK HERE: Order list/detail bugs, creation flow
+
+FILE: frontend/src/services/ndrService.ts
+PURPOSE: NDR management with NSL code validation
+METHODS: getNDROrders, takeNDRAction, getNDRStatus, bulkNDRAction,
+  getNDRStats, validateNSLCode, getAllowedNSLCodes
+NSL CODES:
+  RE-ATTEMPT: EOD-74, EOD-15, EOD-104, EOD-43, EOD-86, EOD-11, EOD-69, EOD-6
+  PICKUP_RESCHEDULE: EOD-777, EOD-21
+WHEN TO LOOK HERE: NDR action bugs, NSL code validation
+
+FILE: frontend/src/services/shippingService.ts
+PURPOSE: Rate calculation, zone lookup, pincode validation
+METHODS: calculateShippingCharges, getRateCard, getZoneFromPincode, validatePincode
+WHEN TO LOOK HERE: Rate calculation in UI, zone lookup
+
+FILE: frontend/src/services/walletService.ts
+PURPOSE: Wallet balance + HDFC payment flow
+METHODS: getWalletBalance, initiatePayment, checkPaymentStatus
+PATTERN: Observer for wallet updates (subscribe/unsubscribe)
+WHEN TO LOOK HERE: Wallet display, payment initiation, balance sync
+
+FILE: frontend/src/services/adminService.ts
+PURPOSE: Admin panel API (clients, dashboard, impersonation, search, staff)
+METHODS: getDashboard, getClients, updateClientStatus, changeUserCategory,
+  impersonateClient, globalSearch, uploadManualMapping, staff CRUD,
+  KYC approval/reject, rechargeWallet, weight discrepancies
+PERMISSIONS: dashboard, clients, orders, tickets, billing, remittances,
+  ndr, weight_discrepancies, wallet_recharge, rate_cards, carriers
+WHEN TO LOOK HERE: Admin panel features, client management
+
+FILE: frontend/src/services/userService.ts
+PURPOSE: Profile management, KYC document upload
+WHEN TO LOOK HERE: Profile edit, document upload
+
+FILE: frontend/src/services/ticketService.ts
+PURPOSE: Support tickets (create, reply, status, stats)
+WHEN TO LOOK HERE: Ticket flow, conversation
+
+FILE: frontend/src/services/warehouseService.ts
+PURPOSE: Warehouse CRUD
+WHEN TO LOOK HERE: Warehouse management
+
+FILE: frontend/src/services/invoiceService.ts
+PURPOSE: Invoice list, detail, download (PDF/Excel)
+WHEN TO LOOK HERE: Invoice display, download
+
+FILE: frontend/src/services/dashboardService.ts
+PURPOSE: Dashboard metrics (orders, revenue, NDR, RTO, COD)
+WHEN TO LOOK HERE: Dashboard data
+
+FILE: frontend/src/services/notificationService.ts
+PURPOSE: Real-time notifications via WebSocket
+FEATURES: Auto-reconnect (5 attempts, 5sec), throttled connections
+TYPES: bulk_announcement, client_comment, kyc_update, wallet_recharge,
+  ticket_update, billing_generated, order_update, category_change
+WHEN TO LOOK HERE: Notification delivery, WebSocket issues
+
+FILE: frontend/src/services/rateCardService.ts
+PURPOSE: Rate card display + zone/weight definitions
+ZONES: A (Local), B (Regional <500km), C (Metro <2500km),
+  D (Rest India), E/F (NE/J&K/>2500km)
+WHEN TO LOOK HERE: Rate card UI, zone definitions
+
+FILE: frontend/src/services/customerService.ts → Customer CRUD + import
+FILE: frontend/src/services/remittanceService.ts → COD remittance
+FILE: frontend/src/services/enquiryService.ts → Landing page lead form
+FILE: frontend/src/services/otpService.ts → OTP send/verify
+
+================================================================================
+12. FRONTEND — PAGES (Route Components)
+================================================================================
+
+--- USER PAGES ---
+
+FILE: frontend/src/pages/Dashboard.tsx
+PURPOSE: Main user dashboard with metrics and charts
+METRICS: Today orders, revenue, avg shipping cost, status breakdown,
+  NDR stats, RTO stats, COD collection
+FEATURES: Pie chart, date range filters, wallet balance, quick actions
+SIDEBAR: Active tab extension via React Portal with SVG concave curves
+WHEN TO LOOK HERE: Dashboard layout, metrics display, chart issues
+
+FILE: frontend/src/pages/Orders.tsx ★ MAIN ORDER MANAGEMENT
+PURPOSE: Order list with tabs, search, bulk actions
+TABS: new, ready_to_ship, pickups_manifests, in_transit,
+  out_for_delivery, delivered, ndr, rto, all, lost
+FEATURES: Search (order/AWB/phone), bulk actions (AWB/pickup/cancel/labels),
+  date range, payment mode, warehouse filters, pagination (20/page)
+CHILDREN: OrderCreationModal, TrackingModal, BulkActionBar, PickupRequestModal
+WHEN TO LOOK HERE: Order list bugs, filter issues, bulk action flow
+
+FILE: frontend/src/pages/OrderDetails.tsx
+PURPOSE: Single order detail view with status timeline
+WHEN TO LOOK HERE: Order detail display, action buttons
+
+FILE: frontend/src/pages/NDR.tsx
+PURPOSE: NDR management with action tabs
+TABS: action_required, action_taken, delivered, rto, all
+ACTIONS: RE-ATTEMPT, PICKUP_RESCHEDULE (validated by NSL code)
+FEATURES: Bulk select, max 3 attempts check, UPL ID tracking, time recommendation
+WHEN TO LOOK HERE: NDR UI, action submission, tab filtering
+
+FILE: frontend/src/pages/Billing.tsx
+PURPOSE: Wallet transactions (credit/debit), statement download
+WHEN TO LOOK HERE: Transaction list, wallet balance display
+
+FILE: frontend/src/pages/Invoices.tsx (InvoiceList.tsx) + InvoiceDetail.tsx
+PURPOSE: Invoice browsing and detail with GST breakdown
+WHEN TO LOOK HERE: Invoice display, download
+
+FILE: frontend/src/pages/Remittances.tsx + RemittanceDetail.tsx
+PURPOSE: COD remittance tracking
+WHEN TO LOOK HERE: COD settlement display
+
+FILE: frontend/src/pages/Support.tsx + TicketDetail.tsx
+PURPOSE: Support ticket creation, conversation, status management
+WHEN TO LOOK HERE: Ticket UI, message flow
+
+FILE: frontend/src/pages/Profile.tsx
+PURPOSE: Read-only user profile display (KYC, API keys, company)
+WHEN TO LOOK HERE: Profile display issues
+
+FILE: frontend/src/pages/AccountSettings.tsx
+PURPOSE: Editable profile, address, bank, password, document uploads
+WHEN TO LOOK HERE: Profile edit form, document upload
+
+FILE: frontend/src/pages/WarehouseManagement.tsx + AddWarehouse.tsx
+PURPOSE: Warehouse list + create/edit form
+WHEN TO LOOK HERE: Warehouse CRUD UI
+
+FILE: frontend/src/pages/Customers.tsx
+PURPOSE: Customer directory with search, import, create
+WHEN TO LOOK HERE: Customer management
+
+FILE: frontend/src/pages/Tracking.tsx + TrackingDetail.tsx
+PURPOSE: Public tracking (no login required) — enter AWB to track
+WHEN TO LOOK HERE: Public tracking page
+
+FILE: frontend/src/pages/AutofillPackage.tsx + AutofillProduct.tsx
+PURPOSE: Saved templates for quick order creation
+WHEN TO LOOK HERE: Package/product template management
+
+FILE: frontend/src/pages/RateCalculator.tsx + PublicRateCalculator.tsx
+PURPOSE: Shipping rate calculator (auth + public versions)
+WHEN TO LOOK HERE: Rate calculation UI
+
+FILE: frontend/src/pages/ManageLabel.tsx
+PURPOSE: Label format and printer settings
+WHEN TO LOOK HERE: Label preferences
+
+FILE: frontend/src/pages/WeightDiscrepancies.tsx
+PURPOSE: Weight dispute management for users
+WHEN TO LOOK HERE: Dispute UI
+
+FILE: frontend/src/pages/Notifications.tsx → Notification center
+FILE: frontend/src/pages/Tools.tsx → Utility tools hub
+FILE: frontend/src/pages/Channel.tsx → Multi-channel integration settings
+FILE: frontend/src/pages/AssignCourier.tsx → Courier selection
+FILE: frontend/src/pages/PaymentConfirmation.tsx → Payment result page
+FILE: frontend/src/pages/CreditNotes.tsx + DebitNotes.tsx → Financial adjustments
+
+--- PUBLIC/STATIC PAGES ---
+
+FILE: frontend/src/pages/Landing.tsx → Public homepage (hero, features, contact form)
+FILE: frontend/src/pages/Login.tsx → User login (email/phone + password/OTP)
+FILE: frontend/src/pages/Register.tsx → Multi-step registration
+FILE: frontend/src/pages/ForgotPassword.tsx → Password recovery
+FILE: frontend/src/pages/About.tsx → Company info
+FILE: frontend/src/pages/Contact.tsx → Contact form
+FILE: frontend/src/pages/PrivacyPolicy.tsx, TermsConditions.tsx, ReturnPolicy.tsx → Legal
+FILE: frontend/src/pages/ShipmentCancellation.tsx, OrderCancellation.tsx → Self-service cancel
+
+--- ADMIN PAGES ---
+
+FILE: frontend/src/pages/AdminLogin.tsx
+PURPOSE: Admin + staff authentication (separate from user login)
+WHEN TO LOOK HERE: Admin login issues
+
+FILE: frontend/src/pages/AdminDashboard.tsx
+PURPOSE: Admin overview (total/active/pending clients, orders, registrations)
+WHEN TO LOOK HERE: Admin dashboard metrics
+
+FILE: frontend/src/pages/AdminClients.tsx
+PURPOSE: Client list with search, filters, actions (impersonate, category, wallet)
+WHEN TO LOOK HERE: Client management UI
+
+FILE: frontend/src/pages/AdminClientDashboard.tsx
+PURPOSE: Single client overview from admin perspective
+WHEN TO LOOK HERE: Client detail admin view
+
+FILE: frontend/src/pages/AdminKYC.tsx
+PURPOSE: KYC document verification + approval/rejection
+WHEN TO LOOK HERE: KYC approval flow
+
+FILE: frontend/src/pages/AdminOrders.tsx
+PURPOSE: All orders across all clients (grouped by client)
+WHEN TO LOOK HERE: Admin order oversight
+
+FILE: frontend/src/pages/AdminNDR.tsx ⚠ STUB — "Implementation in Progress"
+PURPOSE: Placeholder for admin NDR management
+WHEN TO LOOK HERE: Building admin NDR feature
+
+FILE: frontend/src/pages/AdminManualMapping.tsx (NEW — untracked)
+PURPOSE: Manual AWB mapping via Excel upload
+FEATURES: Template download, service type selection, batch error reporting
+WHEN TO LOOK HERE: Manual carrier mapping
+
+FILE: frontend/src/pages/AdminTickets.tsx + AdminClientTickets.tsx
+PURPOSE: Admin support ticket management
+WHEN TO LOOK HERE: Admin ticket handling
+
+FILE: frontend/src/pages/AdminBilling.tsx → Client billing admin
+FILE: frontend/src/pages/AdminRemittances.tsx → COD remittance admin
+FILE: frontend/src/pages/AdminWalletRecharge.tsx → Admin wallet top-up
+FILE: frontend/src/pages/AdminWeightDiscrepancies.tsx → Dispute resolution
+FILE: frontend/src/pages/AdminRateCard.tsx + AdminRateCardCategory.tsx → Rate card mgmt
+FILE: frontend/src/pages/AdminCarriers.tsx + AdminCarrierRates.tsx → Carrier config
+FILE: frontend/src/pages/AdminStaffManagement.tsx → Staff accounts + permissions
+FILE: frontend/src/pages/AdminTicketSummary.tsx → Ticket analytics
+
+================================================================================
+13. FRONTEND — COMPONENTS (Reusable UI)
+================================================================================
+
+--- LAYOUT ---
+
+FILE: frontend/src/components/Layout.tsx
+PURPOSE: Main layout for authenticated user pages
+FEATURES: Responsive sidebar (collapsible), active tab with SVG Portal curves,
+  wallet balance (real-time sync), profile dropdown, search, WebSocket notifications,
+  periodic wallet refresh (3min), profile refresh (5min), rate limit protection
+CSS: Layout.css
+WHEN TO LOOK HERE: Sidebar issues, layout bugs, wallet display, navigation
+
+FILE: frontend/src/components/AdminLayout.tsx
+PURPOSE: Admin panel layout with role-based sidebar
+FEATURES: Global search with debounce (300ms), result categories (orders/clients/
+  packages/customers), staff/admin role differentiation
+MENU: Dashboard, Clients, Tickets, Billing, Remittances, Orders, NDR,
+  Wallet Recharge, Weight Discrepancies, Carriers*, Staff*, Rate Cards* (*admin only)
+WHEN TO LOOK HERE: Admin sidebar, search, role-based menu
+
+FILE: frontend/src/components/Footer.tsx → Website footer
+FILE: frontend/src/components/ProtectedRoute.tsx → Auth check + redirect wrapper
+FILE: frontend/src/components/LocationGate.tsx → Location verification
+
+--- MODALS ---
+
+FILE: frontend/src/components/OrderCreationModal.tsx ★ COMPLEX
+PURPOSE: Full order creation form
+FEATURES: Order ID gen, warehouse select, customer auto-fill, package/product
+  selection, multi-box B2C, pincode validation (API), shipping charge calc,
+  wallet balance check, payment mode (COD/Prepaid), inline notifications
+WHEN TO LOOK HERE: Order creation bugs, form validation, charge calculation
+
+FILE: frontend/src/components/TrackingModal.tsx → AWB tracking display
+FILE: frontend/src/components/PickupRequestModal.tsx → Request pickup for ready orders
+FILE: frontend/src/components/LabelFormatModal.tsx → Label print format selection
+FILE: frontend/src/components/BulkResultModal.tsx → Bulk action results (success/fail)
+FILE: frontend/src/components/OTPVerificationModal.tsx → OTP entry for 2FA
+FILE: frontend/src/components/RechargeModal.tsx → Wallet recharge payment flow
+FILE: frontend/src/components/AdminTicketModal.tsx → Admin ticket create/edit
+FILE: frontend/src/components/ManualInvoiceUploadModal.tsx → Upload invoices
+FILE: frontend/src/components/PackageCreationModal.tsx → Package template form
+FILE: frontend/src/components/ProductCreationModal.tsx → Product template form
+FILE: frontend/src/components/DocumentViewerModal.tsx → KYC/invoice doc viewer
+
+--- UI COMPONENTS ---
+
+FILE: frontend/src/components/BulkActionBar.tsx
+PURPOSE: Floating bar for bulk order operations
+BUTTONS: Generate AWB, Create Pickup, Cancel, Print Labels, Need Help
+LABEL FORMATS: Thermal 4x6, Standard 4x6, 2-in-1 A4, 4-in-1 A4
+WHEN TO LOOK HERE: Bulk action UI, label format selection
+
+FILE: frontend/src/components/AWBLink.tsx → Clickable AWB with tracking modal
+FILE: frontend/src/components/ShippingCalculator.tsx → Real-time rate calculator
+FILE: frontend/src/components/PriceList.tsx → Rate card display
+FILE: frontend/src/components/PriorityOverview.tsx → Priority orders widget
+FILE: frontend/src/components/ProfileDropdown.tsx → User menu (logout, settings)
+FILE: frontend/src/components/NotificationBell.tsx → Notification icon + badge
+FILE: frontend/src/components/GoogleAuthButton.tsx → Google OAuth button
+FILE: frontend/src/components/DocumentViewer.tsx → KYC document viewer
+FILE: frontend/src/components/KYCApprovalPanel.tsx → Admin KYC approval interface
+FILE: frontend/src/components/InvoiceManagementView.tsx → Invoice listing
+FILE: frontend/src/components/BillingClientList.tsx → Admin billing client list
+
+================================================================================
+14. FRONTEND — UTILITIES & HELPERS
+================================================================================
+
+FILE: frontend/src/utils/dataCache.ts
+PURPOSE: localStorage cache with TTL (default 30min)
+METHODS: set<T>(key,data,ttl), get<T>(key), getStale<T>(key), clear, clearAll
+PREFIX: 'app_cache_'
+WHEN TO LOOK HERE: Stale data issues, cache invalidation
+
+FILE: frontend/src/utils/errorHandler.ts
+PURPOSE: Global error tracking (unhandled rejections, global errors)
+METHODS: trackApiError, trackSyncIssue, trackPerformanceIssue
+WHEN TO LOOK HERE: Error tracking, unhandled exceptions
+
+FILE: frontend/src/utils/logger.ts
+PURPOSE: Structured logging (debug/info/warn/error + API + DB + sync + perf)
+WHEN TO LOOK HERE: Frontend logging, debug output
+
+FILE: frontend/src/utils/dateFormat.ts
+PURPOSE: Date formatting utilities
+EXPORTS: formatDate (DD/MM/YYYY), formatDateTime (DD/MM/YYYY HH:MM AM/PM),
+  formatTime, formatDateSmart (Today/Yesterday/date)
+WHEN TO LOOK HERE: Date display issues
+
+FILE: frontend/src/utils/orderIdGenerator.ts → Generate unique order IDs
+FILE: frontend/src/utils/userStorage.ts → localStorage user data get/set/clear
+FILE: frontend/src/utils/requestDeduplicator.ts → Prevent duplicate API calls
+
+================================================================================
+15. FRONTEND — TYPES & INTERFACES
+================================================================================
+
+FILE: frontend/src/types/index.ts (196 lines)
+EXPORTS:
+  User         → Full profile with KYC, bank, documents, API details
+  Document     → KYC document with status
+  Order        → Order basic interface
+  Warehouse    → Location details
+  SupportTicket → Ticket with conversations
+  Conversation → Message exchange
+  DashboardMetrics → KPIs
+  LoginResponse → Auth response with token
+  AuthContextType → Context shape
+  RegisterData → Signup form
+USER CATEGORIES: Basic User, Lite User, New User, Advanced, Advanced User
+ACCOUNT STATUSES: active, inactive, suspended, pending_verification
+KYC STATUSES: pending, verified, rejected
+WHEN TO LOOK HERE: TypeScript type definitions, adding new interfaces
+
+================================================================================
+16. KEY DATA FLOWS & ARCHITECTURE
+================================================================================
+
+--- ORDER CREATION FLOW ---
+1. User fills OrderCreationModal (frontend)
+2. Frontend validates, calls shippingService.calculateShippingCharges()
+3. POST /api/orders → auth middleware → validate input
+4. rateCardService.calculateShippingChargesByCarrier() (zone from Delhivery API)
+5. Create Order document in MongoDB
+6. delhiveryService.createShipment() → Delhivery API → waybill + label_url
+7. Update Order.delhivery_data with response
+8. labelRenderer generates shipping label
+9. emailService sends confirmation
+10. Return order with waybill to frontend
+
+--- NDR WORKFLOW ---
+1. Delhivery webhook → /v1/delhivery/scan-status (webhooks.js)
+2. webhookQueue enqueues for async processing
+3. webhookService.processScanPushWebhook() maps status to 'ndr'
+4. Updates Order.status = 'ndr'
+   ⚠ Does NOT populate Order.ndr_info (known gap in v1 webhook)
+5. User sees NDR in NDR.tsx → selects RE-ATTEMPT or PICKUP_RESCHEDULE
+6. POST /api/ndr/:order_id/reattempt → ndr.js route
+7. delhiveryService.updateNDR() → Delhivery POST /api/p/update {waybill, act}
+8. Returns UPL ID → polls checkNDRStatus()
+9. Updates Order.ndr_info.resolution_action
+
+--- WALLET RECHARGE FLOW ---
+1. User clicks recharge → RechargeModal (frontend)
+2. walletService.initiatePayment() → POST /api/users/wallet-recharge
+3. hdfcPaymentService.createSession() → HDFC SmartGateway
+4. User completes payment on HDFC page
+5. Callback → captureHdfcCallback script / route handler
+6. Transaction created, wallet_balance updated
+7. PaymentConfirmation page displayed
+
+--- WEBHOOK PROCESSING ---
+1. Delhivery sends scan/EPOD/sorter/QC data to /api/webhooks/*
+2. webhookAuth validates X-API-Key
+3. v1 path: webhookQueue.enqueue() for async processing
+4. webhookService maps status → updates Order + tracking entities
+5. websocketService broadcasts real-time update to connected clients
+
+--- ADMIN IMPERSONATION ---
+1. Admin selects client → adminService.impersonateClient()
+2. Returns impersonation token
+3. Opens user dashboard with token in URL params
+4. AuthContext reads token, acts as that user
+
+--- BILLING CYCLE ---
+1. Orders accumulate in 15-day billing cycle (BillingCycle model)
+2. Cycle closes at period end (1st-15th or 16th-end)
+3. invoiceService generates Invoice with GST calculation
+4. Invoice available for download via /api/billing/invoices
+
+================================================================================
+17. KNOWN ISSUES & STUBS
+================================================================================
+
+1. v1 webhookService.js does NOT populate Order.ndr_info when status = 'ndr'
+   → Legacy webhook path works; v1 path has this gap
+   → Location: backend/services/webhookService.js → processScanPushWebhook()
+
+2. AdminNDR.tsx is a stub — "Implementation in Progress"
+   → Location: frontend/src/pages/AdminNDR.tsx
+
+3. NDR.js standalone model has features not wired up
+   → Customer comms, agent assignment, auto-resolution rules
+   → Location: backend/models/NDR.js
+
+4. Two webhook paths exist (legacy and v1) with different behavior
+   → Legacy: /delhivery/status-update (direct processing)
+   → v1: /v1/delhivery/scan-status (queued, missing NDR)
+
+5. Two ticket systems exist (Support.js and Ticket.js models)
+   → Support.js is primary; Ticket.js is legacy
+
+================================================================================
+18. QUICK LOOKUP INDEX
+================================================================================
+
+SEARCHING BY FEATURE:
+  Order creation      → backend/routes/orders.js, frontend/src/components/OrderCreationModal.tsx
+  Order list/filters  → backend/routes/orders.js, frontend/src/pages/Orders.tsx
+  NDR actions         → backend/routes/ndr.js, backend/services/delhiveryService.js (updateNDR)
+  NDR UI              → frontend/src/pages/NDR.tsx, frontend/src/services/ndrService.ts
+  Rate calculation    → backend/services/rateCardService.js, backend/routes/shipping.js
+  Tracking            → backend/services/trackingService.js, frontend/src/components/TrackingModal.tsx
+  Labels              → backend/services/labelRenderer.js
+  Webhooks            → backend/routes/webhooks.js, backend/services/webhookService.js
+  Wallet/payments     → backend/services/hdfcPaymentService.js, backend/routes/users.js
+  Billing/invoices    → backend/routes/billing.js, backend/services/invoiceService.js
+  Auth/login          → backend/routes/auth.js, frontend/src/contexts/AuthContext.tsx
+  User profile        → backend/routes/users.js, frontend/src/pages/AccountSettings.tsx
+  KYC                 → backend/routes/users.js (upload), backend/routes/admin.js (approve)
+  Admin panel         → backend/routes/admin.js, frontend/src/components/AdminLayout.tsx
+  Staff management    → backend/models/Staff.js, frontend/src/pages/AdminStaffManagement.tsx
+  Warehouses          → backend/routes/warehouses.js, frontend/src/pages/WarehouseManagement.tsx
+  Customers           → backend/routes/customers.js, frontend/src/pages/Customers.tsx
+  Support tickets     → backend/routes/support.js, frontend/src/pages/Support.tsx
+  Notifications       → backend/models/Notification.js, frontend/src/services/notificationService.ts
+  Email               → backend/services/emailService.js
+  SMS/OTP             → backend/services/msg91Service.js, backend/routes/otp.js
+  WebSocket           → backend/services/websocketService.js
+  Excel import/export → backend/services/excelService.js
+  Image upload        → backend/services/cloudinaryService.js
+  Google OAuth        → backend/services/googleAuthService.js
+
+SEARCHING BY ERROR TYPE:
+  401 Unauthorized    → backend/middleware/auth.js, frontend/src/services/api.ts
+  503 DB Unavailable  → backend/middleware/dbReady.js
+  Webhook auth fail   → backend/middleware/webhookAuth.js
+  Rate calc wrong     → backend/services/rateCardService.js (weight slab logic)
+  Status not updating → backend/services/webhookService.js (mapDelhiveryStatus)
+  Payment failed      → backend/services/hdfcPaymentService.js
+  OTP not received    → backend/services/msg91Service.js
+  Label not generated → backend/services/labelRenderer.js (Puppeteer issues)
+
+SEARCHING BY MODEL/COLLECTION:
+  orders              → backend/models/Order.js (★ most complex)
+  users               → backend/models/User.js
+  customers           → backend/models/Customer.js
+  carriers            → backend/models/Carrier.js
+  ratecards           → backend/models/RateCard.js
+  invoices            → backend/models/Invoice.js
+  transactions        → backend/models/Transaction.js
+  billingcycles       → backend/models/BillingCycle.js
+  remittances         → backend/models/Remittance.js
+  weightdiscrepancies → backend/models/WeightDiscrepancy.js
+  warehouses          → backend/models/Warehouse.js
+  products            → backend/models/Product.js
+  packages            → backend/models/Package.js
+  supports            → backend/models/Support.js
+  tickets             → backend/models/Ticket.js (legacy)
+  notifications       → backend/models/Notification.js
+  trackingorders      → backend/models/TrackingOrder.js
+  shipmenttrackingevents → backend/models/ShipmentTrackingEvent.js
+  shipmentdocuments   → backend/models/ShipmentDocument.js
+  staffs              → backend/models/Staff.js
+  ndrs                → backend/models/NDR.js (⚠ unused by routes)
+
+COLOR SCHEME: #002B59 (navy), #F68723 (orange), #21B5B5 (teal)
+
+================================================================================
+END OF PROJECT MAP
+================================================================================

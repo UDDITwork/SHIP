@@ -476,7 +476,7 @@ const ndrSchema = new mongoose.Schema({
   },
   resolution_action: {
     type: String,
-    enum: [null, 'reattempt', 'rto', 'hold', 'delivered'],
+    enum: [null, 'reattempt', 'rto', 'hold', 'delivered', 'edit_requested'],
     default: null
   },
   action_history: [{
@@ -484,7 +484,9 @@ const ndrSchema = new mongoose.Schema({
     timestamp: { type: Date, default: Date.now },
     upl_id: { type: String },
     status: { type: String },
-    remarks: { type: String }
+    remarks: { type: String },
+    ticket_id: { type: String },
+    ticket_object_id: { type: String }
   }]
 }, { _id: false });
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { ndrService, NDROrder, NDRFilters, NDRStats, NDRActionData, BulkNDRActionData } from '../services/ndrService';
@@ -43,6 +43,40 @@ const NDR: React.FC = () => {
   // Time recommendation
   const [timeRecommendation, setTimeRecommendation] = useState('');
 
+  // View dropdown state (which row's dropdown is open)
+  const [openViewDropdown, setOpenViewDropdown] = useState<string | null>(null);
+  const viewDropdownRef = useRef<HTMLDivElement | null>(null);
+
+  // More filter state
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
+  const [paymentModeFilter, setPaymentModeFilter] = useState<'COD' | 'Prepaid' | ''>('');
+  const moreFilterRef = useRef<HTMLDivElement | null>(null);
+
+  // Action History popup state
+  const [actionHistoryPopup, setActionHistoryPopup] = useState<{
+    show: boolean;
+    order: NDROrder | null;
+  }>({ show: false, order: null });
+
+  // Clear selections on tab change
+  useEffect(() => {
+    setSelectedOrders([]);
+  }, [activeTab]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (viewDropdownRef.current && !viewDropdownRef.current.contains(e.target as Node)) {
+        setOpenViewDropdown(null);
+      }
+      if (moreFilterRef.current && !moreFilterRef.current.contains(e.target as Node)) {
+        setShowMoreFilters(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Date filter handlers
   const handleDateFilterApply = (startDate: string, endDate: string) => {
     setFilters(prev => ({ ...prev, date_from: startDate, date_to: endDate, page: 1 }));
@@ -82,6 +116,7 @@ const NDR: React.FC = () => {
     setTimeRecommendation(ndrService.getTimeRecommendation());
   }, [fetchNDROrders, fetchNDRStats, activeTab]);
 
+  // === Selection handlers ===
   const handleSelectOrder = (orderId: string) => {
     if (selectedOrders.includes(orderId)) {
       setSelectedOrders(selectedOrders.filter(id => id !== orderId));
@@ -98,15 +133,17 @@ const NDR: React.FC = () => {
     }
   };
 
+  // === Action handlers ===
   const handleReAttempt = async (order: NDROrder) => {
+    setOpenViewDropdown(null);
+
     if (!ndrService.validateNSLCode(order.ndr_info.nsl_code, 'RE-ATTEMPT')) {
-      const allowedCodes = ndrService.getAllowedNSLCodes('RE-ATTEMPT');
-      alert(`Re-attempt not allowed for NSL code: ${order.ndr_info.nsl_code}\nAllowed codes: ${allowedCodes.join(', ')}`);
+      alert('Re-attempt is not available for this NDR. The shipment\'s current status does not allow re-attempt.');
       return;
     }
 
     if (order.ndr_info.ndr_attempts > 2) {
-      alert('Maximum 3 attempts allowed. Please initiate RTO.');
+      alert('Maximum 3 attempts allowed. Please request RTO instead.');
       return;
     }
 
@@ -121,9 +158,9 @@ const NDR: React.FC = () => {
         waybill: order.delhivery_data.waybill,
         action: 'RE-ATTEMPT'
       };
-      
+
       const result = await ndrService.takeNDRAction(actionData);
-      alert(`Re-attempt scheduled for AWB: ${order.delhivery_data.waybill}\nUPL ID: ${result.upl_id}`);
+      alert(`Re-attempt scheduled for AWB: ${order.delhivery_data.waybill}\nTracking ID: ${result.upl_id}`);
       fetchNDROrders();
       fetchNDRStats();
     } catch (error: any) {
@@ -134,41 +171,16 @@ const NDR: React.FC = () => {
     }
   };
 
-  const handlePickupReschedule = async (order: NDROrder) => {
-    if (!ndrService.validateNSLCode(order.ndr_info.nsl_code, 'PICKUP_RESCHEDULE')) {
-      const allowedCodes = ndrService.getAllowedNSLCodes('PICKUP_RESCHEDULE');
-      alert(`Pickup reschedule not allowed for NSL code: ${order.ndr_info.nsl_code}\nAllowed codes: ${allowedCodes.join(', ')}`);
-      return;
-    }
+  const handleRTORequest = (order: NDROrder) => {
+    setOpenViewDropdown(null);
+    // Navigate to Support page with auto-fill params for RTO ticket
+    navigate(`/support?category=shipment_ndr_rto&awb=${order.delhivery_data.waybill}&ndr_order_id=${order._id}`);
+  };
 
-    if (order.ndr_info.ndr_attempts > 2) {
-      alert('Maximum 3 attempts allowed. Please initiate RTO.');
-      return;
-    }
-
-    const confirmed = window.confirm(
-      'Are you sure you want to reschedule pickup? This will initiate RTO and mark the shipment as cancelled.'
-    );
-    
-    if (!confirmed) return;
-
-    try {
-      setLoading(true);
-      const actionData: NDRActionData = {
-        waybill: order.delhivery_data.waybill,
-        action: 'PICKUP_RESCHEDULE'
-      };
-      
-      const result = await ndrService.takeNDRAction(actionData);
-      alert(`Pickup rescheduled for AWB: ${order.delhivery_data.waybill}\nUPL ID: ${result.upl_id}`);
-      fetchNDROrders();
-      fetchNDRStats();
-    } catch (error: any) {
-      console.error('Error rescheduling pickup:', error);
-      alert(`Failed to reschedule pickup: ${error.message || 'Unknown error'}`);
-    } finally {
-      setLoading(false);
-    }
+  const handleEditBuyerInfo = (order: NDROrder) => {
+    setOpenViewDropdown(null);
+    // Navigate to Support page with auto-fill params for Edit Shipment Info ticket
+    navigate(`/support?category=edit_shipment_info&awb=${order.delhivery_data.waybill}&ndr_order_id=${order._id}`);
   };
 
   const handleBulkReAttempt = async () => {
@@ -177,16 +189,15 @@ const NDR: React.FC = () => {
       return;
     }
 
-    // Validate selected orders
     const selectedOrderObjects = ndrOrders.filter(order => selectedOrders.includes(order._id));
-    const invalidOrders = selectedOrderObjects.filter(order => 
-      !ndrService.validateNSLCode(order.ndr_info.nsl_code, 'RE-ATTEMPT') || 
+    const invalidOrders = selectedOrderObjects.filter(order =>
+      !ndrService.validateNSLCode(order.ndr_info.nsl_code, 'RE-ATTEMPT') ||
       order.ndr_info.ndr_attempts > 2
     );
 
     if (invalidOrders.length > 0) {
       const invalidAWBs = invalidOrders.map(order => order.delhivery_data.waybill).join(', ');
-      alert(`Some selected orders cannot be re-attempted:\n${invalidAWBs}\n\nPlease check NSL codes and attempt counts.`);
+      alert(`Some selected orders cannot be re-attempted:\n${invalidAWBs}\n\nPlease deselect them and try again.`);
       return;
     }
 
@@ -198,7 +209,7 @@ const NDR: React.FC = () => {
     const confirmed = window.confirm(
       `Schedule re-attempt for ${selectedOrders.length} orders?`
     );
-    
+
     if (!confirmed) return;
 
     try {
@@ -207,9 +218,9 @@ const NDR: React.FC = () => {
         order_ids: selectedOrders,
         action: 'RE-ATTEMPT'
       };
-      
+
       const result = await ndrService.bulkNDRAction(bulkData);
-      alert(`Bulk re-attempt scheduled for ${result.processed_count} orders\nUPL ID: ${result.upl_id}`);
+      alert(`Bulk re-attempt scheduled for ${result.processed_count} orders\nTracking ID: ${result.upl_id}`);
       setSelectedOrders([]);
       fetchNDROrders();
       fetchNDRStats();
@@ -225,12 +236,56 @@ const NDR: React.FC = () => {
     return ndrService.validateNSLCode(order.ndr_info.nsl_code, 'RE-ATTEMPT') && order.ndr_info.ndr_attempts <= 2;
   };
 
-  const canReschedulePickup = (order: NDROrder): boolean => {
-    return ndrService.validateNSLCode(order.ndr_info.nsl_code, 'PICKUP_RESCHEDULE') && order.ndr_info.ndr_attempts <= 2;
+  // === Download handler ===
+  const handleDownload = async () => {
+    try {
+      setLoading(true);
+      await ndrService.exportNDRCSV({ ...filters, status: activeTab });
+    } catch (error: any) {
+      console.error('Error downloading CSV:', error);
+      alert('Failed to download NDR data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // === More Filter handler ===
+  const applyPaymentFilter = (mode: 'COD' | 'Prepaid' | '') => {
+    setPaymentModeFilter(mode);
+    setFilters(prev => ({ ...prev, payment_mode: mode || undefined, page: 1 } as NDRFilters));
+    setShowMoreFilters(false);
+  };
+
+  // === Page change ===
   const handlePageChange = (page: number) => {
+    setSelectedOrders([]);
     setFilters(prev => ({ ...prev, page }));
+  };
+
+  // === Helper: Get action label for display ===
+  const getActionLabel = (action: string): string => {
+    switch (action) {
+      case 'RE-ATTEMPT': return 'Reattempt';
+      case 'PICKUP_RESCHEDULE': return 'Pickup Reschedule';
+      case 'RTO_TICKET': return 'RTO Requested';
+      case 'EDIT_BUYER_TICKET': return 'Edit Buyer Info';
+      default: return action;
+    }
+  };
+
+  // === Helper: format datetime for popup ===
+  const formatDateTime = (dateStr: string): string => {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'N/A';
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }).format(date);
   };
 
   return (
@@ -254,7 +309,7 @@ const NDR: React.FC = () => {
             className={`ndr-tab ${activeTab === 'delivered' ? 'active' : ''}`}
             onClick={() => setActiveTab('delivered')}
           >
-            Delivered ({tabCounts.delivered})
+            NDR Delivered ({tabCounts.delivered})
           </button>
           <button
             className={`ndr-tab ${activeTab === 'rto' ? 'active' : ''}`}
@@ -266,7 +321,7 @@ const NDR: React.FC = () => {
             className={`ndr-tab ${activeTab === 'all' ? 'active' : ''}`}
             onClick={() => setActiveTab('all')}
           >
-            All ({tabCounts.all})
+            All NDR ({tabCounts.all})
           </button>
         </div>
 
@@ -285,19 +340,52 @@ const NDR: React.FC = () => {
             onReset={handleDateFilterReset}
           />
 
-          <button className="more-filters-btn">
-            🎚️ More Filter
-          </button>
+          {/* More Filter dropdown */}
+          <div className="more-filter-wrapper" ref={moreFilterRef}>
+            <button
+              className={`more-filters-btn ${paymentModeFilter ? 'active-filter' : ''}`}
+              onClick={() => setShowMoreFilters(!showMoreFilters)}
+            >
+              More Filter {paymentModeFilter ? `(${paymentModeFilter})` : ''}
+            </button>
+            {showMoreFilters && (
+              <div className="more-filter-dropdown">
+                <div className="filter-dropdown-header">Payment Mode</div>
+                <button
+                  className={`filter-option ${paymentModeFilter === '' ? 'selected' : ''}`}
+                  onClick={() => applyPaymentFilter('')}
+                >
+                  All Orders
+                </button>
+                <button
+                  className={`filter-option ${paymentModeFilter === 'Prepaid' ? 'selected' : ''}`}
+                  onClick={() => applyPaymentFilter('Prepaid')}
+                >
+                  Prepaid Orders
+                </button>
+                <button
+                  className={`filter-option ${paymentModeFilter === 'COD' ? 'selected' : ''}`}
+                  onClick={() => applyPaymentFilter('COD')}
+                >
+                  COD Orders
+                </button>
+              </div>
+            )}
+          </div>
 
-          {selectedOrders.length > 0 && (
+          {activeTab === 'action_required' && selectedOrders.length > 0 && (
             <button className="bulk-action-btn" onClick={handleBulkReAttempt}>
-              🔄 Bulk Re-Attempt ({selectedOrders.length})
+              Bulk Re-Attempt ({selectedOrders.length})
             </button>
           )}
 
           <div className="export-btns">
-            <button className="export-btn">Download</button>
-            <button className="export-btn">Help</button>
+            <button className="export-btn" onClick={handleDownload} disabled={loading}>
+              Download
+            </button>
+            <button className="export-btn" onClick={() => navigate('/support')}>
+              Help
+            </button>
           </div>
         </div>
 
@@ -358,7 +446,12 @@ const NDR: React.FC = () => {
                     <td>{formatDate(order.created_at)}</td>
                     <td>
                       <div className="order-details-cell">
-                        <div className="order-id">{order.order_id}</div>
+                        <div
+                          className="order-id order-id-link"
+                          onClick={() => navigate(`/orders/${order._id}`)}
+                        >
+                          {order.order_id}
+                        </div>
                         <div className="customer-name">{order.customer_info.buyer_name}</div>
                         <div className="customer-phone">{order.customer_info.phone}</div>
                       </div>
@@ -385,7 +478,6 @@ const NDR: React.FC = () => {
                     <td>
                       <div className="tracking-cell">
                         <div className="awb"><AWBLink awb={order.delhivery_data.waybill} orderId={order.order_id} showPrefix={true} /></div>
-                        <div className="nsl-code">NSL: {order.ndr_info.nsl_code}</div>
                       </div>
                     </td>
                     <td>
@@ -400,7 +492,6 @@ const NDR: React.FC = () => {
                         <div className="ndr-reason">
                           {ndrService.getNDRDisplayReason(order.ndr_info.nsl_code, order.ndr_info.ndr_reason)}
                         </div>
-                        <div className="ndr-code-badge">{order.ndr_info.nsl_code}</div>
                         <div className="ndr-date">
                           {formatDate(order.ndr_info.last_ndr_date)}
                         </div>
@@ -418,35 +509,70 @@ const NDR: React.FC = () => {
                     </td>
                     <td>
                       <div className="action-buttons">
+                        {/* Action Required tab: View button with dropdown */}
                         {activeTab === 'action_required' && (
-                          <>
-                            {canReAttempt(order) && (
-                              <button
-                                className="action-btn reattempt-btn"
-                                onClick={() => handleReAttempt(order)}
-                                title="Re-Attempt Delivery"
-                              >
-                                🔄 Re-Attempt
-                              </button>
+                          <div
+                            className="view-dropdown-wrapper"
+                            ref={openViewDropdown === order._id ? viewDropdownRef : null}
+                          >
+                            <button
+                              className="action-btn view-btn"
+                              onClick={() => setOpenViewDropdown(openViewDropdown === order._id ? null : order._id)}
+                            >
+                              View ▾
+                            </button>
+                            {openViewDropdown === order._id && (
+                              <div className="view-dropdown-menu">
+                                <button
+                                  className={`view-dropdown-item reattempt-item ${!canReAttempt(order) ? 'disabled' : ''}`}
+                                  onClick={() => canReAttempt(order) && handleReAttempt(order)}
+                                  disabled={!canReAttempt(order)}
+                                >
+                                  Reattempt
+                                  {!canReAttempt(order) && <span className="item-note">Not available</span>}
+                                </button>
+                                <button
+                                  className="view-dropdown-item rto-item"
+                                  onClick={() => handleRTORequest(order)}
+                                >
+                                  RTO
+                                </button>
+                                <button
+                                  className="view-dropdown-item edit-item"
+                                  onClick={() => handleEditBuyerInfo(order)}
+                                >
+                                  Edit Buyer Info
+                                </button>
+                              </div>
                             )}
-                            {canReschedulePickup(order) && (
+                          </div>
+                        )}
+
+                        {/* Action Taken tab: Show action badge with history popup */}
+                        {activeTab === 'action_taken' && (
+                          <button
+                            className="action-btn action-taken-badge"
+                            onClick={() => setActionHistoryPopup({ show: true, order })}
+                          >
+                            Action Taken
+                          </button>
+                        )}
+
+                        {/* Other tabs: Show View History if action exists */}
+                        {(activeTab === 'delivered' || activeTab === 'rto' || activeTab === 'all') && (
+                          <>
+                            {order.ndr_info.action_history && order.ndr_info.action_history.length > 0 ? (
                               <button
-                                className="action-btn rto-btn"
-                                onClick={() => handlePickupReschedule(order)}
-                                title="Reschedule Pickup (RTO)"
+                                className="action-btn action-taken-badge"
+                                onClick={() => setActionHistoryPopup({ show: true, order })}
                               >
-                                📦 RTO
+                                View History
                               </button>
+                            ) : (
+                              <span className="no-action-text">-</span>
                             )}
                           </>
                         )}
-                        <button
-                          className="action-btn view-btn"
-                          title="View Details"
-                          onClick={() => navigate(`/orders/${order._id}`)}
-                        >
-                          View
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -459,20 +585,20 @@ const NDR: React.FC = () => {
         {/* Pagination */}
         {pagination.total_pages > 1 && (
           <div className="pagination">
-            <button 
+            <button
               className="pagination-btn"
               onClick={() => handlePageChange(pagination.current_page - 1)}
               disabled={pagination.current_page === 1}
             >
               ← Previous
             </button>
-            
+
             <div className="pagination-info">
-              Page {pagination.current_page} of {pagination.total_pages} 
+              Page {pagination.current_page} of {pagination.total_pages}
               ({pagination.total_orders} total orders)
             </div>
-            
-            <button 
+
+            <button
               className="pagination-btn"
               onClick={() => handlePageChange(pagination.current_page + 1)}
               disabled={pagination.current_page === pagination.total_pages}
@@ -484,25 +610,83 @@ const NDR: React.FC = () => {
 
         {/* NDR Guidelines */}
         <div className="ndr-guidelines">
-          <h3>⚠️ NDR Action Guidelines:</h3>
+          <h3>NDR Action Guidelines:</h3>
           <ul>
             <li>
               <strong>Re-Attempt:</strong> Should be applied after 9 PM to ensure all NDR AWBs are back in facility
             </li>
             <li>
-              <strong>Allowed NSL Codes for Re-Attempt:</strong> EOD-74, EOD-15, EOD-104, EOD-43, EOD-86, EOD-11, EOD-69, EOD-6
+              <strong>RTO:</strong> If you want the shipment returned, select RTO from the View dropdown to raise a ticket
             </li>
             <li>
-              <strong>Pickup Reschedule (RTO):</strong> Allowed for NSL codes EOD-777, EOD-21
+              <strong>Edit Buyer Info:</strong> To update delivery address or phone number, select Edit Buyer Info
             </li>
             <li>
-              <strong>Attempt Limit:</strong> Maximum 3 attempts allowed per shipment
-            </li>
-            <li>
-              <strong>UPL ID:</strong> Each NDR action returns a UPL ID for tracking the status
+              <strong>Attempt Limit:</strong> Maximum 3 delivery attempts allowed per shipment
             </li>
           </ul>
         </div>
+
+        {/* Action History Popup */}
+        {actionHistoryPopup.show && actionHistoryPopup.order && (
+          <div className="action-history-overlay" onClick={() => setActionHistoryPopup({ show: false, order: null })}>
+            <div className="action-history-popup" onClick={(e) => e.stopPropagation()}>
+              <div className="popup-header">
+                <h3>Action History — AWB {actionHistoryPopup.order.delhivery_data.waybill}</h3>
+                <button className="popup-close" onClick={() => setActionHistoryPopup({ show: false, order: null })}>×</button>
+              </div>
+              <div className="popup-body">
+                {actionHistoryPopup.order.ndr_info.action_history &&
+                actionHistoryPopup.order.ndr_info.action_history.length > 0 ? (
+                  actionHistoryPopup.order.ndr_info.action_history.map((entry, idx) => (
+                    <div key={idx} className="history-entry">
+                      <div className="history-action-label">
+                        {entry.ticket_id ? '📋' : '✓'} {getActionLabel(entry.action)}
+                      </div>
+                      <div className="history-detail">
+                        <span className="history-label">Date:</span> {formatDateTime(entry.timestamp)}
+                      </div>
+                      {entry.upl_id && (
+                        <div className="history-detail">
+                          <span className="history-label">UPL ID:</span> {entry.upl_id}
+                        </div>
+                      )}
+                      <div className="history-detail">
+                        <span className="history-label">Status:</span>{' '}
+                        <span className={`history-status ${entry.status?.toLowerCase()}`}>{entry.status}</span>
+                      </div>
+                      {entry.remarks && (
+                        <div className="history-detail">
+                          <span className="history-label">Remarks:</span> {entry.remarks}
+                        </div>
+                      )}
+                      {entry.ticket_id && (
+                        <div className="history-detail">
+                          <span className="history-label">Ticket:</span>{' '}
+                          <span
+                            className="ticket-link"
+                            onClick={() => {
+                              setActionHistoryPopup({ show: false, order: null });
+                              if (entry.ticket_object_id) {
+                                navigate(`/support/tickets/${entry.ticket_object_id}`);
+                              } else {
+                                navigate('/support');
+                              }
+                            }}
+                          >
+                            {entry.ticket_id} →
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-history">No action history available</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

@@ -508,6 +508,7 @@ export interface TicketMasterFilters {
   limit?: number;
   status?: string;
   priority?: string;
+  category?: string;
   date_from?: string;
   date_to?: string;
   search?: string;
@@ -730,6 +731,68 @@ export interface AdminOrderDetails {
   createdAt?: string;
   updatedAt?: string;
   [key: string]: any;
+}
+
+// Admin NDR interfaces
+export interface AdminNDROrder {
+  _id: string;
+  order_id: string;
+  status: string;
+  user_id: {
+    _id: string;
+    company_name: string;
+    your_name: string;
+    email: string;
+    client_id: string;
+  };
+  customer_info: {
+    buyer_name: string;
+    phone: string;
+    email?: string;
+  };
+  delivery_address: {
+    full_address: string;
+    city: string;
+    state: string;
+    pincode: string;
+  };
+  payment_info?: {
+    payment_mode: string;
+    total_amount?: number;
+    cod_amount?: number;
+  };
+  delhivery_data: {
+    waybill: string;
+    status: string;
+  };
+  ndr_info: {
+    is_ndr: boolean;
+    ndr_reason: string;
+    nsl_code: string;
+    ndr_attempts: number;
+    last_ndr_date: string;
+    resolution_action?: string | null;
+    next_attempt_date?: string;
+    action_history: Array<{
+      action: string;
+      timestamp: string;
+      upl_id: string;
+      status: string;
+      remarks: string;
+      ticket_id?: string;
+      ticket_object_id?: string;
+    }>;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminNDRStats {
+  action_required: number;
+  action_taken: number;
+  delivered: number;
+  rto: number;
+  all: number;
 }
 
 class AdminService {
@@ -1030,6 +1093,7 @@ class AdminService {
     if (filters.limit) queryParams.append('limit', filters.limit.toString());
     if (filters.status) queryParams.append('status', filters.status);
     if (filters.priority) queryParams.append('priority', filters.priority);
+    if (filters.category) queryParams.append('category', filters.category);
     if (filters.date_from) queryParams.append('date_from', filters.date_from);
     if (filters.date_to) queryParams.append('date_to', filters.date_to);
     if (filters.search) queryParams.append('search', filters.search);
@@ -2413,6 +2477,75 @@ class AdminService {
       headers: this.getAdminHeaders()
     });
 
+    return response;
+  }
+
+  // ==================== ADMIN NDR METHODS ====================
+
+  async getAdminNDROrders(filters: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    client_id?: string;
+    ndr_reason?: string;
+    payment_mode?: string;
+    date_from?: string;
+    date_to?: string;
+    search?: string;
+  } = {}): Promise<{
+    success: boolean;
+    data: {
+      orders: AdminNDROrder[];
+      pagination: {
+        current_page: number;
+        total_pages: number;
+        total_orders: number;
+        per_page: number;
+      };
+    };
+  }> {
+    const queryParams = new URLSearchParams();
+
+    if (filters.page) queryParams.append('page', filters.page.toString());
+    if (filters.limit) queryParams.append('limit', filters.limit.toString());
+    if (filters.status) queryParams.append('status', filters.status);
+    if (filters.client_id) queryParams.append('client_id', filters.client_id);
+    if (filters.ndr_reason) queryParams.append('ndr_reason', filters.ndr_reason);
+    if (filters.payment_mode) queryParams.append('payment_mode', filters.payment_mode);
+    if (filters.date_from) queryParams.append('date_from', filters.date_from);
+    if (filters.date_to) queryParams.append('date_to', filters.date_to);
+    if (filters.search) queryParams.append('search', filters.search);
+
+    const response = await apiService.get<{
+      success: boolean;
+      data: {
+        orders: AdminNDROrder[];
+        pagination: {
+          current_page: number;
+          total_pages: number;
+          total_orders: number;
+          per_page: number;
+        };
+      };
+    }>(`/admin/ndr?${queryParams.toString()}`, {
+      headers: this.getAdminHeaders()
+    });
+    return response;
+  }
+
+  async getAdminNDRStats(clientId?: string): Promise<{
+    success: boolean;
+    data: AdminNDRStats;
+  }> {
+    const queryParams = new URLSearchParams();
+    if (clientId) queryParams.append('client_id', clientId);
+
+    const response = await apiService.get<{
+      success: boolean;
+      data: AdminNDRStats;
+    }>(`/admin/ndr/statistics?${queryParams.toString()}`, {
+      headers: this.getAdminHeaders()
+    });
     return response;
   }
 }

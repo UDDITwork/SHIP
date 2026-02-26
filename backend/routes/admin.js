@@ -2036,6 +2036,34 @@ router.patch('/tickets/:id/status', async (req, res) => {
       clientStatusCounts = formatStatusCounts(stats);
     }
 
+    // Sync ticket status to NDR order's action_history
+    if (updatedTicket.ndr_order_id &&
+        ['shipment_ndr_rto', 'edit_shipment_info'].includes(updatedTicket.category)) {
+      try {
+        const statusMap = {
+          'open': 'TICKET_OPEN',
+          'in_progress': 'IN_PROGRESS',
+          'resolved': 'RESOLVED',
+          'closed': 'CLOSED',
+          'escalated': 'ESCALATED'
+        };
+
+        await Order.updateOne(
+          {
+            _id: updatedTicket.ndr_order_id,
+            'ndr_info.action_history.ticket_id': updatedTicket.ticket_id
+          },
+          {
+            $set: {
+              'ndr_info.action_history.$.status': statusMap[status] || status
+            }
+          }
+        );
+      } catch (syncErr) {
+        console.error('Failed to sync NDR action_history on status change:', syncErr);
+      }
+    }
+
     res.json({
       success: true,
       message: 'Ticket status updated successfully',
@@ -2240,9 +2268,29 @@ router.post('/tickets/:id/resolve', async (req, res) => {
     // Get resolver name (admin or staff)
     const resolverName = req.staff ? req.staff.name : req.admin.email;
     const staffName = req.staff ? req.staff.name : null;
-    
+
     // Resolve ticket with staff tracking
     await ticket.resolve(resolution_summary, resolution_category, internal_notes, staffName);
+
+    // Sync resolved status to NDR order's action_history
+    if (ticket.ndr_order_id &&
+        ['shipment_ndr_rto', 'edit_shipment_info'].includes(ticket.category)) {
+      try {
+        await Order.updateOne(
+          {
+            _id: ticket.ndr_order_id,
+            'ndr_info.action_history.ticket_id': ticket.ticket_id
+          },
+          {
+            $set: {
+              'ndr_info.action_history.$.status': 'RESOLVED'
+            }
+          }
+        );
+      } catch (syncErr) {
+        console.error('Failed to sync NDR action_history on resolve:', syncErr);
+      }
+    }
 
     res.json({
       success: true,
@@ -8187,6 +8235,163 @@ router.post('/orders/manual-mapping/upload', adminAuth, upload.single('file'), a
     res.status(500).json({
       success: false,
       message: 'Failed to process manual mapping',
+      error: error.message
+    });
+  }
+});
+
+// ==================== ADMIN NDR ROUTES ====================
+
+// @desc    Get all NDR orders across all clients
+// @route   GET /api/admin/ndr
+// @access  Admin
+router.get('/ndr', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    // Build filter query — no user_id filter, all clients
+    const filterQuery = {
+      'ndr_info.is_ndr': true
+    };
+
+    // Client filter
+    if (req.query.client_id && mongoose.Types.ObjectId.isValid(req.query.client_id)) {
+      filterQuery.user_id = new mongoose.Types.ObjectId(req.query.client_id);
+    }
+
+    // Status filter
+    if (req.query.status && req.query.status !== 'all') {
+      switch (req.query.status) {
+        case 'action_required':
+          filterQuery['ndr_info.resolution_action'] = null;
+          filterQuery.status = 'ndr';
+          break;
+        case 'action_taken':
+          filterQuery['ndr_info.resolution_action'] = { $ne: null };
+          filterQuery.status = 'ndr';
+          break;
+        case 'delivered':
+          filterQuery.status = 'delivered';
+          break;
+        case 'rto':
+          filterQuery.status = { $in: ['rto', 'rto_in_transit', 'rto_delivered'] };
+          break;
+      }
+    }
+
+    // NDR reason filter
+    if (req.query.ndr_reason) {
+      filterQuery['ndr_info.ndr_reason'] = new RegExp(req.query.ndr_reason, 'i');
+    }
+
+    // Payment mode filter
+    if (req.query.payment_mode) {
+      filterQuery['payment_info.payment_mode'] = new RegExp(`^${req.query.payment_mode}$`, 'i');
+    }
+
+    // Date filter
+    if (req.query.date_from || req.query.date_to) {
+      filterQuery['ndr_info.last_ndr_date'] = {};
+      if (req.query.date_from) {
+        filterQuery['ndr_info.last_ndr_date'].$gte = new Date(req.query.date_from);
+      }
+      if (req.query.date_to) {
+        filterQuery['ndr_info.last_ndr_date'].$lte = new Date(req.query.date_to);
+      }
+    }
+
+    // Search filter
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      filterQuery.$or = [
+        { 'delhivery_data.waybill': searchRegex },
+        { order_id: searchRegex },
+        { 'customer_info.buyer_name': searchRegex },
+        { 'customer_info.phone': searchRegex }
+      ];
+    }
+
+    const orders = await Order.find(filterQuery)
+      .populate('user_id', 'company_name your_name email client_id')
+      .sort({ 'ndr_info.last_ndr_date': -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean();
+
+    const totalOrders = await Order.countDocuments(filterQuery);
+
+    res.json({
+      success: true,
+      data: {
+        orders,
+        pagination: {
+          current_page: page,
+          total_pages: Math.ceil(totalOrders / limit),
+          total_orders: totalOrders,
+          per_page: limit
+        }
+      }
+    });
+
+  } catch (error) {
+    logger.error('Admin NDR list error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching NDR orders',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get NDR statistics across all clients
+// @route   GET /api/admin/ndr/statistics
+// @access  Admin
+router.get('/ndr/statistics', async (req, res) => {
+  try {
+    const clientFilter = {};
+    if (req.query.client_id && mongoose.Types.ObjectId.isValid(req.query.client_id)) {
+      clientFilter.user_id = new mongoose.Types.ObjectId(req.query.client_id);
+    }
+
+    const counts = {
+      action_required: await Order.countDocuments({
+        ...clientFilter,
+        'ndr_info.is_ndr': true,
+        'ndr_info.resolution_action': null,
+        status: 'ndr'
+      }),
+      action_taken: await Order.countDocuments({
+        ...clientFilter,
+        'ndr_info.is_ndr': true,
+        'ndr_info.resolution_action': { $ne: null },
+        status: 'ndr'
+      }),
+      delivered: await Order.countDocuments({
+        ...clientFilter,
+        'ndr_info.is_ndr': true,
+        status: 'delivered'
+      }),
+      rto: await Order.countDocuments({
+        ...clientFilter,
+        'ndr_info.is_ndr': true,
+        status: { $in: ['rto', 'rto_in_transit', 'rto_delivered'] }
+      })
+    };
+
+    counts.all = counts.action_required + counts.action_taken + counts.delivered + counts.rto;
+
+    res.json({
+      success: true,
+      data: counts
+    });
+
+  } catch (error) {
+    logger.error('Admin NDR statistics error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching NDR statistics',
       error: error.message
     });
   }

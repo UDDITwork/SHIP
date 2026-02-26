@@ -1,4 +1,6 @@
 import { apiService } from './api';
+import { environmentConfig } from '../config/environment';
+import axios from 'axios';
 
 export interface NDROrder {
   _id: string;
@@ -40,6 +42,8 @@ export interface NDROrder {
       upl_id: string;
       status: string;
       remarks: string;
+      ticket_id?: string;
+      ticket_object_id?: string;
     }>;
   };
   delhivery_data: {
@@ -68,6 +72,7 @@ export interface NDRFilters {
   date_from?: string;
   date_to?: string;
   search?: string;
+  payment_mode?: 'COD' | 'Prepaid' | '';
 }
 
 export interface NDRStats {
@@ -152,6 +157,7 @@ class NDRService {
     if (filters.date_from) params.append('date_from', filters.date_from);
     if (filters.date_to) params.append('date_to', filters.date_to);
     if (filters.search) params.append('search', filters.search);
+    if (filters.payment_mode) params.append('payment_mode', filters.payment_mode);
 
     const response = await apiService.get<{
       data: {
@@ -241,6 +247,32 @@ class NDRService {
     }>(`/ndr/${orderId}/customer-info`, customerInfo);
     
     return response.data;
+  }
+
+  // Export NDR orders as CSV download
+  async exportNDRCSV(filters: NDRFilters = {}): Promise<void> {
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.date_from) params.append('date_from', filters.date_from);
+    if (filters.date_to) params.append('date_to', filters.date_to);
+    if (filters.payment_mode) params.append('payment_mode', filters.payment_mode);
+    if (filters.search) params.append('search', filters.search);
+
+    const token = localStorage.getItem('token');
+    const response = await axios.get(`${environmentConfig.apiUrl}/ndr/export?${params.toString()}`, {
+      responseType: 'blob',
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const blob = new Blob([response.data], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `ndr_export_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
   }
 
   // Get human-readable NDR reason from StatusCode (nsl_code)

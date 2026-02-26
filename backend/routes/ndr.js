@@ -23,7 +23,8 @@ router.get('/', auth, [
   query('attempts_max').optional().isInt({ min: 0, max: 3 }),
   query('date_from').optional().isISO8601(),
   query('date_to').optional().isISO8601(),
-  query('search').optional().trim()
+  query('search').optional().trim(),
+  query('payment_mode').optional().isIn(['COD', 'Prepaid', 'prepaid', 'cod'])
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -100,6 +101,11 @@ router.get('/', auth, [
       }
     }
 
+    // Payment mode filter (Prepaid / COD)
+    if (req.query.payment_mode) {
+      filterQuery['payment_info.payment_mode'] = new RegExp(`^${req.query.payment_mode}$`, 'i');
+    }
+
     // Search filter (AWB, Order ID, Customer Name)
     if (req.query.search) {
       const searchRegex = new RegExp(req.query.search, 'i');
@@ -138,6 +144,123 @@ router.get('/', auth, [
     res.status(500).json({
       status: 'error',
       message: 'Server error fetching NDR orders'
+    });
+  }
+});
+
+// @desc    Export NDR orders as CSV
+// @route   GET /api/ndr/export
+// @access  Private
+// NOTE: Must be defined BEFORE /:id to avoid Express matching "export" as an :id param
+router.get('/export', auth, async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Build same filter query as GET /api/ndr
+    const filterQuery = {
+      user_id: userId,
+      'ndr_info.is_ndr': true
+    };
+
+    if (req.query.status && req.query.status !== 'all') {
+      switch (req.query.status) {
+        case 'action_required':
+          filterQuery['ndr_info.resolution_action'] = null;
+          filterQuery.status = 'ndr';
+          break;
+        case 'action_taken':
+          filterQuery['ndr_info.resolution_action'] = { $ne: null };
+          filterQuery.status = 'ndr';
+          break;
+        case 'delivered':
+          filterQuery.status = 'delivered';
+          break;
+        case 'rto':
+          filterQuery.status = { $in: ['rto', 'rto_in_transit', 'rto_delivered'] };
+          break;
+      }
+    }
+
+    if (req.query.payment_mode) {
+      filterQuery['payment_info.payment_mode'] = new RegExp(`^${req.query.payment_mode}$`, 'i');
+    }
+
+    if (req.query.date_from || req.query.date_to) {
+      filterQuery['ndr_info.last_ndr_date'] = {};
+      if (req.query.date_from) {
+        filterQuery['ndr_info.last_ndr_date'].$gte = new Date(req.query.date_from);
+      }
+      if (req.query.date_to) {
+        filterQuery['ndr_info.last_ndr_date'].$lte = new Date(req.query.date_to);
+      }
+    }
+
+    if (req.query.search) {
+      const searchRegex = new RegExp(req.query.search, 'i');
+      filterQuery.$or = [
+        { 'delhivery_data.waybill': searchRegex },
+        { order_id: searchRegex },
+        { 'customer_info.buyer_name': searchRegex },
+        { 'customer_info.phone': searchRegex }
+      ];
+    }
+
+    const orders = await Order.find(filterQuery)
+      .sort({ 'ndr_info.last_ndr_date': -1 })
+      .limit(5000)
+      .lean();
+
+    // Build CSV
+    const csvHeader = 'Order ID,Order Date,Customer Name,Phone,Product,Payment Mode,AWB,City,State,Pincode,NDR Reason,NDR Date,Attempts,Action Status,Next Attempt Date';
+
+    const escapeCSV = (val) => {
+      if (val == null) return '';
+      const str = String(val);
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
+    const formatDateCSV = (d) => {
+      if (!d) return '';
+      const date = new Date(d);
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0];
+    };
+
+    const csvRows = orders.map(order => {
+      const productNames = (order.products || []).map(p => p.product_name).join('; ');
+      return [
+        escapeCSV(order.order_id),
+        escapeCSV(formatDateCSV(order.created_at)),
+        escapeCSV(order.customer_info?.buyer_name),
+        escapeCSV(order.customer_info?.phone),
+        escapeCSV(productNames),
+        escapeCSV(order.payment_info?.payment_mode),
+        escapeCSV(order.delhivery_data?.waybill),
+        escapeCSV(order.delivery_address?.city),
+        escapeCSV(order.delivery_address?.state),
+        escapeCSV(order.delivery_address?.pincode),
+        escapeCSV(order.ndr_info?.ndr_reason),
+        escapeCSV(formatDateCSV(order.ndr_info?.last_ndr_date)),
+        escapeCSV(order.ndr_info?.ndr_attempts),
+        escapeCSV(order.ndr_info?.resolution_action || 'pending'),
+        escapeCSV(formatDateCSV(order.ndr_info?.next_attempt_date))
+      ].join(',');
+    });
+
+    const csv = [csvHeader, ...csvRows].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename=ndr_export_${new Date().toISOString().split('T')[0]}.csv`);
+    res.send(csv);
+
+  } catch (error) {
+    console.error('NDR export error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Server error exporting NDR data'
     });
   }
 });

@@ -270,10 +270,6 @@ class LabelRenderer {
       // Log package structure
       logger.info('📦 Package keys:', Object.keys(pkg));
 
-      // Extract and sanitize barcode image (handles data URI, URL, HTML <img> tag, raw base64)
-      const rawBarcode = pkg.Barcode || pkg.barcode || pkg.barcode_image || pkg.barcodeImage || '';
-      const barcodeImage = sanitizeBarcodeSource(rawBarcode);
-
       const delhiveryLogo = pkg['Delhivery logo'] ||
                            pkg.logo ||
                            pkg.delhiveryLogo ||
@@ -290,19 +286,24 @@ class LabelRenderer {
                  waybill ||
                  'N/A';
 
-      // If Delhivery barcode is missing/invalid, self-generate Code 128 from AWB
-      let finalBarcode = barcodeImage;
-      if (!finalBarcode && awb && awb !== 'N/A') {
+      // ALWAYS self-generate barcode from AWB for guaranteed printability.
+      // Delhivery's barcode data varies (external URL, GIF, HTML tag) and
+      // may render on screen but fail in print mode. Self-generated Code 128
+      // as inline PNG data URI is universally printable.
+      let finalBarcode = '';
+      if (awb && awb !== 'N/A') {
         finalBarcode = await generateBarcode(awb);
-        if (finalBarcode) logger.info('🔲 Self-generated barcode for AWB:', awb);
+      }
+      if (!finalBarcode) {
+        // Last resort: try Delhivery's barcode data
+        const rawBarcode = pkg.Barcode || pkg.barcode || pkg.barcode_image || pkg.barcodeImage || '';
+        finalBarcode = sanitizeBarcodeSource(rawBarcode);
       }
 
       logger.info('📦 Package data extracted', {
         hasBarcode: !!finalBarcode,
-        barcodeSource: barcodeImage ? 'delhivery' : (finalBarcode ? 'self-generated' : 'none'),
-        hasLogo: !!delhiveryLogo,
+        barcodeSource: finalBarcode && finalBarcode.startsWith('data:image/png;base64,') ? 'self-generated' : (finalBarcode ? 'delhivery-fallback' : 'none'),
         awb: awb,
-        allKeys: Object.keys(pkg)
       });
 
       // Extract all data with Delhivery priority, then order fallback
@@ -729,6 +730,9 @@ class LabelRenderer {
       img, .awb-barcode img, .order-barcode img {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        visibility: visible !important;
+        display: inline-block !important;
+        max-width: 100% !important;
       }
     }
   </style>
@@ -1146,6 +1150,9 @@ class LabelRenderer {
       img, .label-slot .awb-barcode img, .label-slot .order-barcode img {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        visibility: visible !important;
+        display: inline-block !important;
+        max-width: 100% !important;
       }
     }
 

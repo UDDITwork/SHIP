@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Corrected Concave Curves</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      background: #f5f5f5;
+      font-family: Arial, sans-serif;
+    }
+    .demo-container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      display: inline-block;
+    }
+    .sidebar-demo {
+      display: flex;
+      position: relative;
+      background: #F68723;
+      width: 292px;
+      height: 300px;
+      border-radius: 8px;
+    }
+    .active-pill {
+      position: absolute;
+      left: 0;
+      top: 60px;
+      width: 186px;
+      height: 74px;
+      background: #FCE1C8;
+      border-radius: 37px 0 0 37px;
+      display: flex;
+      align-items: center;
+      padding-left: 30px;
+      font-weight: 600;
+      color: #F68723;
+      font-size: 18px;
+    }
+    .extension-fixed {
+      position: absolute;
+      left: 250px;
+      top: 60px;
+      width: 42px;
+      height: 74px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Corrected Concave Curve Extension</h1>
+  <p style="color: #666; max-width: 600px;">
+    The curves are now on the RIGHT edge (facing content area), creating a smooth concave transition.
+  </p>
+
+  <div class="demo-container">
+    <div class="sidebar-demo">
+      <div class="active-pill">
+        Dashboard
+      </div>
+
+      <!-- Extension with CORRECTED curves on RIGHT side -->
+      <svg class="extension-fixed" viewBox="0 0 42 74" preserveAspectRatio="none">
+        <path
+          d="
+            M 0 0
+            L 24 0
+            C 33 0, 42 9, 42 18
+            L 42 56
+            C 42 65, 33 74, 24 74
+            L 0 74
+            Z
+          "
+          fill="#FCE1C8"
+          stroke="#002B59"
+          stroke-width="0.5"
+        />
+      </svg>
+    </div>
+  </div>
+
+  <div style="margin-top: 30px; padding: 20px; background: white; border-radius: 8px; max-width: 600px;">
+    <h3>✅ Corrected SVG Path (RIGHT-side curves):</h3>
+    <pre style="background: #f5f5f5; padding: 15px; border-radius: 4px; font-size: 13px;">
+M 0 0              // Start top-left
+L 24 0             // Line across most of top
+C 33 0, 42 9, 42 18  // CONCAVE curve at TOP-RIGHT corner (curves INWARD)
+L 42 56            // Line down right side
+C 42 65, 33 74, 24 74  // CONCAVE curve at BOTTOM-RIGHT corner (curves INWARD)
+L 0 74             // Line back across bottom
+Z                  // Close path
+    </pre>
+
+    <p style="margin-top: 15px; color: #666;">
+      <strong>Key difference:</strong> Curves are now on the RIGHT edge (x=42), creating inward bows
+      as the extension transitions into the content area. This matches the Figma design.
+    </p>
+  </div>
+
+</body>
+</html>

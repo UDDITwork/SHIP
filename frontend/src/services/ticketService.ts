@@ -90,6 +90,7 @@ export interface CreateTicketData {
   awb_numbers?: string[] | string; // Optional, can be array or comma-separated string
   comment: string;
   files?: File[];
+  ndr_order_id?: string; // Optional: links ticket to NDR order
 }
 
 export interface AddCommentData {
@@ -167,6 +168,10 @@ class TicketService {
     formData.append('subject', `Support Request - ${ticketData.category}`);
     formData.append('description', ticketData.comment);
     
+    if (ticketData.ndr_order_id) {
+      formData.append('ndr_order_id', ticketData.ndr_order_id);
+    }
+
     if (ticketData.files) {
       ticketData.files.forEach(file => {
         formData.append('attachments', file);

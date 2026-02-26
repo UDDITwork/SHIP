@@ -1,0 +1,346 @@
+/* ============================================
+   AdminTransactionsView — Admin Billing Tab
+   ============================================ */
+
+/* Client List View */
+.atv-clients {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.atv-clients-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.atv-clients-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #1e293b;
+}
+
+/* Search Input */
+.atv-search-input {
+  min-width: 260px;
+  padding: 10px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background-color: #fff;
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.atv-search-input:focus {
+  outline: none;
+  border-color: #002B59;
+  box-shadow: 0 0 0 3px rgba(0, 43, 89, 0.1);
+}
+
+/* Table Container */
+.atv-table-container {
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+}
+
+/* Table */
+.atv-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.atv-table th,
+.atv-table td {
+  text-align: left;
+  padding: 12px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.atv-table th {
+  font-weight: 600;
+  color: #475569;
+  background-color: #f8fafc;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.atv-table tbody tr:hover {
+  background-color: #f1f5f9;
+}
+
+/* Numeric columns */
+.atv-numeric {
+  text-align: right !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.atv-numeric.credit {
+  color: #047857;
+  font-weight: 600;
+}
+
+.atv-numeric.debit {
+  color: #b91c1c;
+  font-weight: 600;
+}
+
+/* Client info cells */
+.atv-client-name {
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.atv-client-email {
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.atv-client-id-cell {
+  font-weight: 600;
+  color: #002B59;
+}
+
+/* Show Button */
+.atv-show-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  border: 1px solid #002B59;
+  background: #fff;
+  color: #002B59;
+  font-weight: 600;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.atv-show-btn:hover {
+  background: #002B59;
+  color: #fff;
+}
+
+/* Empty & Loading states */
+.atv-empty {
+  text-align: center;
+  padding: 32px 16px !important;
+  color: #64748b;
+}
+
+.atv-loading {
+  text-align: center;
+  padding: 32px 16px;
+  color: #64748b;
+}
+
+/* Pagination */
+.atv-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  padding-top: 12px;
+  color: #475569;
+}
+
+/* ============================================
+   Detail View
+   ============================================ */
+
+.atv-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Back Button */
+.atv-back-btn {
+  align-self: flex-start;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #002B59;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.atv-back-btn:hover {
+  background: #f1f5f9;
+  border-color: #002B59;
+}
+
+/* Detail Header */
+.atv-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.atv-detail-header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  color: #002B59;
+}
+
+.atv-client-id {
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+/* Summary Cards */
+.atv-summary-cards {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.atv-summary-card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 20px;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.atv-summary-card.credit {
+  border-color: rgba(4, 120, 87, 0.2);
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), #fff);
+}
+
+.atv-summary-card.debit {
+  border-color: rgba(185, 28, 28, 0.2);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), #fff);
+}
+
+.atv-summary-label {
+  font-size: 0.75rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.atv-summary-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.atv-summary-card.credit .atv-summary-value {
+  color: #047857;
+}
+
+.atv-summary-card.debit .atv-summary-value {
+  color: #b91c1c;
+}
+
+/* Filters */
+.atv-filters {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.atv-type-select {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  font-size: 0.9rem;
+  color: #0f172a;
+  cursor: pointer;
+}
+
+.atv-type-select:focus {
+  outline: none;
+  border-color: #002B59;
+  box-shadow: 0 0 0 3px rgba(0, 43, 89, 0.1);
+}
+
+/* Transaction detail cells */
+.atv-txn-id {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 0.85rem;
+}
+
+.atv-txn-date {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.atv-zone {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Amount styling */
+.atv-amount {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.atv-amount.credit {
+  color: #047857;
+}
+
+.atv-amount.debit {
+  color: #b91c1c;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .atv-clients-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .atv-search-input {
+    width: 100%;
+    min-width: unset;
+  }
+
+  .atv-detail-header {
+    flex-direction: column;
+  }
+
+  .atv-summary-cards {
+    width: 100%;
+  }
+
+  .atv-summary-card {
+    flex: 1 1 140px;
+    min-width: unset;
+  }
+
+  .atv-filters {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .atv-type-select {
+    width: 100%;
+  }
+}

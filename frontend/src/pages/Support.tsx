@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { ticketService, Ticket, TicketStatusCounts, TicketFilters } from '../services/ticketService';
 import AWBLink from '../components/AWBLink';
@@ -70,6 +71,7 @@ const getStatusCount = (counts: ClientStatusCounts, status: TicketStatus) => {
 };
 
 const Support: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<TicketTab>('tickets');
   const [activeStatus, setActiveStatus] = useState<TicketStatus>('open');
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -77,6 +79,7 @@ const Support: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [ndrOrderId, setNdrOrderId] = useState<string>('');
 
   // Toast notification state
   const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({
@@ -175,6 +178,31 @@ const Support: React.FC = () => {
       setAwbNumbers('');
     }
   }, [requiresAWB, awbNumbers]);
+
+  // Auto-fill from NDR page query params
+  useEffect(() => {
+    const category = searchParams.get('category');
+    const awb = searchParams.get('awb');
+    const orderIdParam = searchParams.get('ndr_order_id');
+
+    if (category && ['shipment_ndr_rto', 'edit_shipment_info'].includes(category)) {
+      setSelectedCategory(category);
+      if (awb) setAwbNumbers(awb);
+      if (orderIdParam) setNdrOrderId(orderIdParam);
+
+      // Auto-generate description
+      if (category === 'shipment_ndr_rto') {
+        setComment(`RTO Request for AWB: ${awb || ''}\n\nPlease process RTO for this NDR shipment.`);
+      } else if (category === 'edit_shipment_info') {
+        setComment(`Edit Buyer Information for AWB: ${awb || ''}\n\nPlease update the following:\n- Address: \n- Phone: `);
+      }
+
+      setShowCreateModal(true);
+      // Clear search params so they don't persist on refresh
+      setSearchParams({}, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -328,10 +356,16 @@ const Support: React.FC = () => {
         }
       }
       
+      // Pass ndr_order_id if this ticket was raised from NDR page
+      if (ndrOrderId) {
+        ticketData.ndr_order_id = ndrOrderId;
+      }
+
       await ticketService.createTicket(ticketData);
 
       showToast('Ticket created successfully!', 'success');
       setShowCreateModal(false);
+      setNdrOrderId('');
       resetForm();
       fetchTickets();
       fetchStats();
@@ -362,6 +396,7 @@ const Support: React.FC = () => {
     setComment('');
     setSelectedFiles([]);
     setShowCategoryDropdown(false);
+    setNdrOrderId('');
   };
 
   return (
@@ -502,11 +537,11 @@ const Support: React.FC = () => {
 
         {/* Create Ticket Modal */}
         {showCreateModal && (
-          <div className="modal-overlay" onClick={() => { setShowCreateModal(false); setShowCategoryDropdown(false); }}>
+          <div className="modal-overlay" onClick={() => { setShowCreateModal(false); resetForm(); }}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
               <div className="modal-header">
                 <h2>Raise Ticket</h2>
-                <button className="close-btn" onClick={() => { setShowCreateModal(false); setShowCategoryDropdown(false); }}>×</button>
+                <button className="close-btn" onClick={() => { setShowCreateModal(false); resetForm(); }}>×</button>
               </div>
 
               <form className="ticket-form" onSubmit={handleSubmit}>
@@ -634,7 +669,7 @@ const Support: React.FC = () => {
                   <button
                     type="button"
                     className="cancel-btn"
-                    onClick={() => setShowCreateModal(false)}
+                    onClick={() => { setShowCreateModal(false); resetForm(); }}
                   >
                     Cancel
                   </button>

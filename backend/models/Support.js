@@ -160,6 +160,13 @@ const supportTicketSchema = new mongoose.Schema({
     ref: 'Order'
   }],
 
+  // NDR Order back-link (set when ticket is raised from NDR page)
+  ndr_order_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Order',
+    default: null
+  },
+
   // Ticket Status
   status: {
     type: String,

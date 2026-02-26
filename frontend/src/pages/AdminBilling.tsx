@@ -3,6 +3,7 @@ import { adminService } from '../services/adminService';
 import BillingClientList from '../components/BillingClientList';
 import InvoiceManagementView from '../components/InvoiceManagementView';
 import ManualInvoiceUploadModal from '../components/ManualInvoiceUploadModal';
+import AdminTransactionsView from '../components/AdminTransactionsView';
 import './AdminBilling.css';
 
 interface BillingPeriod {
@@ -23,7 +24,7 @@ interface BulkGenerationResult {
 }
 
 const AdminBilling: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'generate' | 'invoices'>('generate');
+  const [activeTab, setActiveTab] = useState<'generate' | 'invoices' | 'transactions'>('generate');
   const [generating, setGenerating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [generationResult, setGenerationResult] = useState<BulkGenerationResult | null>(null);
@@ -95,6 +96,12 @@ const AdminBilling: React.FC = () => {
         >
           Invoice Management
         </button>
+        <button
+          className={`tab-btn ${activeTab === 'transactions' ? 'active' : ''}`}
+          onClick={() => setActiveTab('transactions')}
+        >
+          Transactions
+        </button>
       </div>
 
       <div className="billing-content">
@@ -103,10 +110,12 @@ const AdminBilling: React.FC = () => {
             onGenerateBills={handleGenerateBulkBills}
             generating={generating}
           />
-        ) : (
+        ) : activeTab === 'invoices' ? (
           <InvoiceManagementView
             onUploadManualInvoice={handleUploadManualInvoice}
           />
+        ) : (
+          <AdminTransactionsView />
         )}
       </div>
 
