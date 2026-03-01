@@ -241,6 +241,23 @@ const adminAuth = async (req, res, next) => {
 // Apply admin auth to all routes
 router.use(adminAuth);
 
+// Middleware to ensure only admins (not staff) can access certain routes
+const adminOnly = (req, res, next) => {
+  if (req.staff) {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Staff members cannot access staff management.'
+    });
+  }
+  if (!req.admin) {
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized access. Admin credentials required.'
+    });
+  }
+  next();
+};
+
 const CLIENT_DETAIL_PROJECTION = '-password -password_reset_token -email_verification_token';
 
 const findClientByIdentifier = async (identifier) => {
@@ -6117,23 +6134,6 @@ router.get('/ndr/clients/:clientId/stats', async (req, res) => {
 });
 
 // ==================== STAFF MANAGEMENT ROUTES ====================
-
-// Middleware to ensure only admins (not staff) can access staff management
-const adminOnly = (req, res, next) => {
-  if (req.staff) {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied. Staff members cannot access staff management.'
-    });
-  }
-  if (!req.admin) {
-    return res.status(401).json({
-      success: false,
-      message: 'Unauthorized access. Admin credentials required.'
-    });
-  }
-  next();
-};
 
 // @desc    Create staff account
 // @route   POST /api/admin/staff
