@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Notification = require('../models/Notification');
-const authMiddleware = require('../middleware/auth');
+const { auth: authMiddleware } = require('../middleware/auth');
 const logger = require('../utils/logger');
 
 /**
