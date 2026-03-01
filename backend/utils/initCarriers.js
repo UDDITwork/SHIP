@@ -77,13 +77,6 @@ async function ensureCarriersExist() {
     }
 
     // 3. Link orphaned rate cards (no carrier_id) to DELHIVERY_SURFACE
-    const orphanedCount = await RateCard.countDocuments({
-      $or: [
-        { carrier_id: { $exists: false } },
-        { carrier_id: null }
-      ]
-    });
-
     if (orphanedCount > 0) {
       const result = await RateCard.updateMany(
         {
