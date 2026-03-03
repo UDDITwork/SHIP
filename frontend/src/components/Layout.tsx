@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import ReactDOM from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { userService, UserProfile } from '../services/userService';
 import { walletService, WalletBalance } from '../services/walletService';
@@ -38,51 +37,6 @@ const RATE_LIMIT_WINDOW_MS = 2 * 60 * 1000; // 2 minutes
 const WALLET_REFRESH_INTERVAL_MS = 3 * 60 * 1000; // 3 minutes
 const PROFILE_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
-// Portal-based active tab extension component with concave curves
-const ActiveTabExtension: React.FC<{
-  active: boolean;
-  top: number;
-  height: number;
-  sidebarLeft: number;
-}> = ({ active, top, height, sidebarLeft }) => {
-  if (!active || top === 0) return null;
-
-  const curveDepth = 18; // Concave curve depth
-  const width = 42;
-
-  // SVG path with concave curves on top-right and bottom-right edges (facing content area)
-  const path = `
-    M 0 0
-    L ${width - curveDepth} 0
-    C ${width - curveDepth * 0.5} 0, ${width} ${curveDepth * 0.5}, ${width} ${curveDepth}
-    L ${width} ${height - curveDepth}
-    C ${width} ${height - curveDepth * 0.5}, ${width - curveDepth * 0.5} ${height}, ${width - curveDepth} ${height}
-    L 0 ${height}
-    Z
-  `;
-
-  return ReactDOM.createPortal(
-    <svg
-      style={{
-        position: 'fixed',
-        left: `${sidebarLeft + 250}px`,
-        top: `${top}px`,
-        width: `${width}px`,
-        height: `${height}px`,
-        zIndex: 999,
-        pointerEvents: 'none'
-      }}
-      viewBox={`0 0 ${width} ${height}`}
-      preserveAspectRatio="none"
-    >
-      <path
-        d={path}
-        fill="#FCE1C8"
-      />
-    </svg>,
-    document.body
-  );
-};
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const location = useLocation();
@@ -100,10 +54,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [wsConnected, setWsConnected] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({});
-
-  // Active tab extension tracking
-  const [activeTabBounds, setActiveTabBounds] = useState<{top: number; height: number; sidebarLeft: number} | null>(null);
-  const activeTabRef = useRef<HTMLAnchorElement>(null);
 
   // Keep parent menu expanded when on a child route
   useEffect(() => {
@@ -123,28 +73,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         billing: shouldExpandBilling,
         settings: shouldExpandSettings,
       });
-    }
-  }, [location.pathname]);
-
-  // Measure active tab position for portal extension
-  useEffect(() => {
-    if (activeTabRef.current) {
-      const updateBounds = () => {
-        const rect = activeTabRef.current?.getBoundingClientRect();
-        const sidebar = document.querySelector('.layout-sidebar')?.getBoundingClientRect();
-        if (rect && sidebar) {
-          setActiveTabBounds({
-            top: rect.top,
-            height: rect.height,
-            sidebarLeft: sidebar.left
-          });
-        }
-      };
-
-      updateBounds();
-      // Update on window resize
-      window.addEventListener('resize', updateBounds);
-      return () => window.removeEventListener('resize', updateBounds);
     }
   }, [location.pathname]);
 
@@ -844,7 +772,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                                   key={subChild.path}
                                   to={subChild.path!}
                                   className={`sidebar-item sidebar-subchild ${location.pathname === subChild.path ? 'active' : ''}`}
-                                  ref={location.pathname === subChild.path ? activeTabRef : null}
                                 >
                                   <span className="sidebar-label">{subChild.label}</span>
                                 </Link>
@@ -857,7 +784,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                             key={child.path}
                             to={child.path!}
                             className={`sidebar-item sidebar-child ${location.pathname === child.path || location.pathname.startsWith(child.path + '/') ? 'active' : ''}`}
-                            ref={(location.pathname === child.path || location.pathname.startsWith(child.path + '/')) ? activeTabRef : null}
                           >
                             <span className="sidebar-icon">
                               {child.svgIcon ? (
@@ -877,7 +803,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <Link
                     to={item.path!}
                     className={`sidebar-item ${isMenuActive(item) ? 'active' : ''}`}
-                    ref={isMenuActive(item) ? activeTabRef : null}
                   >
                     <span className="sidebar-icon">
                       {item.svgIcon ? (
@@ -902,15 +827,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </main>
       </div>
 
-      {/* Portal-rendered active tab extension */}
-      {activeTabBounds && (
-        <ActiveTabExtension
-          active={true}
-          top={activeTabBounds.top}
-          height={activeTabBounds.height}
-          sidebarLeft={activeTabBounds.sidebarLeft}
-        />
-      )}
     </div>
   );
 };
