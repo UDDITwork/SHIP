@@ -332,8 +332,26 @@ class WebhookService {
               });
             }
 
-            // Update order status if changed and not in terminal state
-            if (!isTerminal && order.status !== mappedStatus) {
+            // Guard: Prevent premature ready_to_ship → pickups_manifests transition
+            // Delhivery auto-manifests shipments on creation, sending a "Manifested" webhook
+            // immediately. The user must explicitly request a pickup first.
+            const isPrePickupManifest = (
+              order.status === 'ready_to_ship' &&
+              mappedStatus === 'pickups_manifests' &&
+              order.delhivery_data?.pickup_request_status !== 'scheduled'
+            );
+
+            if (isPrePickupManifest) {
+              logger.info('⏭️ Skipping premature ready_to_ship → pickups_manifests (auto-manifest webhook)', {
+                orderId: order.order_id,
+                waybill,
+                webhookStatus: statusData?.Status,
+                pickupRequestStatus: order.delhivery_data?.pickup_request_status || 'none'
+              });
+            }
+
+            // Update order status if changed and not in terminal/protected state
+            if (!isTerminal && !isPrePickupManifest && order.status !== mappedStatus) {
               const oldStatus = order.status;
               order.status = mappedStatus;
 

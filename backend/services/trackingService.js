@@ -524,8 +524,24 @@ class TrackingService {
                 const extractedStatus = this.extractStatusFromResponse(trackingData);
                 const newStatus = this.mapDelhiveryStatus(extractedStatus.apiStatus, extractedStatus.statusType);
                 const oldStatus = order.status;
-                
-                if (newStatus && newStatus !== oldStatus) {
+
+                // Guard: Prevent premature ready_to_ship → pickups_manifests transition
+                const isPrePickupManifest = (
+                    oldStatus === 'ready_to_ship' &&
+                    newStatus === 'pickups_manifests' &&
+                    order.delhivery_data?.pickup_request_status !== 'scheduled'
+                );
+
+                if (isPrePickupManifest) {
+                    logger.info('⏭️ Skipping premature ready_to_ship → pickups_manifests (tracking poll)', {
+                        orderId: order.order_id,
+                        waybill: waybill,
+                        apiStatus: extractedStatus.apiStatus,
+                        pickupRequestStatus: order.delhivery_data?.pickup_request_status || 'none'
+                    });
+                }
+
+                if (newStatus && newStatus !== oldStatus && !isPrePickupManifest) {
                     order.status = newStatus;
                     
                     order.status_history = order.status_history || [];
@@ -961,48 +977,63 @@ class TrackingService {
                     return false;
                 }
                 
-                // ALWAYS update status from Delhivery API (even if same)
-                // This ensures database always has the latest status from API
-                order.status = status;
-                
-                if (status === 'delivered' && additionalData.delivered_at) {
-                    order.delivered_date = additionalData.delivered_at;
-                }
-                
-                if (status === 'cancelled') {
-                    order.cancelled_date = new Date();
-                }
-                
-                // Only add to history if status actually changed
-                if (oldStatus !== status) {
-                    order.status_history = order.status_history || [];
-                    order.status_history.push({
-                        status: status,
-                        timestamp: new Date(),
-                        remarks: `Status updated via automated tracking (Delhivery API: ${rawApiStatus})`,
-                        source: 'automated_tracking'
+                // Guard: Prevent premature ready_to_ship → pickups_manifests transition
+                const isPrePickupManifest = (
+                    oldStatus === 'ready_to_ship' &&
+                    status === 'pickups_manifests' &&
+                    order.delhivery_data?.pickup_request_status !== 'scheduled'
+                );
+
+                if (isPrePickupManifest) {
+                    logger.info('⏭️ Skipping premature ready_to_ship → pickups_manifests (updateOrderStatus)', {
+                        orderId: orderId,
+                        pickupRequestStatus: order.delhivery_data?.pickup_request_status || 'none'
                     });
                 }
+
+                // Update status from Delhivery API (skip if premature manifest)
+                if (!isPrePickupManifest) {
+                    order.status = status;
+
+                    if (status === 'delivered' && additionalData.delivered_at) {
+                        order.delivered_date = additionalData.delivered_at;
+                    }
+
+                    if (status === 'cancelled') {
+                        order.cancelled_date = new Date();
+                    }
+
+                    // Only add to history if status actually changed
+                    if (oldStatus !== status) {
+                        order.status_history = order.status_history || [];
+                        order.status_history.push({
+                            status: status,
+                            timestamp: new Date(),
+                            remarks: `Status updated via automated tracking (Delhivery API: ${rawApiStatus})`,
+                            source: 'automated_tracking'
+                        });
+                    }
+
+                    await order.save();
+                }
                 
-                await order.save();
-                
-                if (oldStatus !== status) {
+                if (!isPrePickupManifest && oldStatus !== status) {
                     logger.info(`✅ Order status updated: ${orderId}`, {
                         oldStatus,
                         newStatus: status,
-                        rawApiStatus: rawApiStatus, // Show what Delhivery API actually sent
-                        mappedStatus: status, // Show what we mapped it to
+                        rawApiStatus: rawApiStatus,
+                        mappedStatus: status,
                         order_id_in_db: order.order_id,
                         isFallback: isFallback,
-                        ...(isFallback && { 
+                        ...(isFallback && {
                             warning: 'This is a fallback update - consider adding proper mapping',
                             actionRequired: 'Add status mapping for: ' + rawApiStatus
                         })
                     });
-                } else {
+                } else if (!isPrePickupManifest) {
                     logger.debug(`ℹ️ Order ${orderId} status confirmed`, {
                         status: status,
-                        rawApiStatus: rawApiStatus, // Show what Delhivery API actually sent
+                        rawApiStatus: rawApiStatus,
                         note: `Delhivery API sent "${rawApiStatus}", mapped to "${status}"`,
                         isFallback: isFallback
                     });

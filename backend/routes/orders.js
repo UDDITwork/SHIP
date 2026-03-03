@@ -4869,10 +4869,11 @@ router.post('/bulk/request-pickup', auth, async (req, res) => {
 
         if (pickupResult.success) {
           order.status = 'pickups_manifests';
-          order.pickup_request_id = pickupResult.pickup_id || `PU${Date.now()}`;
-          order.pickup_request_date = pickup_date || moment().add(1, 'days').format('YYYY-MM-DD');
-          order.pickup_request_time = pickup_time || '14:00:00';
-          order.pickup_request_status = 'scheduled';
+          if (!order.delhivery_data) order.delhivery_data = {};
+          order.delhivery_data.pickup_request_id = pickupResult.pickup_id || `PU${Date.now()}`;
+          order.delhivery_data.pickup_request_date = pickup_date || moment().add(1, 'days').format('YYYY-MM-DD');
+          order.delhivery_data.pickup_request_time = pickup_time || '14:00:00';
+          order.delhivery_data.pickup_request_status = 'scheduled';
           await order.save();
 
           results.push({
