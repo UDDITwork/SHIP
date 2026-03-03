@@ -373,6 +373,11 @@ const Orders: React.FC = () => {
     };
   }, [fetchOrders, activeTab, buildOrderFilters]);
 
+  // Clear selection when switching tabs or order type (Forward/Reverse)
+  useEffect(() => {
+    setSelectedOrders([]);
+  }, [orderType, activeTab]);
+
   const handleSyncOrders = async () => {
     setLoading(true);
     try {
@@ -1282,13 +1287,13 @@ const Orders: React.FC = () => {
           <div className="order-type-toggle">
             <button
               className={`toggle-btn ${orderType === 'forward' ? 'active' : ''}`}
-              onClick={() => setOrderType('forward')}
+              onClick={() => { setSelectedOrders([]); setOrderType('forward'); }}
             >
               Forward
             </button>
             <button
               className={`toggle-btn ${orderType === 'reverse' ? 'active' : ''}`}
-              onClick={() => setOrderType('reverse')}
+              onClick={() => { setSelectedOrders([]); setOrderType('reverse'); }}
             >
               Reverse
             </button>
@@ -1311,61 +1316,61 @@ const Orders: React.FC = () => {
         <div className="status-tabs">
           <button
             className={`tab-btn ${activeTab === 'new' ? 'active' : ''}`}
-            onClick={() => setActiveTab('new')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('new'); }}
           >
             New
           </button>
           <button
             className={`tab-btn ${activeTab === 'ready_to_ship' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ready_to_ship')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('ready_to_ship'); }}
           >
             Ready to Ship
           </button>
           <button
             className={`tab-btn ${activeTab === 'pickups_manifests' ? 'active' : ''}`}
-            onClick={() => setActiveTab('pickups_manifests')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('pickups_manifests'); }}
           >
             Pickups & Manifests
           </button>
           <button
             className={`tab-btn ${activeTab === 'in_transit' ? 'active' : ''}`}
-            onClick={() => setActiveTab('in_transit')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('in_transit'); }}
           >
             In Transit
           </button>
           <button
             className={`tab-btn ${activeTab === 'out_for_delivery' ? 'active' : ''}`}
-            onClick={() => setActiveTab('out_for_delivery')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('out_for_delivery'); }}
           >
             Out for Delivery
           </button>
           <button
             className={`tab-btn ${activeTab === 'delivered' ? 'active' : ''}`}
-            onClick={() => setActiveTab('delivered')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('delivered'); }}
           >
             Delivered
           </button>
           <button
             className={`tab-btn ${activeTab === 'ndr' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ndr')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('ndr'); }}
           >
             NDR
           </button>
           <button
             className={`tab-btn ${activeTab === 'rto' ? 'active' : ''}`}
-            onClick={() => setActiveTab('rto')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('rto'); }}
           >
             RTO
           </button>
           <button
             className={`tab-btn ${activeTab === 'all' ? 'active' : ''}`}
-            onClick={() => setActiveTab('all')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('all'); }}
           >
             All
           </button>
           <button
             className={`tab-btn ${activeTab === 'lost' ? 'active' : ''}`}
-            onClick={() => setActiveTab('lost')}
+            onClick={() => { setSelectedOrders([]); setActiveTab('lost'); }}
           >
             Lost
           </button>

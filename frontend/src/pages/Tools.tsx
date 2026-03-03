@@ -3,6 +3,7 @@ import Layout from '../components/Layout';
 import { useAuth } from '../contexts/AuthContext';
 import { shippingService, ShippingCalculationRequest } from '../services/shippingService';
 import { apiService } from '../services/api';
+import { notificationService } from '../services/notificationService';
 import { formatDateTime } from '../utils/dateFormat';
 import './Tools.css';
 import RateCalculatorIcon from '../ratecalculator/RATECALCULATOR.svg';
@@ -480,6 +481,17 @@ const Tools: React.FC = () => {
   useEffect(() => {
     refreshUser().catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for real-time user category updates via WebSocket
+  useEffect(() => {
+    const unsubscribe = notificationService.subscribe((data: any) => {
+      if (data.notification_type === 'category_change') {
+        console.log('🔄 User category changed via WebSocket, refreshing...');
+        refreshUser().catch(() => {});
+      }
+    });
+    return () => unsubscribe();
+  }, [refreshUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Force refresh user data if there's a mismatch
   const handleRefreshUserData = async () => {
@@ -983,7 +995,7 @@ const Tools: React.FC = () => {
                           <span className="result-value">₹{result.calculation_result.forwardCharges.toFixed(2)}</span>
                         </div>
                       )}
-                      {formData.shipmentType === 'rto' && (
+                      {formData.shipmentType === 'return' && (
                         <div className="result-row">
                           <span className="result-label">RTO Charges:</span>
                           <span className="result-value">₹{result.calculation_result.rtoCharges.toFixed(2)}</span>

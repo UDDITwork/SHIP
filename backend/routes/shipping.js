@@ -1227,12 +1227,14 @@ router.post('/calculate-rate-card',
                 const paymentTypeForDelhivery = payment_mode === 'COD' ? 'COD' : 'Pre-paid';
 
                 // Get zone from Delhivery API
+                // Use 'RTO' status for return/rto orders, 'Delivered' for forward
+                const shipmentStatusForDelhivery = order_type === 'rto' ? 'RTO' : 'Delivered';
                 const zoneResult = await delhiveryService.getZoneFromDelhivery(
                     pickup_pincode,
                     delivery_pincode,
                     chargeableWeightGrams,
                     shippingModeForDelhivery,
-                    'Delivered',
+                    shipmentStatusForDelhivery,
                     paymentTypeForDelhivery
                 );
 

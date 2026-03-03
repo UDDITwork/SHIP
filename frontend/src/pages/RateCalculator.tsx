@@ -285,14 +285,18 @@ const RateCalculator: React.FC = () => {
                   <span className="result-label">Chargeable Weight</span>
                   <span className="result-value">{result.chargeable_weight} kg</span>
                 </div>
-                <div className="result-item">
-                  <span className="result-label">Forward Charges</span>
-                  <span className="result-value">₹{result.forward_charges.toFixed(2)}</span>
-                </div>
-                <div className="result-item">
-                  <span className="result-label">RTO Charges</span>
-                  <span className="result-value">₹{result.rto_charges.toFixed(2)}</span>
-                </div>
+                {shipmentType === 'forward' && (
+                  <div className="result-item">
+                    <span className="result-label">Forward Charges</span>
+                    <span className="result-value">₹{result.forward_charges.toFixed(2)}</span>
+                  </div>
+                )}
+                {shipmentType === 'return' && (
+                  <div className="result-item">
+                    <span className="result-label">RTO Charges</span>
+                    <span className="result-value">₹{result.rto_charges.toFixed(2)}</span>
+                  </div>
+                )}
                 {result.cod_charges > 0 && (
                   <div className="result-item">
                     <span className="result-label">COD Charges</span>
