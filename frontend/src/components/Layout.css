@@ -428,7 +428,7 @@
   background-color: #F68723; /* Exact Figma color */
   padding: 0;
   overflow-y: auto;
-  overflow-x: visible; /* Allow active tab to extend beyond sidebar */
+  overflow-x: hidden; /* Contain active tab within sidebar */
   scrollbar-gutter: stable; /* Reserve space for scrollbar to prevent overflow-x clipping */
   transition: width 0.3s ease, transform 0.3s ease;
   position: relative;
@@ -587,29 +587,21 @@
   margin-left: 0;
   position: relative;
   z-index: 100; /* Above content area */
-  border-radius: 37px 0 0 37px; /* Left side rounded */
+  border-radius: 37px; /* Full pill shape, contained within sidebar */
   padding: 18px 20px 18px 36px;
   min-height: 74px;
-  /* Main pill width - extension added via ::after */
-  width: 186px;
+  width: calc(100% - 20px);
+  margin-left: 10px;
+  margin-right: 10px;
   display: flex;
   align-items: center;
   gap: 14px;
   overflow: visible;
 }
 
-/* Extension into content area — rounded right edge */
+/* Extension removed — pill now fully contained within sidebar */
 .sidebar-item.active::after {
-  content: '';
-  position: absolute;
-  right: -42px;
-  top: 0;
-  width: 42px;
-  height: 100%;
-  background-color: #FCE1C8;
-  border-radius: 0 37px 37px 0;
-  z-index: 999;
-  pointer-events: none;
+  content: none;
 }
 
 .sidebar-icon {
@@ -796,11 +788,10 @@
 .layout-main {
   flex: 1;
   overflow-y: auto;
-  overflow-x: visible; /* CHANGED: Allow sidebar extension to show */
+  overflow-x: auto;
   background-color: #FFFFFF;
   padding: 20px 24px;
-  padding-left: 66px; /* 42px extension + 24px normal padding */
-  margin-left: -42px; /* NEGATIVE MARGIN: Pull left to overlap with sidebar extension */
+  margin-left: 0;
   position: relative;
   z-index: 1; /* BELOW sidebar (z-index: 10) so extension shows on top */
   border-left: none;
