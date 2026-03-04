@@ -213,19 +213,55 @@
 .carrier-card {
   background: white;
   border: 1px solid #e5e7eb;
+  border-left: 3px solid #22c55e;
   border-radius: 12px;
   padding: 20px;
   transition: box-shadow 0.2s, border-color 0.2s;
 }
 
 .carrier-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  border-color: #d1d5db;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .carrier-card.inactive {
-  opacity: 0.7;
+  opacity: 0.75;
   background: #f9fafb;
+  border-left-color: #d1d5db;
+}
+
+/* Status Pill — replaces toggle icon */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 11px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.status-pill.pill-active {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pill.pill-active:hover {
+  background: #bbf7d0;
+}
+
+.status-pill.pill-inactive {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-pill.pill-inactive:hover {
+  background: #e5e7eb;
+  color: #374151;
 }
 
 .carrier-header {
@@ -263,21 +299,8 @@
   font-family: monospace;
 }
 
-.carrier-status .toggle-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  cursor: pointer;
-  color: #d1d5db;
-  transition: color 0.2s;
-}
-
-.carrier-status .toggle-btn.active {
-  color: #22c55e;
-}
-
-.carrier-status .toggle-btn:hover {
-  color: #002B59;
+.carrier-status {
+  flex-shrink: 0;
 }
 
 /* Carrier Details */
@@ -392,15 +415,20 @@
 }
 
 .action-btn.delete {
-  color: #dc2626;
-  border-color: #fecaca;
-  background: #fff5f5;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+  background: white;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .action-btn.delete:hover {
   border-color: #ef4444;
-  color: white;
-  background: #ef4444;
+  color: #ef4444;
+  background: #fef2f2;
 }
 
 /* Modal */

@@ -351,9 +351,14 @@ const AdminWeightDiscrepancies: React.FC = () => {
         </select>
       );
     }
+    const label = disc.action_taken?.includes('ACCEPTED')
+      ? '✓ Accepted'
+      : disc.action_taken?.includes('REJECTED')
+      ? '✗ Rejected'
+      : disc.action_taken || 'N/A';
     return (
       <span className={`action-taken ${disc.action_taken?.includes('ACCEPTED') ? 'accepted' : disc.action_taken?.includes('REJECTED') ? 'rejected' : 'no-action'}`}>
-        {disc.action_taken || 'N/A'}
+        {label}
       </span>
     );
   };

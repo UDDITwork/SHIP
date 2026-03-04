@@ -283,11 +283,11 @@ const AdminCarriers: React.FC = () => {
                 </div>
                 <div className="carrier-status">
                   <button
-                    className={`toggle-btn ${carrier.is_active ? 'active' : ''}`}
+                    className={`status-pill ${carrier.is_active ? 'pill-active' : 'pill-inactive'}`}
                     onClick={() => handleToggleActive(carrier)}
-                    title={carrier.is_active ? 'Deactivate' : 'Activate'}
+                    title={carrier.is_active ? 'Click to deactivate' : 'Click to activate'}
                   >
-                    {carrier.is_active ? <ToggleRight size={24} /> : <ToggleLeft size={24} />}
+                    {carrier.is_active ? '● Active' : '○ Inactive'}
                   </button>
                 </div>
               </div>
@@ -344,7 +344,7 @@ const AdminCarriers: React.FC = () => {
                   onClick={() => handleDeleteCarrier(carrier)}
                   title="Delete Carrier"
                 >
-                  <Trash2 size={14} /> Delete
+                  <Trash2 size={14} />
                 </button>
               </div>
             </div>
