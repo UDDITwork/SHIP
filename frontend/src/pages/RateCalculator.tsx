@@ -84,7 +84,8 @@ const RateCalculator: React.FC = () => {
           ? parseFloat(codAmount)
           : undefined,
         // FIX A: map 'reverse' → 'rto' for the API
-        order_type: shipmentType === 'reverse' ? 'rto' : 'forward'
+        order_type: shipmentType === 'reverse' ? 'rto' : 'forward',
+        declared_value: parseFloat(shipmentValue)
       };
 
       const response = await shippingService.calculateShippingCharges(request);

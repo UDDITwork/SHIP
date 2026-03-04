@@ -16,6 +16,7 @@ export interface ShippingCalculationRequest {
   cod_amount?: number;
   order_type?: 'forward' | 'rto';
   service_type?: 'surface' | 'air'; // Delhivery Surface or Air (affects rate card selection)
+  declared_value?: number; // Shipment/product value for insurance and billing
 }
 
 export interface ShippingCalculationResult {
