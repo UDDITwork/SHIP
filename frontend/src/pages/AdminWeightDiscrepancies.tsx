@@ -276,7 +276,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     const params = new URLSearchParams();
     if (selectedIds.size > 0) {
       params.append('ids', Array.from(selectedIds).join(','));
@@ -288,12 +288,26 @@ const AdminWeightDiscrepancies: React.FC = () => {
       if (dateFrom) params.append('date_from', dateFrom);
       if (dateTo) params.append('date_to', dateTo);
     }
-    const url = `${environmentConfig.apiUrl}/admin/weight-discrepancies/export?${params}`;
-    // Trigger download with auth headers via form submit
-    const link = document.createElement('a');
-    link.href = url;
-    link.target = '_blank';
-    link.click();
+    try {
+      const response = await fetch(`${environmentConfig.apiUrl}/admin/weight-discrepancies/export?${params}`, {
+        headers: adminHeaders()
+      });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        alert(`Export failed: ${err.message || response.statusText}`);
+        return;
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `weight_discrepancies_${Date.now()}.xlsx`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Export failed');
+    }
   };
 
   const handleDownloadTemplate = () => {
