@@ -329,6 +329,44 @@ const AdminTicketSummary: React.FC = () => {
         </div>
       </div>
 
+      {/* Priority Overview — shown first as per requirement */}
+      <div className="priority-cards">
+        <div className="priority-header">
+          <h2>Priority Overview</h2>
+          <span className="priority-subtitle">Understand workload urgency across clients</span>
+        </div>
+        <div className="priority-grid">
+          {PRIORITY_ORDER.map((priorityKey) => {
+            const config = PRIORITY_CONFIG[priorityKey];
+            const totalForPriority = summary?.priorityTotals?.[priorityKey] ?? 0;
+            return (
+              <div
+                key={priorityKey}
+                className={`priority-card ${config.className} ${priorityFilter === priorityKey ? 'active' : ''}`}
+                onClick={() => handlePriorityCardFilter(priorityKey)}
+              >
+                <div className="priority-card-header">
+                  <span className="priority-icon">{config.icon}</span>
+                  <button
+                    className="priority-card-action"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handlePriorityCardFilter(priorityKey);
+                    }}
+                  >
+                    {priorityFilter === priorityKey ? 'Show All' : 'Filter'}
+                  </button>
+                </div>
+                <p className="priority-label">{config.label}</p>
+                <p className="priority-count">{formatNumber(totalForPriority)}</p>
+                <span className="priority-meta">{config.description}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Status Count Boxes — shown below priority boxes */}
       <div className="summary-cards">
         <div
           className={`status-card total ${statusFilter === 'all' ? 'active' : ''}`}
@@ -385,43 +423,6 @@ const AdminTicketSummary: React.FC = () => {
             </div>
           );
         })}
-      </div>
-
-      {/* Priority Overview */}
-      <div className="priority-cards">
-        <div className="priority-header">
-          <h2>Priority Overview</h2>
-          <span className="priority-subtitle">Understand workload urgency across clients</span>
-        </div>
-        <div className="priority-grid">
-          {PRIORITY_ORDER.map((priorityKey) => {
-            const config = PRIORITY_CONFIG[priorityKey];
-            const totalForPriority = summary?.priorityTotals?.[priorityKey] ?? 0;
-            return (
-              <div
-                key={priorityKey}
-                className={`priority-card ${config.className} ${priorityFilter === priorityKey ? 'active' : ''}`}
-                onClick={() => handlePriorityCardFilter(priorityKey)}
-              >
-                <div className="priority-card-header">
-                  <span className="priority-icon">{config.icon}</span>
-                  <button
-                    className="priority-card-action"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePriorityCardFilter(priorityKey);
-                    }}
-                  >
-                    {priorityFilter === priorityKey ? 'Show All' : 'Filter'}
-                  </button>
-                </div>
-                <p className="priority-label">{config.label}</p>
-                <p className="priority-count">{formatNumber(totalForPriority)}</p>
-                <span className="priority-meta">{config.description}</span>
-              </div>
-            );
-          })}
-        </div>
       </div>
 
       {/* Filters Section */}
@@ -664,22 +665,20 @@ const AdminTicketSummary: React.FC = () => {
               <table className="ticket-summary-table">
                 <thead>
                   <tr>
-                    <th>Client</th>
                     <th>Client ID</th>
+                    <th>Client Name &amp; Details</th>
+                    <th className="numeric">All</th>
                     <th className="numeric">Open</th>
                     <th className="numeric">In Progress</th>
                     <th className="numeric">Escalated</th>
                     <th className="numeric">Resolved</th>
                     <th className="numeric">Closed</th>
-                    <th className="numeric">Total</th>
-                    <th>Last Updated</th>
-                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredClients.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="empty-state">
+                      <td colSpan={8} className="empty-state">
                         {summary ? 'No matching clients found.' : 'No ticket data available yet.'}
                       </td>
                     </tr>
@@ -688,36 +687,47 @@ const AdminTicketSummary: React.FC = () => {
                       <tr
                         key={client.clientMongoId}
                         className="clickable-row"
-                        onClick={() => handleViewTickets(client)}
                       >
-                        <td>
-                          <div className="client-cell">
-                            <span className="client-company">{client.companyName}</span>
-                            <span className="client-contact">{client.contactName || '-'}</span>
-                          </div>
-                        </td>
                         <td>
                           <span className="client-id">{client.clientId || '-'}</span>
                         </td>
-                        <td className="numeric">{formatNumber(client.statusCounts.open)}</td>
-                        <td className="numeric">{formatNumber(client.statusCounts.in_progress)}</td>
-                        <td className="numeric">{formatNumber(client.statusCounts.escalated)}</td>
-                        <td className="numeric">{formatNumber(client.statusCounts.resolved)}</td>
-                        <td className="numeric">{formatNumber(client.statusCounts.closed)}</td>
-                        <td className="numeric total-cell">{formatNumber(client.totalTickets)}</td>
-                        <td>{formatDateTime(client.latestUpdatedAt)}</td>
                         <td>
-                          <div className="row-actions">
-                            <button
-                              className="btn-primary btn-sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewTickets(client);
-                              }}
-                            >
-                              View Tickets
-                            </button>
+                          <div className="client-cell">
+                            <span className="client-company">{client.companyName}</span>
+                            {client.contactName && <span className="client-contact">{client.contactName}</span>}
+                            {client.email && <span className="client-contact">{client.email}</span>}
+                            {client.phoneNumber && <span className="client-contact">{client.phoneNumber}</span>}
                           </div>
+                        </td>
+                        <td className="numeric total-cell">
+                          <button className="count-btn" onClick={() => handleViewTickets(client)}>
+                            {formatNumber(client.totalTickets)}
+                          </button>
+                        </td>
+                        <td className="numeric">
+                          <button className="count-btn open" onClick={() => handleViewTickets(client, 'open')}>
+                            {formatNumber(client.statusCounts.open)}
+                          </button>
+                        </td>
+                        <td className="numeric">
+                          <button className="count-btn in-progress" onClick={() => handleViewTickets(client, 'in_progress')}>
+                            {formatNumber(client.statusCounts.in_progress)}
+                          </button>
+                        </td>
+                        <td className="numeric">
+                          <button className="count-btn escalated" onClick={() => handleViewTickets(client, 'escalated')}>
+                            {formatNumber(client.statusCounts.escalated)}
+                          </button>
+                        </td>
+                        <td className="numeric">
+                          <button className="count-btn resolved" onClick={() => handleViewTickets(client, 'resolved')}>
+                            {formatNumber(client.statusCounts.resolved)}
+                          </button>
+                        </td>
+                        <td className="numeric">
+                          <button className="count-btn closed" onClick={() => handleViewTickets(client, 'closed')}>
+                            {formatNumber(client.statusCounts.closed)}
+                          </button>
                         </td>
                       </tr>
                     ))

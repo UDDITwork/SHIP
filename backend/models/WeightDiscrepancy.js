@@ -52,6 +52,14 @@ const weightDiscrepancySchema = new mongoose.Schema({
     min: [0, 'Weight cannot be negative']
   },
 
+  // Volumetric weight calculated by courier (in grams): L×B×H / volumetric_divisor
+  volumetric_weight: {
+    type: Number,
+    default: null,
+    min: [0, 'Weight cannot be negative']
+  },
+
+  // Weight charged by the courier (max of dead weight and volumetric weight, in grams)
   delhivery_updated_weight: {
     type: Number,
     required: [true, 'Delhivery updated weight is required'],
@@ -62,6 +70,14 @@ const weightDiscrepancySchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Weight discrepancy is required'],
     min: [0, 'Discrepancy cannot be negative']
+  },
+
+  // Linked support ticket (populated after client raises dispute)
+  ticket_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Support',
+    default: null,
+    index: true
   },
 
   // Financial Information

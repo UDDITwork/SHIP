@@ -122,6 +122,12 @@ router.post('/:id/raise-dispute', auth, async (req, res) => {
     // Update status to DISPUTE
     discrepancy.dispute_status = 'DISPUTE';
     discrepancy.dispute_raised_at = new Date();
+
+    // Link ticket if provided by frontend after ticket creation
+    if (req.body && req.body.ticket_id) {
+      discrepancy.ticket_id = req.body.ticket_id;
+    }
+
     await discrepancy.save();
 
     res.json({

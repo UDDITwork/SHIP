@@ -74,7 +74,7 @@ export const AdminManualMapping: React.FC = () => {
   const downloadTemplate = () => {
     // Link to the template file in root
     const link = document.createElement('a');
-    link.href = '/MANUAL MAPPING.xlsx';
+    link.href = '/MANUAL%20MAPPING.xlsx';
     link.download = 'MANUAL_MAPPING_TEMPLATE.xlsx';
     link.click();
   };

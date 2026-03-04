@@ -510,6 +510,14 @@ class OrderService {
       throw error;
     }
   }
+
+  async updateOrderId(mongoId: string, newOrderId: string): Promise<{ status: string; message: string; data?: { order_id: string } }> {
+    const response = await apiService.patch<{ status: string; message: string; data?: { order_id: string } }>(
+      `/orders/${mongoId}/order-id`,
+      { new_order_id: newOrderId }
+    );
+    return response;
+  }
 }
 
 // Bulk operation result interface

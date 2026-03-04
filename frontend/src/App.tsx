@@ -51,7 +51,7 @@ import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 import AdminClients from './pages/AdminClients';
 import AdminClientTickets from './pages/AdminClientTickets';
-import AdminTickets from './pages/AdminTickets';
+import AdminTicketSummary from './pages/AdminTicketSummary';
 import AdminStaffManagement from './pages/AdminStaffManagement';
 import AdminRateCard from './pages/AdminRateCard';
 import AdminRateCardCategory from './pages/AdminRateCardCategory';
@@ -380,7 +380,7 @@ function App() {
               path="/admin/tickets"
               element={
                 <AdminLayout>
-                  <AdminTickets />
+                  <AdminTicketSummary />
                 </AdminLayout>
               }
             />

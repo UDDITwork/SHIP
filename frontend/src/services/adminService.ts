@@ -793,6 +793,12 @@ export interface AdminNDRStats {
   delivered: number;
   rto: number;
   all: number;
+  action_breakdown?: {
+    reattempt: number;
+    edit_requested: number;
+    rto: number;
+    hold: number;
+  };
 }
 
 class AdminService {
@@ -2507,6 +2513,8 @@ class AdminService {
     date_from?: string;
     date_to?: string;
     search?: string;
+    aging_filter?: string;
+    action_type?: string;
   } = {}): Promise<{
     success: boolean;
     data: {
@@ -2530,6 +2538,8 @@ class AdminService {
     if (filters.date_from) queryParams.append('date_from', filters.date_from);
     if (filters.date_to) queryParams.append('date_to', filters.date_to);
     if (filters.search) queryParams.append('search', filters.search);
+    if (filters.aging_filter) queryParams.append('aging_filter', filters.aging_filter);
+    if (filters.action_type) queryParams.append('action_type', filters.action_type);
 
     const response = await apiService.get<{
       success: boolean;
@@ -2561,6 +2571,23 @@ class AdminService {
     }>(`/admin/ndr/statistics?${queryParams.toString()}`, {
       headers: this.getAdminHeaders()
     });
+    return response;
+  }
+
+  async getAdminNDRDetail(orderId: string): Promise<{ success: boolean; data: any }> {
+    const response = await apiService.get<{ success: boolean; data: any }>(
+      `/admin/ndr/${orderId}/detail`,
+      { headers: this.getAdminHeaders() }
+    );
+    return response;
+  }
+
+  async postAdminNDRAction(orderId: string, action: string, remark?: string): Promise<{ success: boolean; message: string }> {
+    const response = await apiService.post<{ success: boolean; message: string }>(
+      `/admin/ndr/${orderId}/action`,
+      { action, remark },
+      { headers: this.getAdminHeaders() }
+    );
     return response;
   }
 }

@@ -12,6 +12,12 @@ const OrderDetails: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Inline Order ID edit
+  const [editingOrderId, setEditingOrderId] = useState(false);
+  const [orderIdInput, setOrderIdInput] = useState('');
+  const [orderIdSaving, setOrderIdSaving] = useState(false);
+  const [orderIdError, setOrderIdError] = useState<string | null>(null);
+
   const fetchOrderDetails = async () => {
     if (!orderId) {
       setError('Order ID not provided');
@@ -68,6 +74,29 @@ const OrderDetails: React.FC = () => {
     };
     if (statusLabels[status]) return statusLabels[status];
     return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  };
+
+  const handleStartEditOrderId = () => {
+    setOrderIdInput(order?.orderId || '');
+    setOrderIdError(null);
+    setEditingOrderId(true);
+  };
+
+  const handleSaveOrderId = async () => {
+    if (!order || !orderIdInput.trim()) return;
+    setOrderIdSaving(true);
+    setOrderIdError(null);
+    try {
+      const result = await orderService.updateOrderId(order._id, orderIdInput.trim());
+      if (result.status === 'success') {
+        setOrder(prev => prev ? { ...prev, orderId: orderIdInput.trim() } : prev);
+        setEditingOrderId(false);
+      }
+    } catch (err: any) {
+      setOrderIdError(err.response?.data?.message || 'Failed to update Order ID');
+    } finally {
+      setOrderIdSaving(false);
+    }
   };
 
   if (loading) {
@@ -132,7 +161,27 @@ const OrderDetails: React.FC = () => {
           <div className="summary-row">
             <div className="summary-item">
               <span className="label">Order ID</span>
-              <span className="value order-id">{order.orderId}</span>
+              {editingOrderId ? (
+                <div className="order-id-edit">
+                  <input
+                    className="order-id-input"
+                    value={orderIdInput}
+                    onChange={(e) => setOrderIdInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSaveOrderId(); if (e.key === 'Escape') setEditingOrderId(false); }}
+                    autoFocus
+                  />
+                  <button className="oid-btn save" onClick={handleSaveOrderId} disabled={orderIdSaving}>
+                    {orderIdSaving ? '...' : '✓'}
+                  </button>
+                  <button className="oid-btn cancel" onClick={() => setEditingOrderId(false)}>✕</button>
+                  {orderIdError && <span className="oid-error">{orderIdError}</span>}
+                </div>
+              ) : (
+                <span className="value order-id order-id-display" onClick={handleStartEditOrderId} title="Click to edit Order ID">
+                  {order.orderId}
+                  <span className="oid-edit-icon">✎</span>
+                </span>
+              )}
             </div>
             <div className="summary-item">
               <span className="label">Reference ID</span>

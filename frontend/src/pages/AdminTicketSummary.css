@@ -510,6 +510,30 @@
   font-size: 13px;
 }
 
+/* Clickable count buttons in client summary table */
+.count-btn {
+  background: none;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: #374151;
+  transition: all 0.15s;
+  min-width: 36px;
+  text-align: center;
+}
+.count-btn:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+.count-btn.open:hover    { background: #fef3c7; border-color: #f59e0b; color: #92400e; }
+.count-btn.in-progress:hover { background: #dbeafe; border-color: #3b82f6; color: #1d4ed8; }
+.count-btn.escalated:hover { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
+.count-btn.resolved:hover { background: #d1fae5; border-color: #10b981; color: #065f46; }
+.count-btn.closed:hover  { background: #f3f4f6; border-color: #6b7280; color: #374151; }
+
 .empty-state {
   text-align: center;
   padding: 28px 16px;

@@ -4,6 +4,7 @@ const { body, validationResult, query } = require('express-validator');
 const moment = require('moment');
 const { auth } = require('../middleware/auth');
 const Order = require('../models/Order');
+const SupportTicket = require('../models/Support');
 const delhiveryService = require('../services/delhiveryService');
 
 const router = express.Router();
@@ -393,6 +394,37 @@ router.post('/action', auth, [
     }
 
     await order.save();
+
+    // Auto-create support ticket for this NDR action
+    try {
+      const actionLabel = action === 'RE-ATTEMPT' ? 'Re-attempt Requested' : 'RTO / Pickup Reschedule Requested';
+      const ticket = new SupportTicket({
+        user_id: order.user_id,
+        category: 'shipment_ndr_rto',
+        priority: 'high',
+        subject: `NDR Action: ${actionLabel} for AWB ${waybill}`,
+        description: `NDR action taken: ${actionLabel}. AWB: ${waybill}.${reason ? ` Reason: ${reason}` : ''}`,
+        awb_numbers: [waybill],
+        ndr_order_id: order._id,
+        related_orders: [order._id],
+        status: 'open',
+        conversation: [{
+          message_type: 'user',
+          sender_name: req.user.company_name || req.user.your_name || 'Client',
+          message_content: `NDR action taken: ${actionLabel}. AWB: ${waybill}.${reason ? ` Reason: ${reason}` : ''}`
+        }]
+      });
+      await ticket.save();
+
+      // Link ticket back to the last action_history entry
+      const lastIdx = order.ndr_info.action_history.length - 1;
+      order.ndr_info.action_history[lastIdx].ticket_id = ticket.ticket_id;
+      order.ndr_info.action_history[lastIdx].ticket_object_id = ticket._id.toString();
+      await order.save();
+    } catch (ticketErr) {
+      console.error('Failed to auto-create NDR ticket:', ticketErr);
+      // Non-fatal — don't fail the main response
+    }
 
     res.json({
       status: 'success',

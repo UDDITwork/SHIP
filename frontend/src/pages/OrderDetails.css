@@ -119,6 +119,68 @@
   color: #F68723;
 }
 
+/* Inline Order ID Edit */
+.order-id-display {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.order-id-display:hover .oid-edit-icon {
+  opacity: 1;
+}
+
+.oid-edit-icon {
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  color: #9ca3af;
+}
+
+.order-id-edit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.order-id-input {
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  padding: 4px 8px;
+  border: 1px solid #002B59;
+  border-radius: 4px;
+  width: 160px;
+}
+
+.order-id-input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(0,43,89,0.15);
+}
+
+.oid-btn {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.oid-btn.save { background: #002B59; color: white; }
+.oid-btn.save:hover { background: #003d7a; }
+.oid-btn.cancel { background: #fee2e2; color: #991b1b; }
+.oid-btn.cancel:hover { background: #fecaca; }
+.oid-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.oid-error {
+  font-size: 12px;
+  color: #dc2626;
+  width: 100%;
+  margin-top: 2px;
+}
+
 /* Main Content Grid */
 .order-details-grid {
   display: grid;

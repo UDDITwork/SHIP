@@ -5144,4 +5144,51 @@ router.get('/bulk/labels', auth, async (req, res) => {
   }
 });
 
+// @desc    Update order's custom order_id
+// @route   PATCH /api/orders/:id/order-id
+// @access  Private
+router.patch('/:id/order-id', auth, [
+  body('new_order_id').notEmpty().trim().withMessage('New order ID is required')
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ status: 'error', message: errors.array()[0].msg });
+    }
+
+    const { new_order_id } = req.body;
+
+    const order = await Order.findOne({ _id: req.params.id, user_id: req.user._id });
+    if (!order) {
+      return res.status(404).json({ status: 'error', message: 'Order not found' });
+    }
+
+    // Check duplicate within same user
+    const duplicate = await Order.findOne({
+      user_id: req.user._id,
+      order_id: new_order_id,
+      _id: { $ne: order._id }
+    });
+    if (duplicate) {
+      return res.status(409).json({
+        status: 'error',
+        message: `Order ID "${new_order_id}" already exists. Please use a unique Order ID.`
+      });
+    }
+
+    order.order_id = new_order_id;
+    await order.save();
+
+    res.json({
+      status: 'success',
+      message: 'Order ID updated successfully',
+      data: { order_id: order.order_id }
+    });
+
+  } catch (error) {
+    console.error('Update order_id error:', error);
+    res.status(500).json({ status: 'error', message: 'Server error updating Order ID' });
+  }
+});
+
 module.exports = router;

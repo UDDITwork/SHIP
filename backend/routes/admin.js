@@ -3034,7 +3034,8 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
       
       try {
         // Extract data from row based on column names
-        const awb_number = String(row['AWB number'] || row['awb_number'] || row['AWB Number'] || '');
+        // Accept "AWB" (simple template), "AWB number", "AWB Number" etc.
+        const awb_number = String(row['AWB'] || row['AWB number'] || row['awb_number'] || row['AWB Number'] || '');
         
         if (!awb_number) {
           importResults.failed++;
@@ -3072,7 +3073,8 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
         const client_id = order.user_id; // CRITICAL: Link to client
 
         // Parse discrepancy date using the exact format from Excel
-        const rawDate = row['Date of raising the weight mismatch'] || row['discrepancy_date'] || '';
+        // Simple template has no date column — fall back to today
+        const rawDate = row['Date of raising the weight mismatch'] || row['discrepancy_date'] || row['Date'] || '';
 
         const parseDiscrepancyDate = (value) => {
           if (!value && value !== 0) return null;
@@ -3117,15 +3119,9 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
 
         const discrepancy_date = parseDiscrepancyDate(rawDate);
 
+        // If date is missing/invalid (simple 3-column template), use today
         if (!discrepancy_date || isNaN(discrepancy_date.getTime())) {
-          importResults.failed++;
-          importResults.errors.push({
-            row: rowNumber,
-            error: 'Invalid discrepancy date format',
-            awb: parsedAWB,
-            date_string: rawDate
-          });
-          continue;
+          discrepancy_date = new Date();
         }
 
         // Extract other fields
@@ -3139,8 +3135,17 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
           return Math.round(n * 100) / 100;
         };
 
-        const client_declared_weight = parseWeight(row['Client Declared Weight'] || row['client_declared_weight']);
-        const delhivery_updated_weight = parseWeight(row['Delhivery Updated Weight'] || row['delhivery_updated_weight']);
+        // Accept both old column names and new simplified template column names
+        const client_declared_weight = parseWeight(
+          row['Client Declared Weight (in gram)'] ||
+          row['Client Declared Weight'] ||
+          row['client_declared_weight']
+        );
+        const delhivery_updated_weight = parseWeight(
+          row['Carrier Updated Weight (in gram)'] ||
+          row['Delhivery Updated Weight'] ||
+          row['delhivery_updated_weight']
+        );
 
         let weight_discrepancy = parseWeight(
           row['Delhivery Updated chargeable weight - Client Declared chargeable weight'] ||
@@ -3353,37 +3358,287 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
 // @desc    Get all weight discrepancies (Admin)
 // @route   GET /api/admin/weight-discrepancies
 // @access  Admin
-router.get('/weight-discrepancies', async (req, res) => {
+// @desc    Get client-wise weight discrepancy summary
+// @route   GET /api/admin/weight-discrepancies/client-summary
+// @access  Admin
+router.get('/weight-discrepancies/client-summary', async (req, res) => {
   try {
-    const { page = 1, limit = 50, search = '', dispute_status = 'all' } = req.query;
-
-    // Check for expired disputes (7 days old with no action)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    await WeightDiscrepancy.updateMany(
+    const clientSummary = await WeightDiscrepancy.aggregate([
       {
-        dispute_status: 'DISPUTE',
-        dispute_raised_at: { $lte: sevenDaysAgo },
-        action_taken: null
+        $group: {
+          _id: '$client_id',
+          all: { $sum: 1 },
+          new_count: { $sum: { $cond: [{ $eq: ['$dispute_status', 'NEW'] }, 1, 0] } },
+          pending_count: { $sum: { $cond: [{ $eq: ['$dispute_status', 'DISPUTE'] }, 1, 0] } },
+          rejected_count: { $sum: { $cond: [{ $eq: ['$action_taken', 'DISPUTE REJECTED BY COURIER'] }, 1, 0] } },
+          total_deduction: { $sum: '$deduction_amount' },
+          total_refunds: { $sum: { $cond: [{ $eq: ['$action_taken', 'DISPUTE ACCEPTED BY COURIER'] }, '$deduction_amount', 0] } }
+        }
       },
       {
-        $set: {
-          dispute_status: 'FINAL WEIGHT',
-          action_taken: 'No Action taken by Courier',
-          action_taken_at: new Date()
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'client'
+        }
+      },
+      { $unwind: { path: '$client', preserveNullAndEmpty: true } },
+      {
+        $project: {
+          client_id: '$_id',
+          client_mongo_id: '$_id',
+          company_name: { $ifNull: ['$client.company_name', 'Unknown'] },
+          email: { $ifNull: ['$client.email', ''] },
+          phone_number: { $ifNull: ['$client.phone_number', ''] },
+          client_id_code: { $ifNull: ['$client.client_id', ''] },
+          all: 1,
+          new_count: 1,
+          pending_count: 1,
+          rejected_count: 1,
+          total_deduction: 1,
+          total_refunds: 1
+        }
+      },
+      { $sort: { all: -1 } }
+    ]);
+
+    // Global financial totals
+    const globalTotals = await WeightDiscrepancy.aggregate([
+      {
+        $group: {
+          _id: null,
+          total_deduction: { $sum: '$deduction_amount' },
+          total_refunds: { $sum: { $cond: [{ $eq: ['$action_taken', 'DISPUTE ACCEPTED BY COURIER'] }, '$deduction_amount', 0] } }
         }
       }
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        clients: clientSummary,
+        financial: globalTotals[0] || { total_deduction: 0, total_refunds: 0 }
+      }
+    });
+  } catch (error) {
+    console.error('Weight discrepancy client summary error:', error);
+    res.status(500).json({ success: false, message: 'Error fetching client summary', error: error.message });
+  }
+});
+
+// @desc    Export weight discrepancies as Excel
+// @route   GET /api/admin/weight-discrepancies/export
+// @access  Admin
+router.get('/weight-discrepancies/export', async (req, res) => {
+  try {
+    const XLSX = require('xlsx');
+    const { search = '', dispute_status = 'all', client_id = '', date_from = '', date_to = '', ids = '' } = req.query;
+
+    const filterQuery = {};
+    if (ids) {
+      const idList = ids.split(',').filter(Boolean);
+      filterQuery._id = { $in: idList };
+    } else {
+      if (search) filterQuery.$or = [{ awb_number: { $regex: search, $options: 'i' } }];
+      if (dispute_status !== 'all') filterQuery.dispute_status = dispute_status;
+      if (req.query.action_taken) filterQuery.action_taken = req.query.action_taken;
+      if (client_id) filterQuery.client_id = client_id;
+      if (date_from || date_to) {
+        filterQuery.discrepancy_date = {};
+        if (date_from) filterQuery.discrepancy_date.$gte = new Date(date_from);
+        if (date_to) filterQuery.discrepancy_date.$lte = new Date(date_to + 'T23:59:59.999Z');
+      }
+    }
+
+    const now = new Date();
+    const discrepancies = await WeightDiscrepancy.find(filterQuery)
+      .populate('client_id', 'company_name email client_id')
+      .populate('order_id', 'order_id status')
+      .populate('ticket_id', 'ticket_id')
+      .sort({ discrepancy_date: -1 });
+
+    const rows = discrepancies.map(d => {
+      const aging = Math.floor((now - new Date(d.discrepancy_date)) / 86400000);
+      return {
+        'AWB Number': d.awb_number,
+        'Order ID': d.order_id?.order_id || '',
+        'Client Name': d.client_id?.company_name || '',
+        'Client ID': d.client_id?.client_id || '',
+        'Dead Weight (g)': d.client_declared_weight || 0,
+        'Volumetric Weight (g)': d.volumetric_weight || '',
+        'Charged Weight (g)': d.delhivery_updated_weight || 0,
+        'Weight Difference (g)': d.weight_discrepancy || 0,
+        'Extra Deduction (₹)': d.deduction_amount || 0,
+        'AWB Status': d.order_id?.status || d.awb_status || '',
+        'Dispute Status': d.dispute_status || '',
+        'Action Taken': d.action_taken || '',
+        'Ticket ID': d.ticket_id?.ticket_id || '',
+        'Aging (Days)': aging,
+        'Last Updated': d.updatedAt ? new Date(d.updatedAt).toLocaleDateString('en-IN') : '',
+        'Discrepancy Date': d.discrepancy_date ? new Date(d.discrepancy_date).toLocaleDateString('en-IN') : ''
+      };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    XLSX.utils.book_append_sheet(wb, ws, 'Weight Discrepancies');
+    const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="weight_discrepancies_${Date.now()}.xlsx"`);
+    res.send(buf);
+  } catch (error) {
+    console.error('Weight discrepancy export error:', error);
+    res.status(500).json({ success: false, message: 'Error exporting data', error: error.message });
+  }
+});
+
+// @desc    Bulk accept or reject disputes
+// @route   POST /api/admin/weight-discrepancies/bulk-action
+// @access  Admin
+router.post('/weight-discrepancies/bulk-action', async (req, res) => {
+  try {
+    const { ids, action } = req.body;
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No IDs provided' });
+    }
+    if (!['accept', 'reject'].includes(action)) {
+      return res.status(400).json({ success: false, message: 'Invalid action. Use accept or reject.' });
+    }
+
+    const Support = require('../models/Support');
+    const ACCEPT_REPLY = 'We are pleased to inform you that the weight discrepancy dispute raised for the shipment has been accepted by the courier partner. The excess amount will be adjusted/refunded in your wallet shortly.';
+    const REJECT_REPLY = 'We regret to inform you that the weight discrepancy dispute for this shipment has been rejected. As per carrier confirmation, the charged weight remains applicable, so we are closing this ticket.';
+
+    const results = { processed: 0, skipped: 0, errors: [] };
+
+    for (const id of ids) {
+      try {
+        const discrepancy = await WeightDiscrepancy.findById(id);
+        if (!discrepancy || discrepancy.dispute_status !== 'DISPUTE') {
+          results.skipped++;
+          continue;
+        }
+
+        if (action === 'accept') {
+          const user = await User.findById(discrepancy.client_id);
+          if (user) {
+            const refundAmount = discrepancy.deduction_amount;
+            const openingBalance = user.wallet_balance || 0;
+            const closingBalance = Math.round((openingBalance + refundAmount) * 100) / 100;
+            user.wallet_balance = closingBalance;
+            await user.save();
+
+            const transaction = new Transaction({
+              transaction_id: `WDR${Date.now()}${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`,
+              user_id: discrepancy.client_id,
+              transaction_type: 'credit',
+              transaction_category: 'weight_discrepancy_refund',
+              amount: refundAmount,
+              description: `Weight discrepancy refund for AWB: ${discrepancy.awb_number}. Bulk dispute accepted.`,
+              related_order_id: discrepancy.order_id,
+              related_awb: discrepancy.awb_number,
+              status: 'completed',
+              balance_info: { opening_balance: openingBalance, closing_balance: closingBalance },
+              transaction_date: new Date()
+            });
+            await transaction.save();
+            discrepancy.refund_transaction_id = transaction._id;
+
+            try {
+              websocketService.sendNotificationToClient(String(discrepancy.client_id), {
+                type: 'weight_discrepancy_refund',
+                title: 'Weight Discrepancy Dispute Accepted',
+                message: `Your dispute for AWB ${discrepancy.awb_number} has been accepted. ₹${refundAmount.toFixed(2)} refunded.`,
+                amount: refundAmount,
+                closing_balance: closingBalance,
+                created_at: new Date()
+              });
+            } catch (_) {}
+          }
+          discrepancy.dispute_status = 'FINAL WEIGHT';
+          discrepancy.action_taken = 'DISPUTE ACCEPTED BY COURIER';
+          discrepancy.action_taken_at = new Date();
+        } else {
+          discrepancy.dispute_status = 'FINAL WEIGHT';
+          discrepancy.action_taken = 'DISPUTE REJECTED BY COURIER';
+          discrepancy.action_taken_at = new Date();
+          try {
+            websocketService.sendNotificationToClient(String(discrepancy.client_id), {
+              type: 'weight_discrepancy_rejected',
+              title: 'Weight Discrepancy Dispute Rejected',
+              message: `Your dispute for AWB ${discrepancy.awb_number} has been rejected.`,
+              created_at: new Date()
+            });
+          } catch (_) {}
+        }
+        await discrepancy.save();
+
+        // Auto-reply to linked ticket
+        if (discrepancy.ticket_id) {
+          try {
+            const replyText = action === 'accept' ? ACCEPT_REPLY : REJECT_REPLY;
+            const newStatus = action === 'accept' ? 'resolved' : 'closed';
+            await Support.findByIdAndUpdate(discrepancy.ticket_id, {
+              $push: {
+                messages: {
+                  sender: 'admin',
+                  sender_type: 'admin',
+                  message: replyText,
+                  created_at: new Date()
+                }
+              },
+              $set: { status: newStatus, updated_at: new Date() }
+            });
+          } catch (ticketErr) {
+            console.error('Failed to auto-reply to ticket:', ticketErr.message);
+          }
+        }
+
+        results.processed++;
+      } catch (err) {
+        results.errors.push({ id, error: err.message });
+      }
+    }
+
+    res.json({ success: true, message: `Bulk action completed`, data: results });
+  } catch (error) {
+    console.error('Bulk action error:', error);
+    res.status(500).json({ success: false, message: 'Error processing bulk action', error: error.message });
+  }
+});
+
+// @desc    Get all weight discrepancies (master table) with enhanced filters
+// @route   GET /api/admin/weight-discrepancies
+// @access  Admin
+router.get('/weight-discrepancies', async (req, res) => {
+  try {
+    const {
+      page = 1, limit = 50,
+      search = '',
+      dispute_status = 'all',
+      client_id = '',
+      client_search = '',
+      date_from = '',
+      date_to = '',
+      sort_by = 'discrepancy_date',
+      sort_order = '-1'
+    } = req.query;
+
+    // Auto-close expired disputes (7 days old with no action)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    await WeightDiscrepancy.updateMany(
+      { dispute_status: 'DISPUTE', dispute_raised_at: { $lte: sevenDaysAgo }, action_taken: null },
+      { $set: { dispute_status: 'FINAL WEIGHT', action_taken: 'No Action taken by Courier', action_taken_at: new Date() } }
     );
 
-    const skip = (parseInt(page) - 1) * parseInt(limit);
     const filterQuery = {};
 
-    // Search filter
+    // AWB search
     if (search) {
-      filterQuery.$or = [
-        { awb_number: { $regex: search, $options: 'i' } }
-      ];
+      filterQuery.$or = [{ awb_number: { $regex: search, $options: 'i' } }];
     }
 
     // Dispute status filter
@@ -3391,15 +3646,59 @@ router.get('/weight-discrepancies', async (req, res) => {
       filterQuery.dispute_status = dispute_status;
     }
 
-    const [discrepancies, total] = await Promise.all([
+    // Filter by action_taken (used by client summary rejected column)
+    if (req.query.action_taken) {
+      filterQuery.action_taken = req.query.action_taken;
+    }
+
+    // Filter by specific client ObjectId
+    if (client_id) {
+      filterQuery.client_id = client_id;
+    }
+
+    // Client search by name or email — find matching user IDs first
+    if (client_search && !client_id) {
+      const matchingUsers = await User.find({
+        $or: [
+          { company_name: { $regex: client_search, $options: 'i' } },
+          { email: { $regex: client_search, $options: 'i' } }
+        ]
+      }).select('_id');
+      filterQuery.client_id = { $in: matchingUsers.map(u => u._id) };
+    }
+
+    // Date range on discrepancy_date
+    if (date_from || date_to) {
+      filterQuery.discrepancy_date = {};
+      if (date_from) filterQuery.discrepancy_date.$gte = new Date(date_from);
+      if (date_to) filterQuery.discrepancy_date.$lte = new Date(date_to + 'T23:59:59.999Z');
+    }
+
+    const validSortFields = { discrepancy_date: 'discrepancy_date', weight_discrepancy: 'weight_discrepancy' };
+    const sortField = validSortFields[sort_by] || 'discrepancy_date';
+    const sortDir = sort_order === '1' ? 1 : -1;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const [discrepancies, total, financialAgg] = await Promise.all([
       WeightDiscrepancy.find(filterQuery)
-        .populate('client_id', 'company_name email phone_number')
-        .populate('order_id', 'order_id')
+        .populate('client_id', 'company_name email phone_number client_id')
+        .populate('order_id', 'order_id status')
+        .populate('ticket_id', 'ticket_id status')
         .populate('refund_transaction_id', 'transaction_id amount')
-        .sort({ discrepancy_date: -1 })
+        .sort({ [sortField]: sortDir })
         .skip(skip)
         .limit(parseInt(limit)),
-      WeightDiscrepancy.countDocuments(filterQuery)
+      WeightDiscrepancy.countDocuments(filterQuery),
+      WeightDiscrepancy.aggregate([
+        { $match: filterQuery },
+        {
+          $group: {
+            _id: null,
+            total_deduction: { $sum: '$deduction_amount' },
+            total_refunds: { $sum: { $cond: [{ $eq: ['$action_taken', 'DISPUTE ACCEPTED BY COURIER'] }, '$deduction_amount', 0] } }
+          }
+        }
+      ])
     ]);
 
     res.json({
@@ -3410,18 +3709,15 @@ router.get('/weight-discrepancies', async (req, res) => {
           page: parseInt(page),
           limit: parseInt(limit),
           total,
-          pages: Math.ceil(total / limit)
-        }
+          pages: Math.ceil(total / parseInt(limit))
+        },
+        financial: financialAgg[0] || { total_deduction: 0, total_refunds: 0 }
       }
     });
 
   } catch (error) {
     console.error('Get weight discrepancies error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error fetching weight discrepancies',
-      error: error.message
-    });
+    res.status(500).json({ success: false, message: 'Error fetching weight discrepancies', error: error.message });
   }
 });
 
@@ -8263,10 +8559,16 @@ router.post('/orders/manual-mapping/upload', adminAuth, upload.single('file'), a
         results.successful++;
       } catch (error) {
         results.failed++;
+        let errorMessage = error.message;
+        // Provide clear message for duplicate order_id (MongoDB error code 11000)
+        if (error.code === 11000 && error.keyPattern?.order_id) {
+          const dupOrderId = row['*Order ID']?.toString() || 'unknown';
+          errorMessage = `Order ID "${dupOrderId}" already exists. Please use a unique Order ID.`;
+        }
         results.errors.push({
           row: i + 2, // +2 for Excel row number (1-indexed + header)
           awb: row['*awb']?.toString() || 'N/A',
-          error: error.message
+          error: errorMessage
         });
       }
     }
@@ -8330,9 +8632,34 @@ router.get('/ndr', async (req, res) => {
       }
     }
 
-    // NDR reason filter
+    // NDR reason filter (by NSL code like EOD-74)
     if (req.query.ndr_reason) {
-      filterQuery['ndr_info.ndr_reason'] = new RegExp(req.query.ndr_reason, 'i');
+      filterQuery['ndr_info.nsl_code'] = new RegExp(req.query.ndr_reason, 'i');
+    }
+
+    // Aging filter (days since last_ndr_date)
+    if (req.query.aging_filter && req.query.aging_filter !== 'all') {
+      const now = new Date();
+      let minDays, maxDays;
+      switch (req.query.aging_filter) {
+        case '1-2': minDays = 1; maxDays = 2; break;
+        case '3-5': minDays = 3; maxDays = 5; break;
+        case '7+': minDays = 7; break;
+      }
+      if (minDays !== undefined) {
+        const maxDate = new Date(now - minDays * 86400000);
+        filterQuery['ndr_info.last_ndr_date'] = filterQuery['ndr_info.last_ndr_date'] || {};
+        filterQuery['ndr_info.last_ndr_date'].$lte = maxDate;
+        if (maxDays !== undefined) {
+          const minDate = new Date(now - maxDays * 86400000);
+          filterQuery['ndr_info.last_ndr_date'].$gte = minDate;
+        }
+      }
+    }
+
+    // Action type filter
+    if (req.query.action_type && req.query.action_type !== 'all') {
+      filterQuery['ndr_info.resolution_action'] = req.query.action_type;
     }
 
     // Payment mode filter
@@ -8431,9 +8758,29 @@ router.get('/ndr/statistics', async (req, res) => {
 
     counts.all = counts.action_required + counts.action_taken + counts.delivered + counts.rto;
 
+    // Action type breakdown (for action-type dashboard)
+    const action_breakdown = {
+      reattempt: await Order.countDocuments({
+        ...clientFilter, 'ndr_info.is_ndr': true,
+        'ndr_info.resolution_action': 'reattempt'
+      }),
+      edit_requested: await Order.countDocuments({
+        ...clientFilter, 'ndr_info.is_ndr': true,
+        'ndr_info.resolution_action': 'edit_requested'
+      }),
+      rto: await Order.countDocuments({
+        ...clientFilter, 'ndr_info.is_ndr': true,
+        'ndr_info.resolution_action': 'rto'
+      }),
+      hold: await Order.countDocuments({
+        ...clientFilter, 'ndr_info.is_ndr': true,
+        'ndr_info.resolution_action': 'hold'
+      })
+    };
+
     res.json({
       success: true,
-      data: counts
+      data: { ...counts, action_breakdown }
     });
 
   } catch (error) {
@@ -8441,6 +8788,118 @@ router.get('/ndr/statistics', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error fetching NDR statistics',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Admin takes action on an NDR order
+// @route   POST /api/admin/ndr/:orderId/action
+// @access  Admin
+router.post('/ndr/:orderId/action', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { action, remark } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ success: false, message: 'Invalid order ID' });
+    }
+
+    if (!action) {
+      return res.status(400).json({ success: false, message: 'Action is required' });
+    }
+
+    const order = await Order.findById(orderId);
+    if (!order || !order.ndr_info?.is_ndr) {
+      return res.status(404).json({ success: false, message: 'NDR order not found' });
+    }
+
+    const adminEmail = req.headers['x-admin-email'] || 'admin';
+    const adminName = adminEmail.split('@')[0];
+
+    // Push admin action to history
+    order.ndr_info.action_history.push({
+      action: `admin:${action}`,
+      timestamp: new Date(),
+      upl_id: '',
+      status: 'COMPLETED',
+      remarks: remark || `Admin action: ${action} by ${adminName}`
+    });
+
+    if (action === 'close') {
+      order.ndr_info.resolution_action = order.ndr_info.resolution_action || 'hold';
+    }
+
+    await order.save();
+
+    // If there is a linked support ticket, add admin reply
+    const linkedEntry = [...order.ndr_info.action_history]
+      .reverse()
+      .find(e => e.ticket_object_id && !e.action.startsWith('admin:'));
+
+    if (linkedEntry?.ticket_object_id && mongoose.Types.ObjectId.isValid(linkedEntry.ticket_object_id)) {
+      try {
+        await SupportTicket.findByIdAndUpdate(linkedEntry.ticket_object_id, {
+          $push: {
+            conversation: {
+              message_type: 'admin',
+              sender_name: 'Admin',
+              staff_name: adminName,
+              message_content: remark || `Admin action taken: ${action}`
+            }
+          }
+        });
+      } catch (ticketErr) {
+        console.error('Failed to update NDR ticket with admin reply:', ticketErr);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: 'Admin action recorded',
+      data: {
+        order_id: order._id,
+        action,
+        remark
+      }
+    });
+
+  } catch (error) {
+    logger.error('Admin NDR action error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error recording admin NDR action',
+      error: error.message
+    });
+  }
+});
+
+// @desc    Get NDR order detail for admin
+// @route   GET /api/admin/ndr/:orderId/detail
+// @access  Admin
+router.get('/ndr/:orderId/detail', async (req, res) => {
+  try {
+    const { orderId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ success: false, message: 'Invalid order ID' });
+    }
+
+    const order = await Order.findById(orderId)
+      .populate('user_id', 'company_name your_name email client_id phone')
+      .lean();
+
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    res.json({ success: true, data: order });
+
+  } catch (error) {
+    logger.error('Admin NDR detail error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching NDR detail',
       error: error.message
     });
   }
