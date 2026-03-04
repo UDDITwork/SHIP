@@ -313,13 +313,24 @@ const Dashboard: React.FC = () => {
     navigate('/orders?status=all');
   };
 
-  // Handle date filter change from DateRangeFilter component
+  // Handle date filter change from DateRangeFilter component.
+  // Bust the cache so stale data from the previous range is NOT shown while the new fetch runs.
   const handleDateFilterApply = (startDate: string, endDate: string) => {
+    DataCache.clear('dashboard');
+    DataCache.clear('ndrStatus');
+    DataCache.clear('codStatus');
+    DataCache.clear('shipmentDistribution');
+    DataCache.clear('dashboardTransactions');
     setDateFilter({ startDate, endDate });
     fetchAllDashboardData(false, { startDate, endDate });
   };
 
   const handleDateFilterReset = () => {
+    DataCache.clear('dashboard');
+    DataCache.clear('ndrStatus');
+    DataCache.clear('codStatus');
+    DataCache.clear('shipmentDistribution');
+    DataCache.clear('dashboardTransactions');
     const range = getDefaultDateRange();
     setDateFilter(range);
     fetchAllDashboardData(false, range);
@@ -338,6 +349,46 @@ const Dashboard: React.FC = () => {
   // Get day of week
   const getDayOfWeek = () => {
     return currentDate.toLocaleDateString('en-US', { weekday: 'long' });
+  };
+
+  // Returns true when the selected date range is exactly today (single day = today)
+  const isDateRangeToday = (): boolean => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    return dateFilter.startDate === todayStr && dateFilter.endDate === todayStr;
+  };
+
+  // Returns true when the selected date range is exactly yesterday
+  const isDateRangeYesterday = (): boolean => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    return dateFilter.startDate === yesterdayStr && dateFilter.endDate === yesterdayStr;
+  };
+
+  // Dynamic label for the orders/revenue card header
+  const getOrdersCardTitle = (): string => {
+    if (isDateRangeToday()) return "Today's Orders";
+    if (isDateRangeYesterday()) return "Yesterday's Orders";
+    return 'Orders in Period';
+  };
+
+  const getRevenueCardTitle = (): string => {
+    if (isDateRangeToday()) return "Today's Revenue";
+    if (isDateRangeYesterday()) return "Yesterday's Revenue";
+    return 'Revenue in Period';
+  };
+
+  // Dynamic label for the "previous" comparison subtitle
+  const getPreviousOrdersLabel = (): string => {
+    if (isDateRangeToday()) return "Yesterday's Orders";
+    if (isDateRangeYesterday()) return 'Two Days Ago';
+    return 'Previous Period Orders';
+  };
+
+  const getPreviousRevenueLabel = (): string => {
+    if (isDateRangeToday()) return "Yesterday's Revenue";
+    if (isDateRangeYesterday()) return 'Two Days Ago';
+    return 'Previous Period Revenue';
   };
 
   // formatDate imported from ../utils/dateFormat
@@ -524,16 +575,16 @@ const Dashboard: React.FC = () => {
         <div className="dashboard-grid">
           {/* Left Column - Metric Cards */}
           <div className="metrics-column">
-            {/* Today's Orders Card */}
+            {/* Orders Card — label adapts to selected date range */}
             <div className="metric-card">
               <div className="card-icon">
                 <img src={CartIcon} alt="Cart" className="icon" />
               </div>
               <div className="card-content">
-                <h3>Today's Orders</h3>
+                <h3>{getOrdersCardTitle()}</h3>
                 <div className="card-value">{dashboardData?.metrics?.todaysOrders?.current || 0}</div>
                 <div className="card-subtitle">
-                  Yesterday's Orders
+                  {getPreviousOrdersLabel()}
                   <br />
                   <span className="previous-value">{dashboardData?.metrics?.todaysOrders?.previous || 0}</span>
                 </div>
@@ -541,16 +592,16 @@ const Dashboard: React.FC = () => {
               <img src={CalendarSettingsIcon} alt="Calendar" className="card-stats-icon" />
             </div>
 
-            {/* Today's Revenue Card */}
+            {/* Revenue Card — label adapts to selected date range */}
             <div className="metric-card">
               <div className="card-icon">
                 <img src={WalletIcon} alt="Wallet" className="icon" />
               </div>
               <div className="card-content">
-                <h3>Today's Revenue</h3>
+                <h3>{getRevenueCardTitle()}</h3>
                 <div className="card-value">₹ {dashboardData?.metrics?.todaysRevenue?.current || 0}</div>
                 <div className="card-subtitle">
-                  Yesterday's Revenue
+                  {getPreviousRevenueLabel()}
                   <br />
                   <span className="previous-value">₹ {dashboardData?.metrics?.todaysRevenue?.previous || 0}</span>
                 </div>

@@ -1238,6 +1238,12 @@
     gap: 5px;
   }
 
+  .product-details-cell .product-value {
+    font-size: 12px;
+    color: #2e7d32;
+    font-weight: 600;
+  }
+
   .order-details-cell div:first-child {
     font-weight: 700;
     color: #002B59;
@@ -1421,6 +1427,23 @@
 
   .return-order-btn:hover {
     background-color: #C62828 !important;
+    color: #FFFFFF !important;
+  }
+
+  .clone-btn {
+    font-weight: 600;
+    font-size: 12px !important;
+    padding: 6px 10px !important;
+    border-radius: 6px !important;
+    margin-left: 4px;
+    white-space: nowrap;
+    background-color: #EDE7F6 !important;
+    border: 1px solid #6A1B9A !important;
+    color: #6A1B9A !important;
+  }
+
+  .clone-btn:hover {
+    background-color: #6A1B9A !important;
     color: #FFFFFF !important;
   }
 

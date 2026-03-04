@@ -356,22 +356,49 @@ router.get('/ndr-status', auth, async (req, res) => {
 
     const ndrCounts = {
       total_ndr: 0,
+      // action_required / action_taken kept for internal reference
       action_required: 0,
       action_taken: 0,
-      ndr_delivered: 0,
-      rto: 0
+      // Fields the frontend NDR status section reads
+      new_reattempt: 0,        // seller-initiated reattempt (resolution_action === 'reattempt')
+      buyer_reattempt: 0,      // buyer-confirmed reattempt  (resolution_action === 'buyer_reattempt')
+      ndr_delivered: 0,        // NDR orders that subsequently got delivered
+      ndr_undelivered: 0,      // NDR orders still undelivered (no resolution or failed)
+      rto_transit: 0,          // returning to origin
+      rto_delivered: 0         // returned to origin (completed RTO)
     };
 
     ndrStats.forEach(stat => {
       ndrCounts.total_ndr += stat.count;
-      if (stat._id.status === 'delivered') {
+      const status = stat._id.status;
+      const resolution = stat._id.resolution_action;
+
+      if (status === 'delivered') {
+        // NDR order that eventually got delivered
         ndrCounts.ndr_delivered += stat.count;
-      } else if (['rto', 'rto_in_transit', 'rto_delivered'].includes(stat._id.status)) {
-        ndrCounts.rto += stat.count;
-      } else if (stat._id.resolution_action === null) {
-        ndrCounts.action_required += stat.count;
-      } else {
+      } else if (status === 'rto_in_transit') {
+        ndrCounts.rto_transit += stat.count;
+      } else if (status === 'rto_delivered') {
+        ndrCounts.rto_delivered += stat.count;
+      } else if (status === 'rto') {
+        // Plain 'rto' is considered in-transit until confirmed delivered
+        ndrCounts.rto_transit += stat.count;
+      } else if (resolution === 'reattempt') {
+        // Seller explicitly asked for reattempt
+        ndrCounts.new_reattempt += stat.count;
         ndrCounts.action_taken += stat.count;
+      } else if (resolution === 'buyer_reattempt') {
+        // Buyer confirmed reattempt
+        ndrCounts.buyer_reattempt += stat.count;
+        ndrCounts.action_taken += stat.count;
+      } else if (resolution === null || resolution === undefined) {
+        // No action taken yet — still pending
+        ndrCounts.action_required += stat.count;
+        ndrCounts.ndr_undelivered += stat.count;
+      } else {
+        // Other resolution actions (e.g. 'return', 'fake_attempt' etc.)
+        ndrCounts.action_taken += stat.count;
+        ndrCounts.ndr_undelivered += stat.count;
       }
     });
 

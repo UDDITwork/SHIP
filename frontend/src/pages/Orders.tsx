@@ -136,6 +136,7 @@ const Orders: React.FC = () => {
 
   // Modal States
   const [isAddOrderModalOpen, setIsAddOrderModalOpen] = useState(false);
+  const [cloneOrderData, setCloneOrderData] = useState<any>(null);
   const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [bulkImportSummary, setBulkImportSummary] = useState<BulkImportSummary | null>(null);
   const [bulkImportError, setBulkImportError] = useState<string | null>(null);
@@ -557,6 +558,7 @@ const Orders: React.FC = () => {
       );
       return;
     }
+    setCloneOrderData(null); // Ensure no stale clone data when opening fresh
     setIsAddOrderModalOpen(true);
   };
 
@@ -651,6 +653,9 @@ const Orders: React.FC = () => {
       if (typeof filters.minAmount === 'number') orderFilters.min_amount = filters.minAmount;
       if (typeof filters.maxAmount === 'number') orderFilters.max_amount = filters.maxAmount;
     
+    // Clear clone data after order is created
+    setCloneOrderData(null);
+
     // Refresh orders from MongoDB
     fetchOrders();
   };
@@ -855,6 +860,84 @@ const Orders: React.FC = () => {
     // Navigate to order details page with edit parameter
     // For now, this will show the order details - editing can be done from there
     navigate(`/orders/${orderId}?edit=true`);
+  };
+
+  const handleCloneOrder = (order: Order) => {
+    // Build initialData that matches OrderCreationModal's formData structure
+    const cloneData = {
+      customer_info: {
+        buyer_name: order.customerName || '',
+        phone: order.customerPhone || '',
+        alternate_phone: '',
+        email: '',
+        gstin: ''
+      },
+      delivery_address: {
+        address_line_1: order.customerAddress || '',
+        address_line_2: '',
+        pincode: order.pin || '',
+        city: order.city || '',
+        state: order.state || '',
+        country: 'India'
+      },
+      pickup_address: order.pickup_address
+        ? {
+            warehouse_id: '',
+            name: order.pickup_address.name || '',
+            full_address: order.pickup_address.full_address || '',
+            city: order.pickup_address.city || '',
+            state: order.pickup_address.state || '',
+            pincode: order.pickup_address.pincode || '',
+            phone: order.pickup_address.phone || '',
+            country: 'India'
+          }
+        : undefined,
+      products: [
+        {
+          product_name: order.productName || '',
+          quantity: order.quantity || 1,
+          unit_price: order.orderValue || 0,
+          hsn_code: '',
+          category: '',
+          sku: '',
+          discount: 0,
+          tax: 0
+        }
+      ],
+      package_info: {
+        package_type: 'Single Package (B2C)',
+        weight: order.weight || 0,
+        dimensions: {
+          length: order.length || 0,
+          width: order.width || 0,
+          height: order.height || 0
+        },
+        number_of_boxes: 1,
+        weight_per_box: 0,
+        rov_type: '',
+        rov_owner: '',
+        weight_photo_url: '',
+        dimensions_photo_url: '',
+        save_dimensions: false
+      },
+      payment_info: {
+        payment_mode: order.paymentMode || 'Prepaid',
+        order_value: order.orderValue || 0,
+        total_amount: order.totalAmount || 0,
+        shipping_charges: 0,
+        grand_total: 0,
+        cod_amount: order.codAmount || 0
+      },
+      seller_info: {
+        name: '',
+        gst_number: '',
+        reseller_name: ''
+      },
+      shipping_mode: 'Surface',
+      service_type: 'surface'
+    };
+    setCloneOrderData(cloneData);
+    setIsAddOrderModalOpen(true);
   };
 
   const handleTrackOrder = (orderId: string, awb?: string) => {
@@ -1277,7 +1360,8 @@ const Orders: React.FC = () => {
         <OrderCreationModal
           onOrderCreated={handleOrderCreated}
           orderType={orderType}
-          onBack={() => setIsAddOrderModalOpen(false)}
+          onBack={() => { setIsAddOrderModalOpen(false); setCloneOrderData(null); }}
+          initialData={cloneOrderData || undefined}
         />
       ) : (
         <>
@@ -1594,6 +1678,9 @@ const Orders: React.FC = () => {
                       <div className="product-details-cell">
                         <div>{order.productName || 'N/A'}</div>
                         <div>Qty: {order.quantity || 0}</div>
+                        {order.orderValue != null && order.orderValue > 0 && (
+                          <div className="product-value">Value: ₹{order.orderValue}</div>
+                        )}
                       </div>
                     </td>
                     <td>
@@ -1786,6 +1873,15 @@ const Orders: React.FC = () => {
                           onClick={() => handlePrintLabel(order.orderId, order._id, order.awb)}
                           title="Print Order Details"
                         ></button>
+
+                        {/* Clone button - always visible, creates a new order pre-filled with this order's data */}
+                        <button
+                          className="action-btn clone-btn"
+                          onClick={() => handleCloneOrder(order)}
+                          title="Clone Order"
+                        >
+                          Clone
+                        </button>
 
                         {/* Additional Action Buttons for Delivered Tab */}
                         {(activeTab === 'delivered' || order.status === 'delivered') && (

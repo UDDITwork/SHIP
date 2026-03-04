@@ -29,6 +29,7 @@ export interface Order {
   height?: number;
   paymentMode: 'COD' | 'Prepaid' | 'Pickup' | 'REPL';
   codAmount?: number;
+  orderValue?: number;
   totalAmount: number;
   warehouse: string;
   pickupLocation: string;
@@ -164,6 +165,7 @@ class OrderService {
           height: order.package_info?.dimensions?.height,
           paymentMode: order.payment_info?.payment_mode || 'Prepaid',
           codAmount: order.payment_info?.cod_amount || 0,
+          orderValue: order.payment_info?.order_value || 0,
           totalAmount: order.payment_info?.total_amount || 0,
           warehouse: order.pickup_address?.name || order.pickup_info?.warehouse_id?.name || '',
           pickupLocation: order.pickup_address?.full_address || order.pickup_info?.warehouse_id?.address?.full_address || '',
@@ -252,6 +254,7 @@ class OrderService {
           height: order.package_info?.dimensions?.height,
           paymentMode: order.payment_info?.payment_mode || 'Prepaid',
           codAmount: order.payment_info?.cod_amount || 0,
+          orderValue: order.payment_info?.order_value || 0,
           totalAmount: order.payment_info?.total_amount || 0,
           warehouse: order.pickup_address?.name || order.pickup_info?.warehouse_id?.name || '',
           pickupLocation: order.pickup_address?.full_address || order.pickup_info?.warehouse_id?.address?.full_address || '',

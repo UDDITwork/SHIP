@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import { shippingService, ShippingCalculationRequest } from '../services/shippingService';
+import { useAuth } from '../contexts/AuthContext';
 import './RateCalculator.css';
 
 interface ShippingCalculationResult {
@@ -22,7 +23,8 @@ interface ShippingCalculationResult {
 }
 
 const RateCalculator: React.FC = () => {
-  const [shipmentType, setShipmentType] = useState<'forward' | 'return'>('forward');
+  // FIX A: renamed 'return' → 'reverse' in type and state
+  const [shipmentType, setShipmentType] = useState<'forward' | 'reverse'>('forward');
   const [paymentType, setPaymentType] = useState<'prepaid' | 'cod'>('prepaid');
   const [pickupPincode, setPickupPincode] = useState('');
   const [deliveryPincode, setDeliveryPincode] = useState('');
@@ -31,12 +33,33 @@ const RateCalculator: React.FC = () => {
   const [breadth, setBreadth] = useState('');
   const [height, setHeight] = useState('');
   const [codAmount, setCodAmount] = useState('');
+  // FIX C: new shipment value field
+  const [shipmentValue, setShipmentValue] = useState('');
   const [isCalculating, setIsCalculating] = useState(false);
   const [result, setResult] = useState<ShippingCalculationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // FIX D: pull user from AuthContext and force-refresh on mount
+  const { user, refreshUser } = useAuth();
+
+  useEffect(() => {
+    // Force a fresh user profile fetch on component mount so user_category is never stale
+    refreshUser();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // FIX B: when switching to reverse, silently reset payment type to prepaid
+  const handleShipmentTypeChange = (type: 'forward' | 'reverse') => {
+    setShipmentType(type);
+    if (type === 'reverse') {
+      setPaymentType('prepaid');
+      setCodAmount('');
+    }
+  };
+
   const handleCalculate = async () => {
-    if (!pickupPincode || !deliveryPincode || !weight) {
+    // FIX C: include shipmentValue in validation
+    if (!pickupPincode || !deliveryPincode || !weight || !shipmentValue) {
       setError('Please fill in all required fields');
       return;
     }
@@ -55,14 +78,19 @@ const RateCalculator: React.FC = () => {
           breadth: breadth ? parseFloat(breadth) : 1,
           height: height ? parseFloat(height) : 1
         },
-        payment_mode: paymentType === 'cod' ? 'COD' : 'Prepaid',
-        cod_amount: paymentType === 'cod' && codAmount ? parseFloat(codAmount) : undefined,
-        order_type: shipmentType === 'return' ? 'rto' : 'forward'
+        // FIX B: reverse orders always send Prepaid; COD only applies for forward
+        payment_mode: (shipmentType === 'forward' && paymentType === 'cod') ? 'COD' : 'Prepaid',
+        cod_amount: (shipmentType === 'forward' && paymentType === 'cod' && codAmount)
+          ? parseFloat(codAmount)
+          : undefined,
+        // FIX A: map 'reverse' → 'rto' for the API
+        order_type: shipmentType === 'reverse' ? 'rto' : 'forward'
       };
 
       const response = await shippingService.calculateShippingCharges(request);
       setResult({
-        user_category: '',
+        // FIX D: populate user_category from fresh user context
+        user_category: user?.user_category || '',
         weight: parseFloat(weight),
         dimensions: request.dimensions,
         zone: response.zone || '',
@@ -89,6 +117,7 @@ const RateCalculator: React.FC = () => {
     setBreadth('');
     setHeight('');
     setCodAmount('');
+    setShipmentValue('');
     setResult(null);
     setError(null);
   };
@@ -99,11 +128,17 @@ const RateCalculator: React.FC = () => {
         <div className="rate-calculator-header">
           <h1>Rate Calculator</h1>
           <p>Calculate shipping rates for your shipments</p>
+          {/* FIX D: display current rate card category prominently */}
+          {user?.user_category && (
+            <div className="user-category-badge">
+              Rate Card: <strong>{user.user_category}</strong>
+            </div>
+          )}
         </div>
 
         <div className="rate-calculator-content">
           <div className="calculator-form">
-            {/* Shipment Type */}
+            {/* Shipment Type — FIX A: label changed to "Reverse", handler updated */}
             <div className="form-section">
               <label className="form-label">Shipment Type</label>
               <div className="radio-group">
@@ -112,7 +147,7 @@ const RateCalculator: React.FC = () => {
                     type="radio"
                     name="shipmentType"
                     checked={shipmentType === 'forward'}
-                    onChange={() => setShipmentType('forward')}
+                    onChange={() => handleShipmentTypeChange('forward')}
                   />
                   <span>Forward</span>
                 </label>
@@ -120,10 +155,11 @@ const RateCalculator: React.FC = () => {
                   <input
                     type="radio"
                     name="shipmentType"
-                    checked={shipmentType === 'return'}
-                    onChange={() => setShipmentType('return')}
+                    checked={shipmentType === 'reverse'}
+                    onChange={() => handleShipmentTypeChange('reverse')}
                   />
-                  <span>Return</span>
+                  {/* FIX A: was "Return", now "Reverse" */}
+                  <span>Reverse</span>
                 </label>
               </div>
             </div>
@@ -171,44 +207,48 @@ const RateCalculator: React.FC = () => {
               </div>
             </div>
 
-            {/* Payment Type */}
-            <div className="form-section">
-              <label className="form-label">Payment Type</label>
-              <div className="radio-group">
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    name="paymentType"
-                    checked={paymentType === 'prepaid'}
-                    onChange={() => setPaymentType('prepaid')}
-                  />
-                  <span>Prepaid</span>
-                </label>
-                <label className="radio-option">
-                  <input
-                    type="radio"
-                    name="paymentType"
-                    checked={paymentType === 'cod'}
-                    onChange={() => setPaymentType('cod')}
-                  />
-                  <span>Cash on Delivery</span>
-                </label>
-              </div>
-            </div>
+            {/* FIX B: Payment Type section — only shown for forward shipments */}
+            {shipmentType === 'forward' && (
+              <>
+                <div className="form-section">
+                  <label className="form-label">Payment Type</label>
+                  <div className="radio-group">
+                    <label className="radio-option">
+                      <input
+                        type="radio"
+                        name="paymentType"
+                        checked={paymentType === 'prepaid'}
+                        onChange={() => setPaymentType('prepaid')}
+                      />
+                      <span>Prepaid</span>
+                    </label>
+                    <label className="radio-option">
+                      <input
+                        type="radio"
+                        name="paymentType"
+                        checked={paymentType === 'cod'}
+                        onChange={() => setPaymentType('cod')}
+                      />
+                      <span>Cash on Delivery</span>
+                    </label>
+                  </div>
+                </div>
 
-            {/* COD Amount */}
-            {paymentType === 'cod' && (
-              <div className="form-group">
-                <label className="form-label">COD Amount</label>
-                <input
-                  type="number"
-                  className="form-input"
-                  placeholder="Enter COD amount"
-                  value={codAmount}
-                  onChange={(e) => setCodAmount(e.target.value)}
-                  min="0"
-                />
-              </div>
+                {/* COD Amount — only shown for forward + COD */}
+                {paymentType === 'cod' && (
+                  <div className="form-group">
+                    <label className="form-label">COD Amount</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      placeholder="Enter COD amount"
+                      value={codAmount}
+                      onChange={(e) => setCodAmount(e.target.value)}
+                      min="0"
+                    />
+                  </div>
+                )}
+              </>
             )}
 
             {/* Dimensions */}
@@ -254,6 +294,22 @@ const RateCalculator: React.FC = () => {
               </div>
             </div>
 
+            {/* FIX C: Shipment Value — mandatory field */}
+            <div className="form-group">
+              <label className="form-label">
+                Shipment Value (&#8377;) <span style={{ color: '#ef4444' }}>*</span>
+              </label>
+              <input
+                type="number"
+                className="form-input"
+                placeholder="Enter shipment value"
+                value={shipmentValue}
+                onChange={(e) => setShipmentValue(e.target.value)}
+                min="0"
+                step="any"
+              />
+            </div>
+
             {/* Error */}
             {error && <div className="error-message">{error}</div>}
 
@@ -276,6 +332,12 @@ const RateCalculator: React.FC = () => {
           {result && (
             <div className="results-section">
               <h3>Calculation Results</h3>
+              {/* FIX D: show rate category in results as well */}
+              {result.user_category && (
+                <p style={{ fontSize: '0.85rem', color: '#6b7280', marginBottom: '12px' }}>
+                  Rate card applied: <strong>{result.user_category}</strong>
+                </p>
+              )}
               <div className="results-grid">
                 <div className="result-item">
                   <span className="result-label">Zone</span>
@@ -285,27 +347,28 @@ const RateCalculator: React.FC = () => {
                   <span className="result-label">Chargeable Weight</span>
                   <span className="result-value">{result.chargeable_weight} kg</span>
                 </div>
+                {/* FIX A: was checking shipmentType === 'forward' / 'return', now uses 'reverse' */}
                 {shipmentType === 'forward' && (
                   <div className="result-item">
                     <span className="result-label">Forward Charges</span>
-                    <span className="result-value">₹{result.forward_charges.toFixed(2)}</span>
+                    <span className="result-value">&#8377;{result.forward_charges.toFixed(2)}</span>
                   </div>
                 )}
-                {shipmentType === 'return' && (
+                {shipmentType === 'reverse' && (
                   <div className="result-item">
                     <span className="result-label">RTO Charges</span>
-                    <span className="result-value">₹{result.rto_charges.toFixed(2)}</span>
+                    <span className="result-value">&#8377;{result.rto_charges.toFixed(2)}</span>
                   </div>
                 )}
                 {result.cod_charges > 0 && (
                   <div className="result-item">
                     <span className="result-label">COD Charges</span>
-                    <span className="result-value">₹{result.cod_charges.toFixed(2)}</span>
+                    <span className="result-value">&#8377;{result.cod_charges.toFixed(2)}</span>
                   </div>
                 )}
                 <div className="result-item total">
                   <span className="result-label">Total Charges</span>
-                  <span className="result-value">₹{result.total_charges.toFixed(2)}</span>
+                  <span className="result-value">&#8377;{result.total_charges.toFixed(2)}</span>
                 </div>
               </div>
             </div>

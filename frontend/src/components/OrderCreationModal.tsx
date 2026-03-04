@@ -11,6 +11,73 @@ interface OrderCreationModalProps {
   onOrderCreated: (order: any) => void;
   orderType?: 'forward' | 'reverse'; // Optional: defaults to 'forward'
   onBack?: () => void; // Optional: callback for back navigation
+  initialData?: Partial<{
+    order_date: string;
+    reference_id: string;
+    invoice_number: string;
+    customer_info: {
+      buyer_name: string;
+      phone: string;
+      alternate_phone: string;
+      email: string;
+      gstin: string;
+    };
+    delivery_address: {
+      address_line_1: string;
+      address_line_2: string;
+      pincode: string;
+      city: string;
+      state: string;
+      country: string;
+    };
+    pickup_address: {
+      warehouse_id: string;
+      name: string;
+      full_address: string;
+      city: string;
+      state: string;
+      pincode: string;
+      phone: string;
+      country: string;
+    };
+    products: Array<{
+      product_name: string;
+      quantity: number;
+      unit_price: number;
+      hsn_code: string;
+      category: string;
+      sku: string;
+      discount: number;
+      tax: number;
+    }>;
+    package_info: {
+      package_type: string;
+      weight: number;
+      dimensions: { length: number; width: number; height: number };
+      number_of_boxes: number;
+      weight_per_box: number;
+      rov_type: string;
+      rov_owner: string;
+      weight_photo_url: string;
+      dimensions_photo_url: string;
+      save_dimensions: boolean;
+    };
+    payment_info: {
+      payment_mode: string;
+      order_value: number;
+      total_amount: number;
+      shipping_charges: number;
+      grand_total: number;
+      cod_amount: number;
+    };
+    seller_info: {
+      name: string;
+      gst_number: string;
+      reseller_name: string;
+    };
+    shipping_mode: string;
+    service_type: string;
+  }>; // Pre-fill form for clone order
 }
 
 interface Warehouse {
@@ -72,7 +139,8 @@ interface BoxEntry {
 const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
   onOrderCreated,
   orderType = 'forward', // Default to forward orders
-  onBack
+  onBack,
+  initialData
 }) => {
   const { user } = useAuth(); // Get user for category
   const userCategory = user?.user_category || 'Basic User';
@@ -222,6 +290,47 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     fetchPackages();
     fetchSavedProducts();
   }, []);
+
+  // Seed formData with initialData when cloning an order
+  useEffect(() => {
+    if (!initialData) return;
+    setFormData(prev => ({
+      ...prev,
+      // Use today's date for cloned order (not the original's date)
+      order_date: new Date().toISOString().split('T')[0],
+      // Clear reference/invoice so the user can set new ones
+      reference_id: '',
+      invoice_number: '',
+      customer_info: initialData.customer_info
+        ? { ...prev.customer_info, ...initialData.customer_info }
+        : prev.customer_info,
+      delivery_address: initialData.delivery_address
+        ? { ...prev.delivery_address, ...initialData.delivery_address }
+        : prev.delivery_address,
+      pickup_address: initialData.pickup_address
+        ? { ...prev.pickup_address, ...initialData.pickup_address }
+        : prev.pickup_address,
+      products: initialData.products && initialData.products.length > 0
+        ? initialData.products
+        : prev.products,
+      package_info: initialData.package_info
+        ? { ...prev.package_info, ...initialData.package_info }
+        : prev.package_info,
+      payment_info: initialData.payment_info
+        ? { ...prev.payment_info, ...initialData.payment_info }
+        : prev.payment_info,
+      seller_info: initialData.seller_info
+        ? { ...prev.seller_info, ...initialData.seller_info }
+        : prev.seller_info,
+      shipping_mode: initialData.shipping_mode || prev.shipping_mode,
+      service_type: initialData.service_type || prev.service_type,
+    }));
+    // Also pre-fill the warehouse search box with the pickup address name
+    if (initialData.pickup_address?.name) {
+      setSearchQuery(initialData.pickup_address.name);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run once on mount — initialData is passed once when cloning
 
   // Filter warehouses based on search query
   useEffect(() => {
@@ -1921,27 +2030,6 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     <small className="form-note">Enter shipping charges manually. Charges will be calculated automatically in the final step before saving.</small>
                   </div>
                 </div>
-            </div>
-
-            {/* Service Type Selection */}
-            <div className="form-section">
-              <h3>Shipping Service</h3>
-              <div className="form-row">
-                <div className="form-group">
-                  <label>Service Type *</label>
-                  <select
-                    value={formData.service_type}
-                    onChange={(e) => setFormData(prev => ({ ...prev, service_type: e.target.value as 'surface' | 'air' }))}
-                    required
-                  >
-                    <option value="surface">Delhivery Surface (Standard)</option>
-                    <option value="air">Delhivery Air (Faster Delivery)</option>
-                  </select>
-                  <small className="form-note">
-                    Air service typically costs 20-30% more but delivers faster
-                  </small>
-                </div>
-              </div>
             </div>
 
             {/* Package Type & Dimensions Section */}
