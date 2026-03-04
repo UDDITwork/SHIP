@@ -75,7 +75,7 @@ const weightDiscrepancySchema = new mongoose.Schema({
   // Linked support ticket (populated after client raises dispute)
   ticket_id: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Support',
+    ref: 'SupportTicket',
     default: null,
     index: true
   },
