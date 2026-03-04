@@ -239,3 +239,53 @@
     flex-direction: column;
   }
 }
+
+/* Carrier Selector */
+.carrier-selector {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.carrier-option-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 10px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 140px;
+  text-align: left;
+}
+
+.carrier-option-btn:hover {
+  border-color: #002B59;
+}
+
+.carrier-option-btn.selected {
+  border-color: #002B59;
+  background: #eff6ff;
+}
+
+.carrier-option-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.carrier-option-type {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+}
+
+.carrier-option-desc {
+  font-size: 11px;
+  color: #9ca3af;
+  line-height: 1.3;
+}

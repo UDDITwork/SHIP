@@ -518,6 +518,49 @@
 }
 
 /* Radio Groups */
+/* Carrier Selection Cards in Order Modal */
+.carrier-options-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.carrier-select-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  min-width: 130px;
+  text-align: left;
+}
+
+.carrier-select-card:hover {
+  border-color: #002B59;
+}
+
+.carrier-select-card.selected {
+  border-color: #002B59;
+  background: #eff6ff;
+}
+
+.cscard-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.cscard-type {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: #6b7280;
+}
+
 .radio-group {
   display: flex;
   gap: 20px;

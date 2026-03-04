@@ -150,6 +150,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [packages, setPackages] = useState<Package[]>([]);
   const [savedProducts, setSavedProducts] = useState<SavedProduct[]>([]);
+  const [availableCarriers, setAvailableCarriers] = useState<Array<{ _id: string; carrier_code: string; display_name: string; service_type: string; description?: string }>>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [orderId, setOrderId] = useState<string>(generateOrderId());
   const [showManualAddress, setShowManualAddress] = useState(false);
@@ -289,6 +290,9 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
     fetchWarehouses();
     fetchPackages();
     fetchSavedProducts();
+    shippingService.getAvailableCarriers().then(data => {
+      setAvailableCarriers(data);
+    });
   }, []);
 
   // Seed formData with initialData when cloning an order
@@ -1946,6 +1950,28 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     <span>₹ {formData.payment_info.grand_total.toFixed(2)}</span>
                   </div>
                 </div>
+
+                {/* Carrier / Shipping Method Selection */}
+                {availableCarriers.length > 0 && (
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label>Shipping Method *</label>
+                      <div className="carrier-options-row">
+                        {availableCarriers.map(carrier => (
+                          <button
+                            key={carrier._id}
+                            type="button"
+                            className={`carrier-select-card ${formData.service_type === carrier.service_type ? 'selected' : ''}`}
+                            onClick={() => setFormData(prev => ({ ...prev, service_type: carrier.service_type }))}
+                          >
+                            <span className="cscard-name">{carrier.display_name}</span>
+                            <span className="cscard-type">{carrier.service_type}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div className="form-row">
                   <div className="form-group">

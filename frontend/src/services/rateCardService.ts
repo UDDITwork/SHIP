@@ -106,7 +106,7 @@ export const NEW_USER_RATE_CARD: RateCard = {
       zones: { A: 156, B: 217, C: 302, D: 321, E: 389, F: 432 }
     },
     {
-      condition: "DTO Add. 1 kgs",
+      condition: "DTO Add. 1 kgs till 10k",
       zones: { A: 33, B: 36, C: 46, D: 55, E: 66, F: 78 }
     },
     {
@@ -179,7 +179,7 @@ export const BASIC_USER_RATE_CARD: RateCard = {
       zones: { A: 143, B: 199, C: 277, D: 294, E: 356, F: 396 }
     },
     {
-      condition: "DTO Add. 1 kgs",
+      condition: "DTO Add. 1 kgs till 10k",
       zones: { A: 30, B: 33, C: 42, D: 50, E: 61, F: 71 }
     },
     {
@@ -252,7 +252,7 @@ export const ADVANCED_USER_RATE_CARD: RateCard = {
       zones: { A: 136, B: 190, C: 264, D: 281, E: 340, F: 378 }
     },
     {
-      condition: "DTO Add. 1 kgs",
+      condition: "DTO Add. 1 kgs till 10k",
       zones: { A: 29, B: 32, C: 40, D: 48, E: 58, F: 68 }
     },
     {
@@ -325,7 +325,7 @@ export const LITE_USER_RATE_CARD: RateCard = {
       zones: { A: 149, B: 208, C: 289, D: 307, E: 372, F: 414 }
     },
     {
-      condition: "DTO Add. 1 kgs",
+      condition: "DTO Add. 1 kgs till 10k",
       zones: { A: 32, B: 35, C: 44, D: 53, E: 64, F: 75 }
     },
     {

@@ -389,9 +389,16 @@
   color: #f59e0b;
 }
 
+.action-btn.delete {
+  color: #dc2626;
+  border-color: #fecaca;
+  background: #fff5f5;
+}
+
 .action-btn.delete:hover {
   border-color: #ef4444;
-  color: #ef4444;
+  color: white;
+  background: #ef4444;
 }
 
 /* Modal */
@@ -545,4 +552,27 @@
   .modal-content {
     margin: 10px;
   }
+}
+
+/* Weight Slab Chips */
+.slab-row {
+  align-items: flex-start !important;
+}
+
+.slab-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex: 1;
+}
+
+.slab-chip {
+  display: inline-block;
+  padding: 2px 7px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #1d4ed8;
+  white-space: nowrap;
 }

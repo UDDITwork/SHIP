@@ -39,12 +39,21 @@ const RateCalculator: React.FC = () => {
   const [result, setResult] = useState<ShippingCalculationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Carrier selection
+  const [carriers, setCarriers] = useState<Array<{ _id: string; carrier_code: string; display_name: string; service_type: string; description?: string }>>([]);
+  const [selectedServiceType, setSelectedServiceType] = useState<string>('surface');
+
   // FIX D: pull user from AuthContext and force-refresh on mount
   const { user, refreshUser } = useAuth();
 
   useEffect(() => {
     // Force a fresh user profile fetch on component mount so user_category is never stale
     refreshUser();
+    // Load available carriers
+    shippingService.getAvailableCarriers().then(data => {
+      setCarriers(data);
+      if (data.length > 0) setSelectedServiceType(data[0].service_type);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -72,7 +81,7 @@ const RateCalculator: React.FC = () => {
       const request: ShippingCalculationRequest = {
         pickup_pincode: pickupPincode,
         delivery_pincode: deliveryPincode,
-        weight: parseFloat(weight),
+        weight: parseFloat(weight) * 1000, // Convert kg to grams (backend expects grams)
         dimensions: {
           length: length ? parseFloat(length) : 1,
           breadth: breadth ? parseFloat(breadth) : 1,
@@ -85,7 +94,8 @@ const RateCalculator: React.FC = () => {
           : undefined,
         // FIX A: map 'reverse' → 'rto' for the API
         order_type: shipmentType === 'reverse' ? 'rto' : 'forward',
-        declared_value: parseFloat(shipmentValue)
+        declared_value: parseFloat(shipmentValue),
+        service_type: selectedServiceType as 'surface' | 'air'
       };
 
       const response = await shippingService.calculateShippingCharges(request);
@@ -164,6 +174,29 @@ const RateCalculator: React.FC = () => {
                 </label>
               </div>
             </div>
+
+            {/* Carrier Selection */}
+            {carriers.length > 0 && (
+              <div className="form-section">
+                <label className="form-label">Shipping Method</label>
+                <div className="carrier-selector">
+                  {carriers.map(carrier => (
+                    <button
+                      key={carrier._id}
+                      type="button"
+                      className={`carrier-option-btn ${selectedServiceType === carrier.service_type ? 'selected' : ''}`}
+                      onClick={() => { setSelectedServiceType(carrier.service_type); setResult(null); }}
+                    >
+                      <span className="carrier-option-name">{carrier.display_name}</span>
+                      <span className="carrier-option-type">{carrier.service_type}</span>
+                      {carrier.description && (
+                        <span className="carrier-option-desc">{carrier.description}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Pincodes */}
             <div className="form-row">

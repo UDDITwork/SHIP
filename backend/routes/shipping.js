@@ -877,6 +877,21 @@ router.post('/calculate-cost',
     }
 );
 
+// Get available active carriers for client portal (carrier selection during booking/rate calc)
+// @route   GET /api/shipping/carriers
+// @access  Public
+router.get('/carriers', async (req, res) => {
+  try {
+    const carriers = await Carrier.find({ is_active: true })
+      .sort({ priority_order: 1, display_name: 1 })
+      .select('carrier_code display_name service_type zone_type weight_slab_type description priority_order');
+    res.json({ success: true, data: carriers });
+  } catch (error) {
+    logger.error('Error fetching available carriers:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch carriers' });
+  }
+});
+
 // Calculate shipping cost based on rate card system
 // Accepts either: (zone) OR (pickup_pincode + delivery_pincode) to get zone from Delhivery
 router.post('/public/calculate-rate-card',
@@ -1053,22 +1068,18 @@ router.post('/public/calculate-rate-card',
             let carrierServiceType = null;
 
             if (!selectedCarrierId && service_type) {
-                // Lookup carrier by service type
+                // Lookup carrier by service type — fall back to legacy if not found (e.g. seed not run yet)
                 const carrier = await Carrier.findOne({
                     carrier_group: 'DELHIVERY',
                     service_type: service_type.toLowerCase(),
                     is_active: true
                 });
 
-                if (!carrier) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `No active carrier found for service type: ${service_type}`
-                    });
+                if (carrier) {
+                    selectedCarrierId = carrier._id;
+                    carrierServiceType = carrier.service_type;
                 }
-
-                selectedCarrierId = carrier._id;
-                carrierServiceType = carrier.service_type;
+                // If no carrier found, selectedCarrierId stays null → falls through to legacy calculation
             }
 
             // Calculate shipping charges (with carrier support)
@@ -1084,7 +1095,7 @@ router.post('/public/calculate-rate-card',
                     selectedCarrierId
                 );
             } else {
-                // Legacy: no carrier specified, use default (Surface)
+                // Legacy: no carrier specified or carrier not found, use default (Surface)
                 result = await RateCardService.calculateShippingCharges(
                     userCategory,
                     weight,
@@ -1301,22 +1312,18 @@ router.post('/calculate-rate-card',
             let carrierServiceType = null;
 
             if (!selectedCarrierId && service_type) {
-                // Lookup carrier by service type
+                // Lookup carrier by service type — fall back to legacy if not found (e.g. seed not run yet)
                 const carrier = await Carrier.findOne({
                     carrier_group: 'DELHIVERY',
                     service_type: service_type.toLowerCase(),
                     is_active: true
                 });
 
-                if (!carrier) {
-                    return res.status(400).json({
-                        success: false,
-                        message: `No active carrier found for service type: ${service_type}`
-                    });
+                if (carrier) {
+                    selectedCarrierId = carrier._id;
+                    carrierServiceType = carrier.service_type;
                 }
-
-                selectedCarrierId = carrier._id;
-                carrierServiceType = carrier.service_type;
+                // If no carrier found, selectedCarrierId stays null → falls through to legacy calculation
             }
 
             // Calculate shipping charges with correct order type

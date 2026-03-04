@@ -19,6 +19,11 @@ import {
 } from 'lucide-react';
 import './AdminCarriers.css';
 
+const getWeightSlabSummary = (type: string): string[] => {
+  if (type === 'option2') return ['0-5 kg', '+1 kg/9 kg', '10 kg', '+1 kg/19 kg', '>20 kg'];
+  return ['0-250 gm', '250-500 gm', '+500 gm/5 kg', '+1 kg/10 kg', '>10 kg'];
+};
+
 const AdminCarriers: React.FC = () => {
   const navigate = useNavigate();
   const [carriers, setCarriers] = useState<Carrier[]>([]);
@@ -306,6 +311,14 @@ const AdminCarriers: React.FC = () => {
                   <span className="label">Rate Cards:</span>
                   <span className="value">{carrier.rate_card_count || 0} / 4</span>
                 </div>
+                <div className="detail-row slab-row">
+                  <span className="label">Weight Slabs:</span>
+                  <div className="slab-chips">
+                    {getWeightSlabSummary(carrier.weight_slab_type).map(slab => (
+                      <span key={slab} className="slab-chip">{slab}</span>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               {carrier.description && (
@@ -331,7 +344,7 @@ const AdminCarriers: React.FC = () => {
                   onClick={() => handleDeleteCarrier(carrier)}
                   title="Delete Carrier"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={14} /> Delete
                 </button>
               </div>
             </div>

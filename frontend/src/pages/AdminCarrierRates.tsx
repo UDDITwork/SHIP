@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { adminService, Carrier, RateCard } from '../services/adminService';
 import { formatDate } from '../utils/dateFormat';
 import {
@@ -27,12 +27,20 @@ const ZONES = ['A', 'B', 'C', 'D', 'E', 'F'];
 const AdminCarrierRates: React.FC = () => {
   const { carrierId } = useParams<{ carrierId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [carrier, setCarrier] = useState<Carrier | null>(null);
   const [rates, setRates] = useState<RatesByCategory | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState<string>('New User');
+  const [activeCategory, setActiveCategory] = useState<string>(() => {
+    const param = searchParams.get('category');
+    if (param) {
+      const decoded = decodeURIComponent(param);
+      if (CATEGORIES.includes(decoded)) return decoded;
+    }
+    return 'New User';
+  });
   const [editMode, setEditMode] = useState(false);
   const [editedRateCard, setEditedRateCard] = useState<RateCard | null>(null);
   const [saving, setSaving] = useState(false);

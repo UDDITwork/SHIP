@@ -155,6 +155,26 @@ class ShippingService {
     }
   }
 
+  // Get available active carriers for client portal (booking, rate calculator)
+  async getAvailableCarriers(): Promise<Array<{
+    _id: string;
+    carrier_code: string;
+    display_name: string;
+    service_type: string;
+    zone_type: string;
+    weight_slab_type: string;
+    description?: string;
+    priority_order: number;
+  }>> {
+    try {
+      const response = await apiService.get<{ success: boolean; data: any[] }>('/shipping/carriers');
+      return response.success ? response.data : [];
+    } catch (error: any) {
+      console.error('Get available carriers error:', error);
+      return [];
+    }
+  }
+
   // Get zones for dropdown
   // NOTE: C1, D1 are deprecated - Delhivery returns them but we normalize to C, D
   // Only show simplified zones: A, B, C, D, E, F

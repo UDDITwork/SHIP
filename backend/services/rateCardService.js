@@ -108,7 +108,12 @@ class RateCardService {
   static clearCache(userCategory = null) {
     if (userCategory) {
       const cacheKey = userCategory.toLowerCase();
-      rateCardCache.delete(cacheKey);
+      // Delete exact key AND all carrier-specific keys for this category
+      for (const key of rateCardCache.keys()) {
+        if (key === cacheKey || key.startsWith(`${cacheKey}_`)) {
+          rateCardCache.delete(key);
+        }
+      }
     } else {
       rateCardCache.clear();
     }

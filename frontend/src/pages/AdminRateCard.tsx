@@ -1,9 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService, Carrier } from '../services/adminService';
+import { ChevronLeft } from 'lucide-react';
 import './AdminRateCard.css';
 
 type SortOrder = 'a-z' | 'z-a' | 'newest' | 'oldest';
+
+const getWeightSlabSummary = (type: string): string[] => {
+  if (type === 'option2') return ['0-5 kg', '+1 kg/9 kg', '10 kg', '+1 kg/19 kg', '>20 kg'];
+  return ['0-250 gm', '250-500 gm', '+500 gm/5 kg', '+1 kg/10 kg', '>10 kg'];
+};
 
 const AdminRateCard: React.FC = () => {
   const navigate = useNavigate();
@@ -13,12 +19,13 @@ const AdminRateCard: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<SortOrder>('a-z');
   const [showInactive, setShowInactive] = useState(false);
   const [viewMode, setViewMode] = useState<'carriers' | 'categories'>('carriers');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
   const categories = [
-    { id: 'new-user', label: 'New User', route: 'new-user' },
-    { id: 'basic-user', label: 'Basic User', route: 'basic-user' },
-    { id: 'lite-user', label: 'Lite User', route: 'lite-user' },
-    { id: 'advanced', label: 'Advanced', route: 'advanced' }
+    { id: 'new-user', label: 'New User' },
+    { id: 'basic-user', label: 'Basic User' },
+    { id: 'lite-user', label: 'Lite User' },
+    { id: 'advanced', label: 'Advanced' }
   ];
 
   useEffect(() => {
@@ -56,12 +63,11 @@ const AdminRateCard: React.FC = () => {
     }
   };
 
-  const handleCategoryClick = (route: string) => {
-    navigate(`/admin/ratecard/${route}`);
-  };
-
-  const handleCarrierRatesClick = (carrierId: string) => {
-    navigate(`/admin/carriers/${carrierId}/rates`);
+  const handleCarrierRatesClick = (carrierId: string, category?: string) => {
+    const url = category
+      ? `/admin/carriers/${carrierId}/rates?category=${encodeURIComponent(category)}`
+      : `/admin/carriers/${carrierId}/rates`;
+    navigate(url);
   };
 
   const getServiceTypeBadgeClass = (serviceType: string) => {
@@ -85,13 +91,13 @@ const AdminRateCard: React.FC = () => {
           <div className="header-actions">
             <button
               className={`view-mode-btn ${viewMode === 'carriers' ? 'active' : ''}`}
-              onClick={() => setViewMode('carriers')}
+              onClick={() => { setViewMode('carriers'); setSelectedCategory(null); }}
             >
               By Carrier
             </button>
             <button
               className={`view-mode-btn ${viewMode === 'categories' ? 'active' : ''}`}
-              onClick={() => setViewMode('categories')}
+              onClick={() => { setViewMode('categories'); setSelectedCategory(null); }}
             >
               By Category
             </button>
@@ -175,6 +181,11 @@ const AdminRateCard: React.FC = () => {
                     <span className="carrier-code">{carrier.carrier_code}</span>
                     <span className="carrier-group">{carrier.carrier_group}</span>
                   </div>
+                  <div className="rc-slab-chips">
+                    {getWeightSlabSummary(carrier.weight_slab_type).map(slab => (
+                      <span key={slab} className="rc-slab-chip">{slab}</span>
+                    ))}
+                  </div>
                   <div className="carrier-actions">
                     <button
                       className="view-rates-btn"
@@ -196,23 +207,87 @@ const AdminRateCard: React.FC = () => {
         </>
       ) : (
         <div className="ratecard-categories">
-          <p className="categories-note">
-            Select a user category to view and edit legacy rate card pricing.
-            For carrier-specific rates, use the "By Carrier" view.
-          </p>
+          {/* Category selector buttons */}
           <div className="categories-grid">
             {categories.map((category) => (
               <button
                 key={category.id}
-                className="category-button"
-                onClick={() => handleCategoryClick(category.route)}
+                className={`category-button ${selectedCategory === category.label ? 'selected' : ''}`}
+                onClick={() => setSelectedCategory(
+                  selectedCategory === category.label ? null : category.label
+                )}
               >
                 <div className="category-icon">RC</div>
                 <div className="category-label">{category.label}</div>
-                <div className="category-arrow">-&gt;</div>
+                <div className="category-arrow">{selectedCategory === category.label ? '▼' : '→'}</div>
               </button>
             ))}
           </div>
+
+          {/* Inline carrier grid for selected category */}
+          {selectedCategory && (
+            <div className="category-carriers-section">
+              <div className="category-carriers-header">
+                <button
+                  className="back-to-categories-btn"
+                  onClick={() => setSelectedCategory(null)}
+                >
+                  <ChevronLeft size={16} /> Categories
+                </button>
+                <h3>Carriers for <span className="selected-cat-name">{selectedCategory}</span></h3>
+              </div>
+
+              {loading ? (
+                <div className="loading-state">Loading carriers...</div>
+              ) : carriers.length === 0 ? (
+                <div className="empty-state">
+                  <p>No carriers available.</p>
+                  <button onClick={() => navigate('/admin/carriers')}>Add Carrier</button>
+                </div>
+              ) : (
+                <div className="carriers-grid">
+                  {carriers.map((carrier) => (
+                    <div
+                      key={carrier._id}
+                      className={`carrier-card ${!carrier.is_active ? 'inactive' : ''}`}
+                    >
+                      <div className="carrier-header">
+                        <div className="carrier-info">
+                          <h3>{carrier.display_name}</h3>
+                          <span className={`service-badge ${getServiceTypeBadgeClass(carrier.service_type)}`}>
+                            {carrier.service_type}
+                          </span>
+                        </div>
+                        <div className="carrier-status">
+                          {(carrier.rate_card_count || 0) > 0 ? (
+                            <span className="rate-exists-badge">Rates Set</span>
+                          ) : (
+                            <span className="rate-missing-badge">No Rates</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="carrier-meta">
+                        <span className="carrier-code">{carrier.carrier_code}</span>
+                      </div>
+                      <div className="rc-slab-chips">
+                        {getWeightSlabSummary(carrier.weight_slab_type).map(slab => (
+                          <span key={slab} className="rc-slab-chip">{slab}</span>
+                        ))}
+                      </div>
+                      <div className="carrier-actions">
+                        <button
+                          className="view-rates-btn"
+                          onClick={() => handleCarrierRatesClick(carrier._id, selectedCategory)}
+                        >
+                          View/Edit Rates →
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>
