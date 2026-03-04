@@ -10,7 +10,7 @@
   height: 100vh;
   background-color: #FFFFFF;
   overflow-y: hidden; /* Prevent vertical scroll on container */
-  overflow-x: visible; /* Allow sidebar extension to show */
+  overflow-x: hidden;
 }
 
 /* ============================================
@@ -411,7 +411,7 @@
 .layout-body {
   display: flex;
   flex: 1;
-  overflow: visible; /* Allow active tab to overlay content */
+  overflow: visible;
   gap: 0;
   align-items: stretch;
   margin: 0;
@@ -784,7 +784,7 @@
   filter: brightness(0) saturate(100%) invert(55%) sepia(95%) saturate(600%) hue-rotate(360deg) brightness(100%) !important;
 }
 
-/* Main Content — accommodates 42px active tab extension */
+/* Main Content */
 .layout-main {
   flex: 1;
   overflow-y: auto;
@@ -793,7 +793,7 @@
   padding: 20px 24px;
   margin-left: 0;
   position: relative;
-  z-index: 1; /* BELOW sidebar (z-index: 10) so extension shows on top */
+  z-index: 1;
   border-left: none;
   min-height: 0;
   flex-basis: 0;
