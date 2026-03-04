@@ -185,7 +185,10 @@ class OrderService {
           awb: order.delhivery_data?.waybill || order.shipping_info?.awb_number || '',
           trackingUrl: order.delhivery_data?.tracking_url || '',
           pickupRequestId: order.delhivery_data?.pickup_request_id || '',
-          pickupRequestStatus: order.delhivery_data?.pickup_request_status || 'pending',
+          pickupRequestStatus: order.delhivery_data?.pickup_request_status ||
+            (['in_transit', 'out_for_delivery', 'delivered', 'rto_in_transit', 'rto_delivered'].includes(order.status)
+              ? 'completed'
+              : 'pending'),
           pickupRequestDate: order.delhivery_data?.pickup_request_date,
           pickupRequestTime: order.delhivery_data?.pickup_request_time || '',
           delhivery_data: order.delhivery_data ? {
@@ -274,7 +277,10 @@ class OrderService {
           awb: order.delhivery_data?.waybill || order.shipping_info?.awb_number || '',
           trackingUrl: order.delhivery_data?.tracking_url || '',
           pickupRequestId: order.delhivery_data?.pickup_request_id || '',
-          pickupRequestStatus: order.delhivery_data?.pickup_request_status || 'pending',
+          pickupRequestStatus: order.delhivery_data?.pickup_request_status ||
+            (['in_transit', 'out_for_delivery', 'delivered', 'rto_in_transit', 'rto_delivered'].includes(order.status)
+              ? 'completed'
+              : 'pending'),
           pickupRequestDate: order.delhivery_data?.pickup_request_date,
           pickupRequestTime: order.delhivery_data?.pickup_request_time || '',
           delhivery_data: order.delhivery_data ? {

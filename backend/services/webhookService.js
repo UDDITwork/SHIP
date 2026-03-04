@@ -355,6 +355,22 @@ class WebhookService {
               const oldStatus = order.status;
               order.status = mappedStatus;
 
+              // Auto-update pickup_request_status for externally-requested pickups
+              // Handles: pickup via Delhivery dashboard, auto-route, self-drop, etc.
+              if (order.delhivery_data && order.delhivery_data.pickup_request_status === 'pending') {
+                if (mappedStatus === 'pickups_manifests') {
+                  order.delhivery_data.pickup_request_status = 'scheduled';
+                  logger.info('🔄 Auto-set pickup_request_status → scheduled (external pickup detected via webhook)', {
+                    orderId: order.order_id, waybill
+                  });
+                } else if (['in_transit', 'out_for_delivery', 'delivered', 'rto_in_transit', 'rto_delivered'].includes(mappedStatus)) {
+                  order.delhivery_data.pickup_request_status = 'completed';
+                  logger.info('🔄 Auto-set pickup_request_status → completed (shipment past pickup via webhook)', {
+                    orderId: order.order_id, waybill, mappedStatus
+                  });
+                }
+              }
+
               // Add to status history
               if (!order.status_history) {
                 order.status_history = [];

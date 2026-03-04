@@ -543,7 +543,16 @@ class TrackingService {
 
                 if (newStatus && newStatus !== oldStatus && !isPrePickupManifest) {
                     order.status = newStatus;
-                    
+
+                    // Auto-update pickup_request_status for externally-requested pickups
+                    if (order.delhivery_data && order.delhivery_data.pickup_request_status === 'pending') {
+                        if (newStatus === 'pickups_manifests') {
+                            order.delhivery_data.pickup_request_status = 'scheduled';
+                        } else if (['in_transit', 'out_for_delivery', 'delivered', 'rto_in_transit', 'rto_delivered'].includes(newStatus)) {
+                            order.delhivery_data.pickup_request_status = 'completed';
+                        }
+                    }
+
                     order.status_history = order.status_history || [];
                     order.status_history.push({
                         status: newStatus,
@@ -552,7 +561,7 @@ class TrackingService {
                         location: trackingData.location || '',
                         source: 'delhivery_tracking'
                     });
-                    
+
                     if (newStatus === 'delivered') {
                         order.delivered_date = new Date();
                     }
@@ -994,6 +1003,15 @@ class TrackingService {
                 // Update status from Delhivery API (skip if premature manifest)
                 if (!isPrePickupManifest) {
                     order.status = status;
+
+                    // Auto-update pickup_request_status for externally-requested pickups
+                    if (order.delhivery_data && order.delhivery_data.pickup_request_status === 'pending') {
+                        if (status === 'pickups_manifests') {
+                            order.delhivery_data.pickup_request_status = 'scheduled';
+                        } else if (['in_transit', 'out_for_delivery', 'delivered', 'rto_in_transit', 'rto_delivered'].includes(status)) {
+                            order.delhivery_data.pickup_request_status = 'completed';
+                        }
+                    }
 
                     if (status === 'delivered' && additionalData.delivered_at) {
                         order.delivered_date = additionalData.delivered_at;
