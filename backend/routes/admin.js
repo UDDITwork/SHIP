@@ -7628,32 +7628,20 @@ router.patch('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
       });
     }
 
-    // Update fields
-    if (updates.forwardCharges) {
-      rateCard.forwardCharges = updates.forwardCharges;
-    }
-    if (updates.rtoCharges) {
-      rateCard.rtoCharges = updates.rtoCharges;
-    }
+    // Build $set payload to avoid re-validating unchanged required fields
+    const setDoc = {};
+    if (updates.forwardCharges) setDoc.forwardCharges = updates.forwardCharges;
+    if (updates.rtoCharges)     setDoc.rtoCharges     = updates.rtoCharges;
     if (updates.codCharges) {
-      if (updates.codCharges.percentage !== undefined) {
-        rateCard.codCharges.percentage = updates.codCharges.percentage;
-      }
-      if (updates.codCharges.minimumAmount !== undefined) {
-        rateCard.codCharges.minimumAmount = updates.codCharges.minimumAmount;
-      }
-      if (updates.codCharges.gstAdditional !== undefined) {
-        rateCard.codCharges.gstAdditional = updates.codCharges.gstAdditional;
-      }
+      if (updates.codCharges.percentage !== undefined)    setDoc['codCharges.percentage']    = updates.codCharges.percentage;
+      if (updates.codCharges.minimumAmount !== undefined) setDoc['codCharges.minimumAmount'] = updates.codCharges.minimumAmount;
+      if (updates.codCharges.gstAdditional !== undefined) setDoc['codCharges.gstAdditional'] = updates.codCharges.gstAdditional;
     }
-    if (updates.zoneDefinitions) {
-      rateCard.zoneDefinitions = updates.zoneDefinitions;
-    }
-    if (updates.termsAndConditions) {
-      rateCard.termsAndConditions = updates.termsAndConditions;
-    }
+    if (updates.zoneDefinitions)     setDoc.zoneDefinitions     = updates.zoneDefinitions;
+    if (updates.termsAndConditions)  setDoc.termsAndConditions  = updates.termsAndConditions;
 
-    await rateCard.save();
+    await RateCard.updateOne({ _id: rateCard._id }, { $set: setDoc });
+    const updatedRateCard = await RateCard.findById(rateCard._id) || rateCard;
 
     // Clear cache
     RateCardService.clearCache(normalizedCategory);
@@ -7668,7 +7656,7 @@ router.patch('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
     res.json({
       success: true,
       message: 'Rate card updated successfully',
-      data: rateCard
+      data: updatedRateCard
     });
   } catch (error) {
     logger.error('Error updating carrier rate:', error);
