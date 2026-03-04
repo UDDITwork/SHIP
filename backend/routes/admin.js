@@ -1546,6 +1546,16 @@ router.get('/tickets/master', async (req, res) => {
       }
     });
 
+    // Calculate status summary (use base filter without status for total counts per status)
+    const baseQuery = { ...filterQuery };
+    delete baseQuery.status;
+    const statusSummary = { open: 0, in_progress: 0, escalated: 0, resolved: 0, closed: 0 };
+    const allTicketsForStatusSummary = await SupportTicket.find(baseQuery).select('status').lean();
+    allTicketsForStatusSummary.forEach(ticket => {
+      const s = ticket.status || 'open';
+      if (statusSummary.hasOwnProperty(s)) statusSummary[s]++;
+    });
+
     res.json({
       success: true,
       data: {
@@ -1557,7 +1567,8 @@ router.get('/tickets/master', async (req, res) => {
           hasNext: page * limit < totalTickets,
           hasPrev: page > 1
         },
-        priority_summary: prioritySummary
+        priority_summary: prioritySummary,
+        status_summary: statusSummary
       }
     });
 
@@ -6903,8 +6914,20 @@ router.patch('/ratecard/:userCategory', adminOnly, async (req, res) => {
       }
     }
     
-    // Save the updated ratecard
-    await rateCard.save();
+    // Build $set payload — only update what was sent, avoids re-validating
+    // unchanged required fields (termsAndConditions, zoneDefinitions) that
+    // may be empty in older DB documents.
+    const setDoc = {};
+    if (updates.forwardCharges) setDoc.forwardCharges = rateCard.forwardCharges;
+    if (updates.rtoCharges)     setDoc.rtoCharges     = rateCard.rtoCharges;
+    if (updates.codCharges) {
+      setDoc['codCharges.percentage']    = rateCard.codCharges.percentage;
+      setDoc['codCharges.minimumAmount'] = rateCard.codCharges.minimumAmount;
+      setDoc['codCharges.gstAdditional'] = rateCard.codCharges.gstAdditional;
+    }
+    await RateCard.updateOne({ _id: rateCard._id }, { $set: setDoc });
+    // Re-fetch so response reflects saved state
+    const savedCard = await RateCard.findById(rateCard._id) || rateCard;
     
     // Clear cache for this category
     RateCardService.clearCache(normalizedCategory);
@@ -6918,7 +6941,7 @@ router.patch('/ratecard/:userCategory', adminOnly, async (req, res) => {
     res.json({
       success: true,
       message: 'Rate card updated successfully',
-      data: rateCard
+      data: savedCard
     });
   } catch (error) {
     logger.error('Error updating ratecard:', error);
