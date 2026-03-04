@@ -51,8 +51,8 @@
 }
 
 .view-mode-btn.active {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #002B59;
+  border-color: #002B59;
   color: #fff;
 }
 
@@ -95,6 +95,11 @@
   gap: 8px;
 }
 
+/* Sort button pair — no gap between adjacent filter-btns inside a group */
+.filter-group .filter-btn + .filter-btn {
+  gap: 0;
+}
+
 .filter-group label {
   font-size: 14px;
   color: #6b7280;
@@ -118,9 +123,20 @@
 }
 
 .filter-btn.active {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #002B59;
+  border-color: #002B59;
   color: #fff;
+}
+
+/* Segmented sort button pill — A-Z / Z-A appear joined */
+.filter-group .filter-btn + .filter-btn {
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  margin-left: 0;
+}
+
+.filter-group .filter-btn:first-of-type {
+  border-radius: 6px 0 0 6px;
 }
 
 .checkbox-label {
@@ -138,7 +154,7 @@
 
 .manage-carriers-btn {
   padding: 10px 20px;
-  background: #2563eb;
+  background: #002B59;
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -150,7 +166,7 @@
 }
 
 .manage-carriers-btn:hover {
-  background: #1d4ed8;
+  background: #003d80;
 }
 
 .carriers-grid {
@@ -170,7 +186,7 @@
 .empty-state button {
   margin-top: 16px;
   padding: 10px 20px;
-  background: #2563eb;
+  background: #002B59;
   border: none;
   border-radius: 8px;
   color: #fff;
@@ -292,7 +308,7 @@
 .view-rates-btn {
   flex: 1;
   padding: 10px 16px;
-  background: #2563eb;
+  background: #002B59;
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -303,7 +319,7 @@
 }
 
 .view-rates-btn:hover {
-  background: #1d4ed8;
+  background: #003d80;
 }
 
 .toggle-status-btn {
@@ -369,17 +385,17 @@
 }
 
 .category-button:hover {
-  border-color: #4a90e2;
-  background: #f8f9ff;
+  border-color: #002B59;
+  background: #f0f4f8;
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.15);
+  box-shadow: 0 4px 12px rgba(0, 43, 89, 0.12);
 }
 
 .category-icon {
   font-size: 48px;
   margin-bottom: 8px;
   font-weight: 700;
-  color: #2563eb;
+  color: #002B59;
 }
 
 .category-label {
@@ -390,7 +406,7 @@
 
 .category-arrow {
   font-size: 24px;
-  color: #4a90e2;
+  color: #002B59;
   margin-top: 8px;
 }
 

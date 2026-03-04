@@ -216,22 +216,25 @@ const AdminClients: React.FC = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getInitials = (name: string) =>
+    name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+
+  const getStatusSelectClass = (status: string) => {
     switch (status) {
-      case 'active': return '#10B981';
-      case 'pending_verification': return '#F59E0B';
-      case 'suspended': return '#EF4444';
-      case 'inactive': return '#6B7280';
-      default: return '#6B7280';
+      case 'active': return 'status-select status-active';
+      case 'pending_verification': return 'status-select status-pending';
+      case 'suspended': return 'status-select status-suspended';
+      case 'inactive': return 'status-select status-inactive';
+      default: return 'status-select status-inactive';
     }
   };
 
-  const getKYCStatusColor = (status: string) => {
+  const getKYCSelectClass = (status: string) => {
     switch (status) {
-      case 'verified': return '#10B981';
-      case 'pending': return '#F59E0B';
-      case 'rejected': return '#EF4444';
-      default: return '#6B7280';
+      case 'verified': return 'kyc-select kyc-verified';
+      case 'pending': return 'kyc-select kyc-pending';
+      case 'rejected': return 'kyc-select kyc-rejected';
+      default: return 'kyc-select kyc-pending';
     }
   };
 
@@ -287,6 +290,7 @@ const AdminClients: React.FC = () => {
       {/* Filters and Search */}
       <div className="filters-section">
         <div className="search-box">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           <input
             type="text"
             placeholder="Search by company, name, email, phone, or client ID..."
@@ -372,21 +376,24 @@ const AdminClients: React.FC = () => {
                     <span className="client-id">{client.client_id}</span>
                   </td>
                   <td>
-                    <div className="company-info">
-                      <strong
-                        className="company-name-link"
-                        onClick={() => navigate(`/admin/clients/${client._id}/dashboard`)}
-                        title="Click to view client dashboard"
-                      >
-                        {client.company_name}
-                      </strong>
-                      <small>{client.your_name}</small>
+                    <div className="company-cell">
+                      <div className="company-avatar">{getInitials(client.company_name)}</div>
+                      <div className="company-info">
+                        <strong
+                          className="company-name-link"
+                          onClick={() => navigate(`/admin/clients/${client._id}/dashboard`)}
+                          title="Click to view client dashboard"
+                        >
+                          {client.company_name}
+                        </strong>
+                        <span className="company-person">{client.your_name}</span>
+                      </div>
                     </div>
                   </td>
                   <td>
                     <div className="contact-info">
-                      <div>{client.email}</div>
-                      <small>{client.phone_number}</small>
+                      <span className="contact-email">{client.email}</span>
+                      <span className="contact-phone">{client.phone_number}</span>
                     </div>
                   </td>
                   <td>
@@ -395,56 +402,58 @@ const AdminClients: React.FC = () => {
                     </span>
                   </td>
                   <td>
-                    <select
-                      value={client.account_status}
-                      onChange={(e) => handleStatusUpdate(client._id, e.target.value)}
-                      className="status-select"
-                      style={{ backgroundColor: getStatusColor(client.account_status) }}
-                    >
-                      <option value="active">Active</option>
-                      <option value="pending_verification">Pending</option>
-                      <option value="suspended">Suspended</option>
-                      <option value="inactive">Inactive</option>
-                    </select>
+                    <div className="status-select-wrap">
+                      <select
+                        value={client.account_status}
+                        onChange={(e) => handleStatusUpdate(client._id, e.target.value)}
+                        className={getStatusSelectClass(client.account_status)}
+                      >
+                        <option value="active">Active</option>
+                        <option value="pending_verification">Pending</option>
+                        <option value="suspended">Suspended</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
                   </td>
                   <td>
                     <div className="kyc-column">
-                      <select
-                        value={client.kyc_status.status}
-                        onChange={(e) => handleKYCUpdate(client._id, e.target.value)}
-                        className="kyc-select"
-                        style={{ backgroundColor: getKYCStatusColor(client.kyc_status.status) }}
-                      >
-                        <option value="pending">Pending</option>
-                        <option value="verified">Verified</option>
-                        <option value="rejected">Rejected</option>
-                      </select>
+                      <div className="kyc-select-wrap">
+                        <select
+                          value={client.kyc_status.status}
+                          onChange={(e) => handleKYCUpdate(client._id, e.target.value)}
+                          className={getKYCSelectClass(client.kyc_status.status)}
+                        >
+                          <option value="pending">Pending</option>
+                          <option value="verified">Verified</option>
+                          <option value="rejected">Rejected</option>
+                        </select>
+                      </div>
                       <button
                         className="view-documents-btn"
                         onClick={() => handleViewDocuments(client)}
                         title="View KYC Documents"
                       >
-                        📄 View Docs
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        View Docs
                       </button>
                     </div>
                   </td>
                   <td>
                     <div className="stats-info">
-                      <div>Orders: {client.stats.orders}</div>
-                      <div>Packages: {client.stats.packages}</div>
-                      <div>Customers: {client.stats.customers}</div>
+                      <div className="stat-item"><span className="stat-label">Orders</span><span className="stat-val">{client.stats.orders}</span></div>
+                      <div className="stat-item"><span className="stat-label">Pkgs</span><span className="stat-val">{client.stats.packages}</span></div>
+                      <div className="stat-item"><span className="stat-label">Cust</span><span className="stat-val">{client.stats.customers}</span></div>
                     </div>
                   </td>
                   <td>
                     <div className="action-buttons">
                       <button
                         className="view-btn"
-                        onClick={() => {
-                          // Open client portal in a new tab via impersonation
-                          handleAccessPortal(client);
-                        }}
+                        onClick={() => handleAccessPortal(client)}
+                        disabled={impersonatingClientId === client._id}
                       >
-                        View
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        {impersonatingClientId === client._id ? 'Opening…' : 'View'}
                       </button>
                     </div>
                   </td>

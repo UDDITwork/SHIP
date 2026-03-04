@@ -37,6 +37,8 @@ const AdminTickets: React.FC = () => {
     low: { count: 0, sla_breached: 0 }
   });
 
+  const [statusSummary, setStatusSummary] = useState({ open: 0, in_progress: 0, escalated: 0, resolved: 0, closed: 0 });
+
   // Filters
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [priorityFilter, setPriorityFilter] = useState<PriorityFilter>('all');
@@ -76,6 +78,7 @@ const AdminTickets: React.FC = () => {
       setTickets(response.data.tickets);
       setPagination(response.data.pagination);
       setPrioritySummary(response.data.priority_summary);
+      if (response.data.status_summary) setStatusSummary(response.data.status_summary);
     } catch (err: any) {
       console.error('Error fetching tickets:', err);
       setError(err.response?.data?.message || err.message || 'Failed to fetch tickets');
@@ -183,11 +186,11 @@ const AdminTickets: React.FC = () => {
             onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
           >
             <option value="all">All Statuses</option>
-            <option value="open">Open</option>
-            <option value="in_progress">In Progress</option>
-            <option value="escalated">Escalated</option>
-            <option value="resolved">Resolved</option>
-            <option value="closed">Closed</option>
+            <option value="open">Open ({statusSummary.open})</option>
+            <option value="in_progress">In Progress ({statusSummary.in_progress})</option>
+            <option value="escalated">Escalated ({statusSummary.escalated})</option>
+            <option value="resolved">Resolved ({statusSummary.resolved})</option>
+            <option value="closed">Closed ({statusSummary.closed})</option>
           </select>
         </div>
 

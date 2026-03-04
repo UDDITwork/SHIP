@@ -34,7 +34,7 @@
 }
 
 .btn-primary {
-  background-color: #3b82f6;
+  background-color: #002B59;
   color: white;
   border: none;
   padding: 10px 20px;
@@ -49,7 +49,7 @@
 }
 
 .btn-primary:hover {
-  background-color: #2563eb;
+  background-color: #003d80;
 }
 
 .btn-secondary {
@@ -102,7 +102,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid #e5e7eb;
-  border-top-color: #3b82f6;
+  border-top-color: #002B59;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -165,14 +165,15 @@
 }
 
 .filter-btn:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
+  border-color: #002B59;
+  color: #002B59;
 }
 
 .filter-btn.active {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  color: #3b82f6;
+  background: #e8ecf3;
+  border-color: #002B59;
+  color: #002B59;
+  font-weight: 600;
 }
 
 /* Carriers Grid */
@@ -237,12 +238,13 @@
 .carrier-icon {
   width: 44px;
   height: 44px;
-  background: #eff6ff;
+  background: #e8ecf3;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #3b82f6;
+  color: #002B59;
+  flex-shrink: 0;
 }
 
 .carrier-info {
@@ -275,7 +277,7 @@
 }
 
 .carrier-status .toggle-btn:hover {
-  color: #3b82f6;
+  color: #002B59;
 }
 
 /* Carrier Details */
@@ -367,21 +369,21 @@
 }
 
 .action-btn:hover {
-  border-color: #3b82f6;
-  color: #3b82f6;
+  border-color: #002B59;
+  color: #002B59;
 }
 
 .action-btn.view-rates {
   flex: 1;
   justify-content: center;
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #002B59;
+  border-color: #002B59;
   color: white;
 }
 
 .action-btn.view-rates:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #003d80;
+  border-color: #003d80;
 }
 
 .action-btn.edit:hover {
@@ -569,10 +571,11 @@
 .slab-chip {
   display: inline-block;
   padding: 2px 7px;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: #e8ecf3;
+  border: 1px solid #c5cfe0;
   border-radius: 4px;
   font-size: 11px;
-  color: #1d4ed8;
+  color: #002B59;
   white-space: nowrap;
+  font-weight: 500;
 }
