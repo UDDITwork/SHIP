@@ -934,7 +934,8 @@ const Orders: React.FC = () => {
         reseller_name: ''
       },
       shipping_mode: 'Surface',
-      service_type: 'surface'
+      service_type: 'surface',
+      order_type: order.orderType || 'forward'
     };
     setCloneOrderData(cloneData);
     setIsAddOrderModalOpen(true);
