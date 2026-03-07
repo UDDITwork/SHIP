@@ -741,12 +741,6 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
         order.payment_info.payment_mode
       );
 
-      // Fetch waybill
-      const waybillResult = await delhiveryService.getWaybill(1);
-      let preFetchedWaybill = waybillResult.success && waybillResult.waybills?.length > 0
-        ? waybillResult.waybills[0]
-        : null;
-
       // Prepare data for Delhivery
       const orderDataForDelhivery = {
         order_id: order.order_id,
@@ -798,7 +792,7 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
         invoice_number: order.invoice_number || `INV${order.order_id}`,
         shipping_mode: order.shipping_mode || 'Surface',
         address_type: order.delivery_address.address_type || 'home',
-        waybill: preFetchedWaybill || undefined
+        waybill: '' // Let Delhivery auto-generate waybill
       };
 
       // Call Delhivery API
@@ -2415,25 +2409,6 @@ router.post('/', auth, [
         timestamp: new Date().toISOString()
       });
 
-      const waybillResult = await delhiveryService.getWaybill(1);
-      let preFetchedWaybill = null;
-
-      if (waybillResult.success && waybillResult.waybills && waybillResult.waybills.length > 0) {
-        preFetchedWaybill = waybillResult.waybills[0]; // Get first waybill from array
-        console.log('✅ WAYBILL FETCHED', {
-          orderId: order.order_id,
-          waybill: preFetchedWaybill,
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        console.log('⚠️ WAYBILL FETCH FAILED, Delhivery will auto-generate', {
-          orderId: order.order_id,
-          error: waybillResult.error,
-          timestamp: new Date().toISOString()
-        });
-        // Continue without pre-fetched waybill - Delhivery will generate
-      }
-
       // STEP 2: Prepare order data for Delhivery API (service expects order structure, not formatted shipment data)
       const orderDataForDelhivery = {
         order_id: order.order_id,
@@ -2485,7 +2460,7 @@ router.post('/', auth, [
         invoice_number: order.invoice_number || `INV${order.order_id}`,
         shipping_mode: order.shipping_mode || 'Surface',
         address_type: order.delivery_address.address_type || 'home',
-        waybill: preFetchedWaybill || undefined // Send pre-fetched waybill if available
+        waybill: '' // Let Delhivery auto-generate waybill
       };
 
       console.log('🌐 CALLING DELHIVERY API', {
@@ -3042,19 +3017,7 @@ router.post('/:id/generate-awb', auth, async (req, res) => {
       address_type: order.delivery_address.address_type || 'home'
     };
 
-    // Try to fetch waybill first
-    const waybillResult = await delhiveryService.getWaybill(1);
-    let preFetchedWaybill = null;
-    
-    if (waybillResult.success && waybillResult.waybills && waybillResult.waybills.length > 0) {
-      preFetchedWaybill = waybillResult.waybills[0];
-    }
-    
-    if (preFetchedWaybill) {
-      orderDataForDelhivery.waybill = preFetchedWaybill;
-    }
-
-    // Call Delhivery API to create shipment
+    // Call Delhivery API to create shipment — Delhivery auto-generates waybill
     const delhiveryResult = await delhiveryService.createShipment(orderDataForDelhivery);
 
     // Extract AWB number from response - check success OR if waybill exists
@@ -4684,19 +4647,7 @@ router.post('/bulk/generate-awb', auth, async (req, res) => {
           address_type: order.delivery_address.address_type || 'home'
         };
 
-        // Try to fetch waybill first
-        const waybillResult = await delhiveryService.getWaybill(1);
-        let preFetchedWaybill = null;
-
-        if (waybillResult.success && waybillResult.waybills && waybillResult.waybills.length > 0) {
-          preFetchedWaybill = waybillResult.waybills[0];
-        }
-
-        if (preFetchedWaybill) {
-          orderDataForDelhivery.waybill = preFetchedWaybill;
-        }
-
-        // Call Delhivery API to create shipment
+        // Call Delhivery API to create shipment — Delhivery auto-generates waybill
         const delhiveryResult = await delhiveryService.createShipment(orderDataForDelhivery);
 
         // Extract AWB number from response

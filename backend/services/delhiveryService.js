@@ -338,11 +338,14 @@ class DelhiveryService {
                 logger.info('📤 Upload WBN found (not waybill)', { uploadWbn: responseData.upload_wbn });
             }
 
-            // 3. If no AWB found in response, check if we sent a pre-fetched waybill
+            // 3. If no AWB found in response, DO NOT fall back to pre-fetched waybill.
+            // The pre-fetched waybill is just a reservation — if Delhivery didn't echo it back,
+            // the shipment was NOT created. Using it here creates ghost AWBs.
             if (!awbNumber && orderData.waybill) {
-                awbNumber = orderData.waybill;
-                isSuccess = true;
-                logger.info('✅ Using pre-fetched waybill', { awbNumber });
+                logger.warn('⚠️ Pre-fetched waybill was sent but Delhivery did not return it — shipment NOT created', {
+                    orderId: orderData.order_id,
+                    sentWaybill: orderData.waybill
+                });
             }
 
             // 4. If still no AWB, it's a failure
@@ -378,10 +381,7 @@ class DelhiveryService {
                 });
             }
 
-            // Mark as success if we have AWB (even if error flag was set)
-            isSuccess = true;
-
-            // Success - return response (even if error flag was set, if we have AWB, it's a success)
+            // Success - return response (if we have AWB from actual API response)
             if (awbNumber) {
                 logger.info('✅ Shipment created successfully (AWB extracted)', {
                     orderId: orderData.order_id,
