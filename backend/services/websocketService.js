@@ -316,15 +316,20 @@ class WebSocketService {
   }
 
   // Alias for sendNotificationToClient — called by admin.js
+  // Wraps notification in { type: 'notification', notification } so frontend bell picks it up
   notifyClient(userId, notification) {
-    return this.sendNotificationToClient(String(userId), notification);
+    return this.sendNotificationToClient(String(userId), {
+      type: 'notification',
+      notification: notification
+    });
   }
 
   // Send notification to multiple clients by their MongoDB user_ids
   notifyMultipleClients(userIds, notification) {
     let sentCount = 0;
+    const wrapped = { type: 'notification', notification: notification };
     userIds.forEach(userId => {
-      if (this.sendNotificationToClient(String(userId), notification)) {
+      if (this.sendNotificationToClient(String(userId), wrapped)) {
         sentCount++;
       }
     });
