@@ -52,6 +52,7 @@ const Dashboard: React.FC = () => {
     endDate: defaultRange.endDate
   });
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
+  const [todayMetrics, setTodayMetrics] = useState<DashboardData['metrics'] | null>(null);
   const [ndrStatus, setNdrStatus] = useState<any>(null);
   const [codStatus, setCodStatus] = useState<any>(null);
   const [shipmentDistribution, setShipmentDistribution] = useState<any>(null);
@@ -125,6 +126,10 @@ const Dashboard: React.FC = () => {
     const cachedTransactions = DataCache.get<any[]>('dashboardTransactions');
 
     // Show cached data immediately - UI stays responsive
+    const cachedTodayMetrics = DataCache.get<DashboardData['metrics']>('todayMetrics');
+    if (cachedTodayMetrics) {
+      setTodayMetrics(cachedTodayMetrics);
+    }
     if (cachedDashboard) {
       setDashboardData(cachedDashboard);
       setNdrStatus(cachedNdr);
@@ -142,13 +147,19 @@ const Dashboard: React.FC = () => {
     }
 
     try {
-      // Build date filter query parameters
+      // Build date filter query parameters for status sections
       const startDate = overrideRange.startDate;
       const endDate = overrideRange.endDate;
       const dateParams = `date_from=${startDate}&date_to=${endDate}`;
 
-      // Fire all 6 requests simultaneously — no staggering
+      // Today's date params — blue metric cards ALWAYS show today's data
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayParams = `date_from=${todayStr}&date_to=${todayStr}`;
+
+      // Fire all 7 requests simultaneously — no staggering
+      // Overview (today) is separate from status sections (date-filtered)
       const [
+        todayOverviewResponse,
         dashboardResponse,
         shipmentResponse,
         ndrResponse,
@@ -156,6 +167,7 @@ const Dashboard: React.FC = () => {
         distributionResponse,
         transactionsResponse
       ] = await Promise.all([
+        apiService.get<{ status: string; data: any }>(`/dashboard/overview?${todayParams}`),
         apiService.get<{ status: string; data: any }>(`/dashboard/overview?${dateParams}`),
         apiService.get<{ status: string; data: any }>(`/dashboard/shipment-status?${dateParams}`),
         apiService.get<{ status: string; data: any }>(`/dashboard/ndr-status?${dateParams}`),
@@ -163,6 +175,24 @@ const Dashboard: React.FC = () => {
         apiService.get<{ status: string; data: any }>(`/dashboard/shipment-distribution?${dateParams}`),
         apiService.get<{ status: string; data: any[] }>(`/dashboard/wallet-transactions?limit=5&${dateParams}`)
       ]);
+
+      // Today's metrics for the 3 blue cards (always today)
+      const todayMetricsData: DashboardData['metrics'] = {
+        todaysOrders: {
+          current: todayOverviewResponse.data.todays_orders?.count || 0,
+          previous: todayOverviewResponse.data.todays_orders?.previous_count || 0
+        },
+        todaysRevenue: {
+          current: todayOverviewResponse.data.todays_revenue?.amount || 0,
+          previous: todayOverviewResponse.data.todays_revenue?.previous_amount || 0
+        },
+        averageShippingCost: {
+          amount: todayOverviewResponse.data.average_shipping_cost || 0,
+          totalOrders: todayOverviewResponse.data.todays_orders?.count || 0
+        }
+      };
+      setTodayMetrics(todayMetricsData);
+      DataCache.set('todayMetrics', todayMetricsData);
 
       // Map the data
       const mappedDashboardData: DashboardData = {
@@ -350,45 +380,7 @@ const Dashboard: React.FC = () => {
     return currentDate.toLocaleDateString('en-US', { weekday: 'long' });
   };
 
-  // Returns true when the selected date range is exactly today (single day = today)
-  const isDateRangeToday = (): boolean => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    return dateFilter.startDate === todayStr && dateFilter.endDate === todayStr;
-  };
-
-  // Returns true when the selected date range is exactly yesterday
-  const isDateRangeYesterday = (): boolean => {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    return dateFilter.startDate === yesterdayStr && dateFilter.endDate === yesterdayStr;
-  };
-
-  // Dynamic label for the orders/revenue card header
-  const getOrdersCardTitle = (): string => {
-    if (isDateRangeToday()) return "Today's Orders";
-    if (isDateRangeYesterday()) return "Yesterday's Orders";
-    return 'Orders in Period';
-  };
-
-  const getRevenueCardTitle = (): string => {
-    if (isDateRangeToday()) return "Today's Revenue";
-    if (isDateRangeYesterday()) return "Yesterday's Revenue";
-    return 'Revenue in Period';
-  };
-
-  // Dynamic label for the "previous" comparison subtitle
-  const getPreviousOrdersLabel = (): string => {
-    if (isDateRangeToday()) return "Yesterday's Orders";
-    if (isDateRangeYesterday()) return 'Two Days Ago';
-    return 'Previous Period Orders';
-  };
-
-  const getPreviousRevenueLabel = (): string => {
-    if (isDateRangeToday()) return "Yesterday's Revenue";
-    if (isDateRangeYesterday()) return 'Two Days Ago';
-    return 'Previous Period Revenue';
-  };
+  // Blue metric cards always show today's data — no dynamic labels needed
 
   // formatDate imported from ../utils/dateFormat
 
@@ -572,52 +564,52 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="dashboard-grid">
-          {/* Left Column - Metric Cards */}
+          {/* Left Column - Metric Cards (ALWAYS today's data, not affected by date filter) */}
           <div className="metrics-column">
-            {/* Orders Card — label adapts to selected date range */}
+            {/* Orders Card — always today */}
             <div className="metric-card">
               <div className="card-icon">
                 <img src={CartIcon} alt="Cart" className="icon" />
               </div>
               <div className="card-content">
-                <h3>{getOrdersCardTitle()}</h3>
-                <div className="card-value">{dashboardData?.metrics?.todaysOrders?.current || 0}</div>
+                <h3>Today's Orders</h3>
+                <div className="card-value">{todayMetrics?.todaysOrders?.current || 0}</div>
                 <div className="card-subtitle">
-                  {getPreviousOrdersLabel()}
+                  Yesterday's Orders
                   <br />
-                  <span className="previous-value">{dashboardData?.metrics?.todaysOrders?.previous || 0}</span>
+                  <span className="previous-value">{todayMetrics?.todaysOrders?.previous || 0}</span>
                 </div>
               </div>
             </div>
 
-            {/* Revenue Card — label adapts to selected date range */}
+            {/* Revenue Card — always today */}
             <div className="metric-card">
               <div className="card-icon">
                 <img src={WalletIcon} alt="Wallet" className="icon" />
               </div>
               <div className="card-content">
-                <h3>{getRevenueCardTitle()}</h3>
-                <div className="card-value">₹ {dashboardData?.metrics?.todaysRevenue?.current || 0}</div>
+                <h3>Today's Revenue</h3>
+                <div className="card-value">₹ {todayMetrics?.todaysRevenue?.current || 0}</div>
                 <div className="card-subtitle">
-                  {getPreviousRevenueLabel()}
+                  Yesterday's Revenue
                   <br />
-                  <span className="previous-value">₹ {dashboardData?.metrics?.todaysRevenue?.previous || 0}</span>
+                  <span className="previous-value">₹ {todayMetrics?.todaysRevenue?.previous || 0}</span>
                 </div>
               </div>
             </div>
 
-            {/* Average Shipping Cost Card */}
+            {/* Average Shipping Cost Card — always today */}
             <div className="metric-card">
               <div className="card-icon">
                 <img src={TruckIcon} alt="Truck" className="icon" />
               </div>
               <div className="card-content">
                 <h3>Average Shipping Cost</h3>
-                <div className="card-value">₹ {(dashboardData?.metrics?.averageShippingCost?.amount || 0).toFixed(2)}</div>
+                <div className="card-value">₹ {(todayMetrics?.averageShippingCost?.amount || 0).toFixed(2)}</div>
                 <div className="card-subtitle">
                   Total Orders
                   <br />
-                  <span className="previous-value">{dashboardData?.metrics?.averageShippingCost?.totalOrders || 0}</span>
+                  <span className="previous-value">{todayMetrics?.averageShippingCost?.totalOrders || 0}</span>
                 </div>
               </div>
             </div>
