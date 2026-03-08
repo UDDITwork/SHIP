@@ -12,7 +12,6 @@ import { AlertTriangle } from 'lucide-react';
 import CartIcon from '../dashboardvectors/Cart.svg';
 import WalletIcon from '../dashboardvectors/Wallet.svg';
 import TruckIcon from '../dashboardvectors/Truck.svg';
-import CalendarSettingsIcon from '../dashboardvectors/CalendarSettings.svg';
 import DateRangeFilter from '../components/DateRangeFilter';
 import './Dashboard.css';
 
@@ -424,16 +423,16 @@ const Dashboard: React.FC = () => {
     });
 
     const colors = [
-      '#F68723',
-      '#FF9F40',
-      '#FFB366',
-      '#4A90E2',
-      '#5C97E5',
-      '#6EA5E8',
-      '#28A745',
-      '#FFC107',
-      '#DC3545',
-      '#6C757D'
+      '#002B59',   // Navy (brand)
+      '#F68723',   // Orange (brand)
+      '#009EAF',   // Teal (brand)
+      '#004080',   // Navy lighter
+      '#F9A94B',   // Orange lighter
+      '#33B8C4',   // Teal lighter
+      '#003366',   // Navy dark
+      '#E07A1F',   // Orange dark
+      '#007A8A',   // Teal dark
+      '#668BAD',   // Navy muted
     ];
 
     return {
@@ -589,7 +588,6 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">{dashboardData?.metrics?.todaysOrders?.previous || 0}</span>
                 </div>
               </div>
-              <img src={CalendarSettingsIcon} alt="Calendar" className="card-stats-icon" />
             </div>
 
             {/* Revenue Card — label adapts to selected date range */}
@@ -606,7 +604,6 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">₹ {dashboardData?.metrics?.todaysRevenue?.previous || 0}</span>
                 </div>
               </div>
-              <img src={CalendarSettingsIcon} alt="Calendar" className="card-stats-icon" />
             </div>
 
             {/* Average Shipping Cost Card */}
@@ -623,7 +620,6 @@ const Dashboard: React.FC = () => {
                   <span className="previous-value">{dashboardData?.metrics?.averageShippingCost?.totalOrders || 0}</span>
                 </div>
               </div>
-              <img src={CalendarSettingsIcon} alt="Calendar" className="card-stats-icon" />
             </div>
           </div>
 

@@ -388,7 +388,7 @@
     background-color: #002B59;
     border-radius: 12px;
     padding: 16px;
-    color: #FFFFFF;
+    color: #FFFFFF !important;
     display: flex;
     gap: 12px;
     align-items: flex-start;
@@ -430,36 +430,26 @@
     font-size: 14px;
     font-weight: 500;
     margin: 0 0 8px 0;
-    color: #FFFFFF;
-    padding-right: 30px; /* Make room for calendar icon */
+    color: #FFFFFF !important;
   }
 
-  .card-stats-icon {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    width: 18px;
-    height: 18px;
-    opacity: 0.5;
-  }
-  
 .metric-card .card-value {
     font-size: 18px;
     font-weight: 700;
     margin-bottom: 8px;
-    color: #FFFFFF;
+    color: #FFFFFF !important;
   }
 
   .metric-card .card-subtitle {
     font-size: 13px;
-    color: #FFFFFF;
+    color: #FFFFFF !important;
     line-height: 1.6;
   }
 
   .metric-card .previous-value {
     font-size: 14px;
     font-weight: 600;
-    color: #FFFFFF;
+    color: #FFFFFF !important;
   }
   
   /* Status Column (Right Side) */
