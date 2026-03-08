@@ -1962,23 +1962,18 @@ router.post('/tickets/:id/messages', upload.fields([
       has_attachments: attachments.length > 0
     });
 
-    // Send WebSocket notification to the client (only if not internal)
+    // Send persistent notification + WebSocket to the client (only if not internal)
     if (!is_internal && ticket.user_id && ticket.user_id._id) {
-      const clientNotification = {
-        type: 'admin_reply',
-        title: 'New Reply from Admin',
-        message: `You have a new reply in ticket ${ticket.ticket_id}`,
-        ticket_id: ticket.ticket_id,
-        ticket_id_mongo: ticket._id.toString(),
-        created_at: new Date().toISOString(),
-        data: {
-          message: trimmedMessage || '[Attachment]',
-          sender: senderName,
-          timestamp: new Date().toISOString(),
-          has_attachments: attachments.length > 0
-        }
-      };
-      websocketService.sendNotificationToClient(ticket.user_id._id, clientNotification);
+      try {
+        await websocketService.createAndNotify(ticket.user_id._id, {
+          notification_type: 'ticket_update',
+          heading: `Ticket ${ticket.ticket_id} — New Reply`,
+          message: `${senderName} replied: ${(trimmedMessage || '[Attachment]').substring(0, 150)}`,
+          related_entity: { entity_type: 'ticket', entity_id: ticket._id }
+        });
+      } catch (notifErr) {
+        console.error('Notification creation failed:', notifErr.message);
+      }
     }
 
     res.json({
@@ -2755,32 +2750,27 @@ router.post('/wallet-recharge', async (req, res) => {
         created_at: new Date()
       };
 
-      // Send WebSocket notification if client is online
-      // Convert client_id to string to ensure proper matching
-      websocketService.sendNotificationToClient(String(client_id), notification);
-
-      // Send real-time wallet balance update with LIVE DATABASE BALANCE
-      const walletUpdate = {
+      // Send real-time wallet balance update (raw WS for instant UI sync)
+      websocketService.sendNotificationToClient(String(client_id), {
         type: 'wallet_balance_update',
-        balance: liveUpdatedBalance, // Use live database balance, not calculated
+        balance: liveUpdatedBalance,
         currency: 'INR',
         previous_balance: currentBalance,
         amount: amount,
         transaction_type: type,
         transaction_id: transactionId,
         timestamp: new Date().toISOString()
-      };
-
-      websocketService.sendNotificationToClient(String(client_id), walletUpdate);
-      
-      logger.info('💰 Real-time wallet update sent with LIVE DATABASE BALANCE', {
-        client_id,
-        live_database_balance: liveUpdatedBalance,
-        calculated_balance: newBalance,
-        amount: amount,
-        type: type,
-        balance_match: liveUpdatedBalance === newBalance ? 'MATCH' : 'MISMATCH'
       });
+
+      // Persistent notification for bell icon
+      await websocketService.createAndNotify(String(client_id), {
+        notification_type: 'wallet_recharge',
+        heading: `Wallet ${type === 'credit' ? 'Recharged' : 'Debited'}: ₹${amount}`,
+        message: `Your wallet has been ${type === 'credit' ? 'credited with' : 'debited by'} ₹${amount}. New balance: ₹${liveUpdatedBalance}. ${notes || ''}`.trim(),
+        related_entity: { entity_type: 'wallet' }
+      });
+
+      logger.info('💰 Wallet notification sent', { client_id, amount, type });
     } catch (notificationError) {
       logger.warn(`Failed to send wallet ${type} notification`, {
         error: notificationError.message,
@@ -3278,34 +3268,22 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
           weightDiscrepancy.processed = true;
           await weightDiscrepancy.save();
 
-          // Send WebSocket notification to client with wallet update
+          // Send persistent notification + wallet balance update
           try {
-            const notification = {
-              type: 'weight_discrepancy_charge',
-              title: 'Weight Discrepancy Charge',
-              message: `Weight discrepancy charge of ₹${deduction_amount.toFixed(2)} applied for AWB ${parsedAWB}`,
-              client_id: client_id,
-              awb: parsedAWB,
-              amount: deduction_amount,
-              closing_balance: closingBalance,
-              created_at: new Date()
-            };
-            websocketService.sendNotificationToClient(String(client_id), notification);
-            
-            // Also send wallet balance update for real-time dashboard refresh
-            const walletUpdate = {
+            // Real-time wallet sync
+            websocketService.sendNotificationToClient(String(client_id), {
               type: 'wallet_balance_update',
               balance: closingBalance,
               currency: 'INR',
               last_updated: new Date()
-            };
-            websocketService.sendNotificationToClient(String(client_id), walletUpdate);
-            
-            console.log('📡 NOTIFICATIONS SENT:', {
-              client_id: client_id,
-              notification: 'weight_discrepancy_charge',
-              wallet_update: 'wallet_balance_update',
-              closing_balance: closingBalance
+            });
+
+            // Persistent notification for bell
+            await websocketService.createAndNotify(String(client_id), {
+              notification_type: 'billing_generated',
+              heading: `Weight Discrepancy Charge: ₹${deduction_amount.toFixed(2)}`,
+              message: `Weight discrepancy charge applied for AWB ${parsedAWB}. New balance: ₹${closingBalance.toFixed(2)}`,
+              related_entity: { entity_type: 'order' }
             });
           } catch (notifError) {
             console.error('Failed to send notification:', notifError);
@@ -3576,11 +3554,11 @@ router.post('/weight-discrepancies/bulk-action', async (req, res) => {
           discrepancy.action_taken = 'DISPUTE REJECTED BY COURIER';
           discrepancy.action_taken_at = new Date();
           try {
-            websocketService.sendNotificationToClient(String(discrepancy.client_id), {
-              type: 'weight_discrepancy_rejected',
-              title: 'Weight Discrepancy Dispute Rejected',
-              message: `Your dispute for AWB ${discrepancy.awb_number} has been rejected.`,
-              created_at: new Date()
+            await websocketService.createAndNotify(String(discrepancy.client_id), {
+              notification_type: 'billing_generated',
+              heading: 'Weight Dispute Rejected',
+              message: `Your dispute for AWB ${discrepancy.awb_number} has been rejected. Final weight applied.`,
+              related_entity: { entity_type: 'order' }
             });
           } catch (_) {}
         }
@@ -3797,21 +3775,19 @@ router.put('/weight-discrepancies/:id/accept-dispute', async (req, res) => {
     discrepancy.refund_transaction_id = transaction._id;
     await discrepancy.save();
 
-    // Send WebSocket notification
+    // Send persistent notification + wallet balance update
     try {
-      websocketService.sendNotificationToClient(String(discrepancy.client_id), {
-        type: 'weight_discrepancy_refund',
-        title: 'Weight Discrepancy Dispute Accepted',
-        message: `Your dispute for AWB ${discrepancy.awb_number} has been accepted. ₹${refundAmount.toFixed(2)} has been refunded to your wallet.`,
-        amount: refundAmount,
-        closing_balance: closingBalance,
-        created_at: new Date()
-      });
       websocketService.sendNotificationToClient(String(discrepancy.client_id), {
         type: 'wallet_balance_update',
         balance: closingBalance,
         currency: 'INR',
         last_updated: new Date()
+      });
+      await websocketService.createAndNotify(String(discrepancy.client_id), {
+        notification_type: 'billing_generated',
+        heading: 'Weight Dispute Accepted — Refund Issued',
+        message: `Your dispute for AWB ${discrepancy.awb_number} has been accepted. ₹${refundAmount.toFixed(2)} refunded to your wallet.`,
+        related_entity: { entity_type: 'wallet' }
       });
     } catch (notifError) {
       console.error('Failed to send notification:', notifError);
@@ -3864,13 +3840,13 @@ router.put('/weight-discrepancies/:id/reject-dispute', async (req, res) => {
     discrepancy.action_taken_at = new Date();
     await discrepancy.save();
 
-    // Send WebSocket notification
+    // Send persistent notification
     try {
-      websocketService.sendNotificationToClient(String(discrepancy.client_id), {
-        type: 'weight_discrepancy_rejected',
-        title: 'Weight Discrepancy Dispute Rejected',
-        message: `Your dispute for AWB ${discrepancy.awb_number} has been rejected.`,
-        created_at: new Date()
+      await websocketService.createAndNotify(String(discrepancy.client_id), {
+        notification_type: 'billing_generated',
+        heading: 'Weight Dispute Rejected',
+        message: `Your dispute for AWB ${discrepancy.awb_number} has been rejected. Final weight charges applied.`,
+        related_entity: { entity_type: 'order' }
       });
     } catch (notifError) {
       console.error('Failed to send notification:', notifError);

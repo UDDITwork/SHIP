@@ -314,6 +314,39 @@ class WebSocketService {
 
     return successCount > 0;
   }
+
+  // Alias for sendNotificationToClient — called by admin.js
+  notifyClient(userId, notification) {
+    return this.sendNotificationToClient(String(userId), notification);
+  }
+
+  // Send notification to multiple clients by their MongoDB user_ids
+  notifyMultipleClients(userIds, notification) {
+    let sentCount = 0;
+    userIds.forEach(userId => {
+      if (this.sendNotificationToClient(String(userId), notification)) {
+        sentCount++;
+      }
+    });
+    logger.info('🔔 Bulk notification sent', { targetCount: userIds.length, sentCount });
+    return sentCount;
+  }
+
+  // Create persistent Notification document in DB AND send real-time via WebSocket
+  async createAndNotify(userId, notificationData, senderInfo = {}) {
+    try {
+      const Notification = require('../models/Notification');
+      const notification = await Notification.createNotification(userId, notificationData, senderInfo);
+      this.sendNotificationToClient(String(userId), {
+        type: 'notification',
+        notification: notification
+      });
+      return notification;
+    } catch (error) {
+      logger.error('Error in createAndNotify:', { userId, error: error.message });
+      return null;
+    }
+  }
 }
 
 module.exports = new WebSocketService();

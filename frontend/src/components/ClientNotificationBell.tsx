@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notificationService, Notification } from '../services/notificationService';
 import './ClientNotificationBell.css';
@@ -11,11 +11,40 @@ const ClientNotificationBell: React.FC = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const fetchNotifications = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await notificationService.getNotifications(1, 20);
+      const sorted = notificationService.sortNotifications(response.notifications || []);
+      setNotifications(sorted);
+      setUnreadCount(response.unread_count || 0);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     fetchNotifications();
     const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
-  }, []);
+
+    // Real-time: listen for WebSocket notifications
+    const unsubscribe = notificationService.subscribe((wsMessage: any) => {
+      if (wsMessage.type === 'notification' && wsMessage.notification) {
+        setNotifications(prev => {
+          const newList = [wsMessage.notification, ...prev].slice(0, 20);
+          return notificationService.sortNotifications(newList);
+        });
+        setUnreadCount(prev => prev + 1);
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
+  }, [fetchNotifications]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -30,29 +59,9 @@ const ClientNotificationBell: React.FC = () => {
     }
   }, [isOpen]);
 
-  const fetchNotifications = async () => {
-    try {
-      setLoading(true);
-      const response = await notificationService.getNotifications(1, 20);
-      const sorted = notificationService.sortNotifications(response.notifications || []);
-      setNotifications(sorted);
-      setUnreadCount(response.unread_count || 0);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      setNotifications([]);
-      setUnreadCount(0);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       await notificationService.markAsRead(notificationId);
-      setNotifications(prev =>
-        prev.map(n => n._id === notificationId ? { ...n, is_read: true } : n)
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Error marking notification as read:', error);
     }
@@ -68,13 +77,18 @@ const ClientNotificationBell: React.FC = () => {
     }
   };
 
-  const handleNotificationClick = (notification: Notification) => {
+  // "View" button — mark as read + navigate to related entity
+  const handleViewClick = (notification: Notification) => {
     if (!notification.is_read) {
       handleMarkAsRead(notification._id);
+      setNotifications(prev =>
+        prev.map(n => n._id === notification._id ? { ...n, is_read: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
     }
     setIsOpen(false);
 
-    // Navigate based on notification type
+    // Navigate based on related entity type
     const entity = notification.related_entity;
     if (entity) {
       switch (entity.entity_type) {
@@ -99,6 +113,17 @@ const ClientNotificationBell: React.FC = () => {
     } else {
       navigate('/notifications');
     }
+  };
+
+  // "X" (dismiss) button — mark as read + remove from list (no navigation)
+  const handleDismissClick = (e: React.MouseEvent, notification: Notification) => {
+    e.stopPropagation();
+    if (!notification.is_read) {
+      handleMarkAsRead(notification._id);
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
+    // Remove from visible list
+    setNotifications(prev => prev.filter(n => n._id !== notification._id));
   };
 
   const getCategoryLabel = (type: Notification['notification_type']): string => {
@@ -150,7 +175,7 @@ const ClientNotificationBell: React.FC = () => {
           </div>
 
           <div className="cnb-list">
-            {loading ? (
+            {loading && notifications.length === 0 ? (
               <div className="cnb-loading">Loading...</div>
             ) : notifications.length === 0 ? (
               <div className="cnb-empty">No notifications</div>
@@ -159,7 +184,6 @@ const ClientNotificationBell: React.FC = () => {
                 <div
                   key={notification._id}
                   className={`cnb-item ${!notification.is_read ? 'unread' : ''}`}
-                  onClick={() => handleNotificationClick(notification)}
                 >
                   <div className="cnb-item-icon" style={{ backgroundColor: getCategoryColor(notification.notification_type) }}>
                     {notificationService.getNotificationIcon(notification.notification_type)}
@@ -176,7 +200,26 @@ const ClientNotificationBell: React.FC = () => {
                     <p className="cnb-item-heading">{notification.heading}</p>
                     <p className="cnb-item-message">{notification.message}</p>
                   </div>
-                  {!notification.is_read && <div className="cnb-unread-dot"></div>}
+                  <div className="cnb-item-actions">
+                    <button
+                      className="cnb-view-btn"
+                      onClick={() => handleViewClick(notification)}
+                      title="View"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15 3 21 3 21 9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                      </svg>
+                    </button>
+                    <button
+                      className="cnb-dismiss-btn"
+                      onClick={(e) => handleDismissClick(e, notification)}
+                      title="Dismiss"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               ))
             )}

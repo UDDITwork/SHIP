@@ -225,18 +225,7 @@ async function refundShippingChargesToWallet(order, userId) {
     await refundTransaction.save();
 
     try {
-      websocketService.sendNotificationToClient(String(userId), {
-        type: 'wallet_refund',
-        title: 'Wallet Refunded',
-        message: `₹${shippingCharges} refunded for cancelled shipment ${order.order_id}. New balance: ₹${closingBalance}`,
-        client_id: userId,
-        amount: shippingCharges,
-        transaction_type: 'credit',
-        new_balance: closingBalance,
-        order_id: order.order_id,
-        created_at: new Date()
-      });
-
+      // Real-time wallet sync
       websocketService.sendNotificationToClient(String(userId), {
         type: 'wallet_balance_update',
         balance: closingBalance,
@@ -245,6 +234,14 @@ async function refundShippingChargesToWallet(order, userId) {
         amount: shippingCharges,
         transaction_id: refundTransaction.transaction_id,
         timestamp: new Date().toISOString()
+      });
+
+      // Persistent notification for bell
+      await websocketService.createAndNotify(String(userId), {
+        notification_type: 'wallet_recharge',
+        heading: `Refund: ₹${shippingCharges}`,
+        message: `₹${shippingCharges} refunded for cancelled shipment ${order.order_id}. New balance: ₹${closingBalance}`,
+        related_entity: { entity_type: 'order', entity_id: order._id }
       });
 
       logger.info('📡 Wallet refund notifications sent', {
@@ -533,22 +530,9 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
       // Don't fail wallet deduction if billing tracking fails
     }
     
-    // Send WebSocket notifications for wallet deduction
+    // Send wallet deduction notification
     try {
-      // Notification for wallet deduction
-      websocketService.sendNotificationToClient(String(userId), {
-        type: 'wallet_deduction',
-        title: 'Wallet Deducted',
-        message: `₹${shippingCharges} deducted for order ${order.order_id}. New balance: ₹${closingBalance}`,
-        client_id: userId,
-        amount: shippingCharges,
-        transaction_type: 'debit',
-        new_balance: closingBalance,
-        order_id: order.order_id,
-        created_at: new Date()
-      });
-      
-      // Real-time wallet balance update
+      // Real-time wallet sync
       websocketService.sendNotificationToClient(String(userId), {
         type: 'wallet_balance_update',
         balance: closingBalance,
@@ -558,7 +542,15 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
         transaction_id: transaction.transaction_id,
         timestamp: new Date().toISOString()
       });
-      
+
+      // Persistent notification for bell
+      await websocketService.createAndNotify(String(userId), {
+        notification_type: 'wallet_recharge',
+        heading: `Wallet Deducted: ₹${shippingCharges}`,
+        message: `₹${shippingCharges} deducted for order ${order.order_id}. New balance: ₹${closingBalance}`,
+        related_entity: { entity_type: 'order', entity_id: order._id }
+      });
+
       console.log('📡 WALLET NOTIFICATIONS SENT:', {
         orderId: order.order_id,
         transactionId: transaction.transaction_id,

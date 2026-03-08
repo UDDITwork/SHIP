@@ -496,16 +496,19 @@ class WebhookService {
                 location: statusData?.StatusLocation
               };
 
-              // Emit WebSocket event after transaction completes
-              setImmediate(() => {
+              // Emit WebSocket event + create persistent notification after transaction completes
+              setImmediate(async () => {
                 try {
-                  websocketService.sendNotificationToClient(orderUserId, {
-                    type: 'order_status_update',
-                    ...orderData,
-                    timestamp: new Date()
+                  // Persistent notification (saved to DB + sent via WS)
+                  const statusLabel = orderData.status.replace(/_/g, ' ').toUpperCase();
+                  await websocketService.createAndNotify(orderUserId, {
+                    notification_type: 'order_update',
+                    heading: `Order ${orderData.order_id} — ${statusLabel}`,
+                    message: `Shipment ${orderData.waybill} status updated to ${statusLabel}${orderData.location ? ` at ${orderData.location}` : ''}`,
+                    related_entity: { entity_type: 'order', entity_id: order._id }
                   });
                 } catch (wsError) {
-                  logger.warn('WebSocket broadcast failed', { error: wsError.message });
+                  logger.warn('Notification creation/broadcast failed', { error: wsError.message });
                 }
               });
 
@@ -711,17 +714,16 @@ class WebhookService {
         order.delivery_info.epod_date = new Date();
         await order.save();
 
-        // Emit WebSocket event
+        // Persistent notification + WebSocket
         try {
-          websocketService.sendNotificationToClient(order.user_id.toString(), {
-            type: 'epod_received',
-            order_id: order.order_id,
-            waybill,
-            epod_url: uploadResult.url,
-            timestamp: new Date()
+          await websocketService.createAndNotify(order.user_id.toString(), {
+            notification_type: 'order_update',
+            heading: `ePOD Received — ${order.order_id}`,
+            message: `Electronic proof of delivery received for AWB ${waybill}`,
+            related_entity: { entity_type: 'order', entity_id: order._id }
           });
         } catch (wsError) {
-          logger.warn('WebSocket broadcast failed', { error: wsError.message });
+          logger.warn('Notification creation/broadcast failed', { error: wsError.message });
         }
       }
 
