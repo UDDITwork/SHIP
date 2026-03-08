@@ -533,6 +533,7 @@ export interface TicketMasterResponse {
       hasPrev: boolean;
     };
     priority_summary: PrioritySummary;
+    status_summary?: { open: number; in_progress: number; escalated: number; resolved: number; closed: number };
   };
 }
 
