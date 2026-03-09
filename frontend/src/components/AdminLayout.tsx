@@ -127,6 +127,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     localStorage.removeItem('is_staff');
     localStorage.removeItem('staff_name');
     localStorage.removeItem('staff_email');
+    localStorage.removeItem('hdfc_order_id');
     navigate('/admin/login');
   };
 

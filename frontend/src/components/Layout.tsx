@@ -170,6 +170,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     // Clear auth and redirect to login
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('hdfc_order_id');
     // DO NOT clear remembered_email and remembered_password on logout
     // These should persist based on user's Remember Me checkbox choice
     setIsProfileOpen(false);

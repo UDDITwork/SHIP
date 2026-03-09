@@ -65,7 +65,7 @@ router.get('/wallet/balance', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Internal server error',
-            error: error.message
+            error: process.env.NODE_ENV !== 'production' ? error.message : undefined
         });
     }
 });
@@ -192,7 +192,7 @@ router.get('/wallet-transactions', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Internal server error',
-            error: error.message
+            error: process.env.NODE_ENV !== 'production' ? error.message : undefined
         });
     }
 });
@@ -321,20 +321,22 @@ const handlePaymentReturn = async (req, res) => {
             if (isSuccess) {
                 transaction.status = 'completed';
 
-                // Credit wallet
+                // Credit wallet using atomic $inc to prevent race conditions
                 const user = await User.findById(transaction.user_id);
                 if (user) {
                     const openingBalance = user.wallet_balance || 0;
-                    // Use Math.round to avoid floating-point precision issues
-                    user.wallet_balance = Math.round((openingBalance + transaction.amount) * 100) / 100;
-                    await user.save();
+                    const creditAmount = Math.round(transaction.amount * 100) / 100;
+                    await User.findByIdAndUpdate(transaction.user_id, {
+                        $inc: { wallet_balance: creditAmount }
+                    });
+                    const closingBalance = Math.round((openingBalance + creditAmount) * 100) / 100;
 
                     transaction.balance_info = {
                         opening_balance: openingBalance,
-                        closing_balance: user.wallet_balance
+                        closing_balance: closingBalance
                     };
 
-                    console.log(`Wallet credited: Opening=${openingBalance}, Amount=${transaction.amount}, Closing=${user.wallet_balance}`);
+                    console.log(`Wallet credited: Opening=${openingBalance}, Amount=${creditAmount}, Closing=${closingBalance}`);
                 }
                 transaction.transaction_date = new Date();
             } else if (internalStatus === 'failed') {
@@ -375,7 +377,7 @@ const safePaymentReturn = (req, res, next) => {
         ? 'https://shipsarthi.com'
         : 'http://localhost:3000';
 
-    handlePaymentReturn(req, res, next).catch((err) => {
+    return handlePaymentReturn(req, res, next).catch((err) => {
         console.error('CRITICAL: Payment return unhandled error:', err.message);
         try {
             return res.redirect(`${frontendUrl}/billing/payment-confirmation?status=error&reason=unhandled_exception`);
@@ -446,13 +448,28 @@ router.post('/wallet/initiate-payment',
             await transaction.save();
 
             // Create HDFC order session
-            const orderSession = await hdfcPaymentService.createOrderSession({
-                amount: amount,
-                customerId: req.user._id.toString(),
-                customerEmail: user.email || '',
-                customerPhone: user.phone || '',
-                transactionId: transactionId
-            });
+            let orderSession;
+            try {
+                orderSession = await hdfcPaymentService.createOrderSession({
+                    amount: amount,
+                    customerId: req.user._id.toString(),
+                    customerEmail: user.email || '',
+                    customerPhone: user.phone || '',
+                    transactionId: transactionId
+                });
+            } catch (hdfcError) {
+                // HDFC API failed — mark transaction as failed so it doesn't remain orphaned
+                console.error('HDFC createOrderSession failed, cleaning up transaction:', hdfcError.message);
+                transaction.status = 'failed';
+                transaction.payment_info.payment_status = 'failed';
+                transaction.notes = 'Payment gateway error: ' + (hdfcError.message || 'Failed to create order session');
+                transaction.updated_at = new Date();
+                await transaction.save();
+                return res.status(502).json({
+                    success: false,
+                    message: 'Payment gateway temporarily unavailable. Please try again.'
+                });
+            }
 
             // Update transaction with HDFC order details
             transaction.payment_info.gateway_order_id = orderSession.orderId;
@@ -475,8 +492,7 @@ router.post('/wallet/initiate-payment',
             console.error('Initiate payment error:', error);
             res.status(500).json({
                 success: false,
-                message: 'Failed to initiate payment',
-                error: error.message
+                message: 'Failed to initiate payment'
             });
         }
     }
@@ -552,9 +568,11 @@ router.post('/wallet/handle-payment-response',
 
                 const user = await User.findById(req.user._id);
                 const openingBalance = user.wallet_balance || 0;
-                // Use Math.round to avoid floating-point precision issues
-                user.wallet_balance = Math.round((openingBalance + transaction.amount) * 100) / 100;
-                await user.save();
+                const creditAmount = Math.round(transaction.amount * 100) / 100;
+                // Use atomic $inc to prevent race conditions with concurrent payments
+                await User.findByIdAndUpdate(req.user._id, {
+                    $inc: { wallet_balance: creditAmount }
+                });
 
                 // Get live updated balance
                 const updatedUser = await User.findById(req.user._id).select('wallet_balance');
@@ -614,7 +632,7 @@ router.post('/wallet/handle-payment-response',
             res.status(500).json({
                 success: false,
                 message: 'Failed to verify payment',
-                error: error.message
+                error: process.env.NODE_ENV !== 'production' ? error.message : undefined
             });
         }
     }
@@ -710,7 +728,7 @@ router.get('/wallet/transaction-details/:order_id', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to fetch transaction details',
-            error: error.message
+            error: process.env.NODE_ENV !== 'production' ? error.message : undefined
         });
     }
 });
@@ -767,7 +785,7 @@ router.get('/wallet/payment-status/:order_id', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Failed to check payment status',
-            error: error.message
+            error: process.env.NODE_ENV !== 'production' ? error.message : undefined
         });
     }
 });
@@ -921,7 +939,7 @@ router.get('/transactions',
             res.status(500).json({
                 success: false,
                 message: 'Internal server error',
-                error: error.message
+                error: process.env.NODE_ENV !== 'production' ? error.message : undefined
             });
         }
     }
@@ -1032,7 +1050,7 @@ router.get('/cod/collections',
             res.status(500).json({
                 success: false,
                 message: 'Internal server error',
-                error: error.message
+                error: process.env.NODE_ENV !== 'production' ? error.message : undefined
             });
         }
     }
@@ -1086,7 +1104,7 @@ router.get('/invoice/:invoice_id', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Internal server error',
-            error: error.message
+            error: process.env.NODE_ENV !== 'production' ? error.message : undefined
         });
     }
 });
@@ -1152,7 +1170,7 @@ router.get('/pricing/calculator',
             res.status(500).json({
                 success: false,
                 message: 'Internal server error',
-                error: error.message
+                error: process.env.NODE_ENV !== 'production' ? error.message : undefined
             });
         }
     }
@@ -1233,7 +1251,7 @@ router.post('/deduct-wallet',
             res.status(500).json({
                 success: false,
                 message: 'Internal server error',
-                error: error.message
+                error: process.env.NODE_ENV !== 'production' ? error.message : undefined
             });
         }
     }
@@ -1300,7 +1318,7 @@ router.get('/reports/monthly', auth, async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Internal server error',
-            error: error.message
+            error: process.env.NODE_ENV !== 'production' ? error.message : undefined
         });
     }
 });
