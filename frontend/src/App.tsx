@@ -45,6 +45,7 @@ import InvoiceList from './pages/InvoiceList';
 import InvoiceDetail from './pages/InvoiceDetail';
 import CreditNotes from './pages/CreditNotes';
 import DebitNotes from './pages/DebitNotes';
+import PaymentConfirmation from './pages/PaymentConfirmation';
 
 // Admin Components
 import AdminLogin from './pages/AdminLogin';
@@ -206,15 +207,23 @@ function App() {
                 </ProtectedRoute>
               } 
             />
-            <Route 
-              path="/billing" 
+            <Route
+              path="/billing"
               element={
                 <ProtectedRoute>
                   <Billing />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
+            <Route
+              path="/billing/payment-confirmation"
+              element={
+                <ProtectedRoute>
+                  <PaymentConfirmation />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/invoices" 
               element={
                 <ProtectedRoute>

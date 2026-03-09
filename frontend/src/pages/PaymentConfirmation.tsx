@@ -79,6 +79,9 @@ const PaymentConfirmation: React.FC = () => {
     };
 
     fetchTransactionDetails();
+
+    // Clean up stored order ID
+    localStorage.removeItem('hdfc_order_id');
   }, [orderId]);
 
   const formatDate = (dateString: string) => formatDateUtil(dateString);

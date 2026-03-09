@@ -500,7 +500,7 @@ const Billing: React.FC = () => {
                       setRechargeAmount(e.target.value);
                       setRechargeError('');
                     }}
-                    min="10"
+                    min="500"
                     max="50000"
                     disabled={rechargeLoading}
                   />
