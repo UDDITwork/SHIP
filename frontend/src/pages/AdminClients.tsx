@@ -357,6 +357,16 @@ const AdminClients: React.FC = () => {
 
         <div className="clients-table-container">
           <table className="clients-table">
+            <colgroup>
+              <col style={{ width: '8%' }} />
+              <col style={{ width: '19%' }} />
+              <col style={{ width: '18%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '13%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>Client ID</th>
@@ -439,10 +449,10 @@ const AdminClients: React.FC = () => {
                     </div>
                   </td>
                   <td>
-                    <div className="stats-info">
-                      <div className="stat-item"><span className="stat-label">Orders</span><span className="stat-val">{client.stats.orders}</span></div>
-                      <div className="stat-item"><span className="stat-label">Pkgs</span><span className="stat-val">{client.stats.packages}</span></div>
-                      <div className="stat-item"><span className="stat-label">Cust</span><span className="stat-val">{client.stats.customers}</span></div>
+                    <div className="stats-inline">
+                      <span className="stat-chip"><span className="stat-lbl">O</span><span className="stat-num">{client.stats.orders}</span></span>
+                      <span className="stat-chip"><span className="stat-lbl">P</span><span className="stat-num">{client.stats.packages}</span></span>
+                      <span className="stat-chip"><span className="stat-lbl">C</span><span className="stat-num">{client.stats.customers}</span></span>
                     </div>
                   </td>
                   <td>
