@@ -138,8 +138,9 @@ class RateCardService {
     // Calculate forward charges
     const forwardCharges = this.calculateForwardCharges(rateCard, chargeableWeight, zone);
 
-    // Calculate RTO charges
+    // Calculate RTO and DTO charges
     const rtoCharges = this.calculateRTOCharges(rateCard, chargeableWeight, zone);
+    const dtoCharges = this.calculateDTOCharges(rateCard, chargeableWeight, zone);
 
     // Calculate COD charges if COD amount is provided
     let codCharges = 0;
@@ -166,6 +167,7 @@ class RateCardService {
     return {
       forwardCharges,
       rtoCharges,
+      dtoCharges,
       codCharges,
       totalCharges,
       volumetricWeight: volumetricWeightKg, // Return in kg for display
@@ -204,8 +206,9 @@ class RateCardService {
     // Calculate forward charges (same logic, different rate data)
     const forwardCharges = this.calculateForwardCharges(rateCard, chargeableWeight, zone);
 
-    // Calculate RTO charges (same logic, different rate data)
+    // Calculate RTO and DTO charges
     const rtoCharges = this.calculateRTOCharges(rateCard, chargeableWeight, zone);
+    const dtoCharges = this.calculateDTOCharges(rateCard, chargeableWeight, zone);
 
     // Calculate COD charges if COD amount is provided
     let codCharges = 0;
@@ -230,6 +233,7 @@ class RateCardService {
     return {
       forwardCharges,
       rtoCharges,
+      dtoCharges,
       codCharges,
       totalCharges,
       volumetricWeight: volumetricWeightKg,
@@ -343,108 +347,106 @@ class RateCardService {
     return totalCharges;
   }
 
-  static calculateRTOCharges(rateCard, weight, zone) {
+  // Generic weight-slab calculation used by both RTO and DTO
+  static _calculateSlabCharges(slabs, prefix, weight, zone) {
     const zoneKey = this.getZoneKey(zone);
     if (!zoneKey) return 0;
 
-    // Find all required RTO slabs
-    const baseSlab = rateCard.rtoCharges.find(s => s.condition === "DTO 0-250 gm");
-    const slab250_500 = rateCard.rtoCharges.find(s => s.condition === "DTO 250-500 gm");
-    const slabAdd500gm = rateCard.rtoCharges.find(s => s.condition === "DTO Add. 500 gm till 5kg");
-    const slabUpto5kg = rateCard.rtoCharges.find(s => s.condition === "DTO Upto 5kgs");
-    const slabAdd1kgTill10 = rateCard.rtoCharges.find(s => s.condition === "DTO Add. 1 kgs till 10k");
-    const slabUpto10kg = rateCard.rtoCharges.find(s => s.condition === "DTO Upto 10 kgs");
-    const slabAdd1kg = rateCard.rtoCharges.find(s => s.condition === "DTO Add. 1 kgs");
+    const baseSlab = slabs.find(s => s.condition === `${prefix} 0-250 gm`);
+    const slab250_500 = slabs.find(s => s.condition === `${prefix} 250-500 gm`);
+    const slabAdd500gm = slabs.find(s => s.condition === `${prefix} Add. 500 gm till 5kg`);
+    const slabUpto5kg = slabs.find(s => s.condition === `${prefix} Upto 5kgs`);
+    const slabAdd1kgTill10 = slabs.find(s => s.condition === `${prefix} Add. 1 kgs till 10k`);
+    const slabUpto10kg = slabs.find(s => s.condition === `${prefix} Upto 10 kgs`);
+    const slabAdd1kg = slabs.find(s => s.condition === `${prefix} Add. 1 kgs`);
 
     if (!baseSlab) return 0;
 
     let totalCharges = 0;
     const weightInGrams = weight;
 
-    // 1. First 250 grams (DTO 0-250 gm) - Base charge
     if (weightInGrams <= 250) {
+      return baseSlab.zones[zoneKey];
+    }
+
+    if (weightInGrams <= 500) {
       totalCharges = baseSlab.zones[zoneKey];
+      if (slab250_500) totalCharges += slab250_500.zones[zoneKey];
       return totalCharges;
     }
 
-    // 2. Next 250 grams (DTO 250-500 gm) - Additive on top of base
-    if (weightInGrams > 250 && weightInGrams <= 500) {
-      totalCharges = baseSlab.zones[zoneKey]; // Base charge
-      if (slab250_500) {
-        totalCharges += slab250_500.zones[zoneKey]; // Add 250-500gm charge
-      }
-      return totalCharges;
-    }
-
-    // 3. Additional 500 gm increments till 5kg (500gm to 4999gm)
-    // Note: Exactly 5000gm is handled by checkpoint below
-    if (weightInGrams > 500 && weightInGrams < 5000) {
-      // Start with base + 250-500gm charge
+    if (weightInGrams < 5000) {
       totalCharges = baseSlab.zones[zoneKey];
-      if (slab250_500) {
-        totalCharges += slab250_500.zones[zoneKey];
-      }
-      
-      // Calculate how many 500gm increments beyond 500gm
-      const weightBeyond500 = weightInGrams - 500;
-      const increments500gm = Math.ceil(weightBeyond500 / 500);
-      
-      if (slabAdd500gm) {
-        totalCharges += increments500gm * slabAdd500gm.zones[zoneKey];
-      }
-      
+      if (slab250_500) totalCharges += slab250_500.zones[zoneKey];
+      const increments500gm = Math.ceil((weightInGrams - 500) / 500);
+      if (slabAdd500gm) totalCharges += increments500gm * slabAdd500gm.zones[zoneKey];
       return totalCharges;
     }
 
-    // 4. Weight is exactly 5kg - use cumulative checkpoint
     if (weightInGrams === 5000 && slabUpto5kg) {
       return slabUpto5kg.zones[zoneKey];
     }
 
-    // 5. Additional 1 kg increments from 5kg to 10kg (5001gm to 9999gm)
-    // Note: Exactly 10000gm is handled by checkpoint below
-    if (weightInGrams > 5000 && weightInGrams < 10000) {
-      // Use "DTO Upto 5kgs" as base
+    if (weightInGrams < 10000) {
       if (!slabUpto5kg) return 0;
       totalCharges = slabUpto5kg.zones[zoneKey];
-      
-      // Calculate weight beyond 5kg
-      const weightBeyond5kg = weightInGrams - 5000;
-      // Any remaining grams (<1kg) are charged as a full kg increment
-      // So we round up to the nearest kg
-      const additionalKgs = Math.ceil(weightBeyond5kg / 1000);
-      
-      // Add per-kg charges (including partial kgs charged as full kg)
-      if (slabAdd1kgTill10 && additionalKgs > 0) {
-        totalCharges += additionalKgs * slabAdd1kgTill10.zones[zoneKey];
-      }
-      
+      const additionalKgs = Math.ceil((weightInGrams - 5000) / 1000);
+      if (slabAdd1kgTill10 && additionalKgs > 0) totalCharges += additionalKgs * slabAdd1kgTill10.zones[zoneKey];
       return totalCharges;
     }
 
-    // 6. Weight is exactly 10kg - use cumulative checkpoint
     if (weightInGrams === 10000 && slabUpto10kg) {
       return slabUpto10kg.zones[zoneKey];
     }
 
-    // 7. Additional 1 kg increments beyond 10kg
     if (weightInGrams > 10000) {
-      // Use "DTO Upto 10 kgs" as base
       if (!slabUpto10kg) return 0;
       totalCharges = slabUpto10kg.zones[zoneKey];
-      
-      // Calculate kgs beyond 10kg
-      const weightBeyond10kg = weightInGrams - 10000;
-      const additionalKgs = Math.ceil(weightBeyond10kg / 1000); // Round up to nearest kg
-      
-      if (slabAdd1kg) {
-        totalCharges += additionalKgs * slabAdd1kg.zones[zoneKey];
-      }
-      
+      const additionalKgs = Math.ceil((weightInGrams - 10000) / 1000);
+      if (slabAdd1kg) totalCharges += additionalKgs * slabAdd1kg.zones[zoneKey];
       return totalCharges;
     }
 
     return totalCharges;
+  }
+
+  // Get effective DTO charges (migration: if dtoCharges empty, fall back to rtoCharges with DTO prefix)
+  static _getEffectiveDTOCharges(rateCard) {
+    if (rateCard.dtoCharges && rateCard.dtoCharges.length > 0) {
+      return rateCard.dtoCharges;
+    }
+    // Backward compat: old rtoCharges has DTO-prefixed conditions
+    if (rateCard.rtoCharges && rateCard.rtoCharges.length > 0 && rateCard.rtoCharges[0].condition?.startsWith('DTO')) {
+      return rateCard.rtoCharges;
+    }
+    return [];
+  }
+
+  // Get effective RTO charges (migration: if rtoCharges has DTO prefix, return empty — no RTO data yet)
+  static _getEffectiveRTOCharges(rateCard) {
+    if (rateCard.rtoCharges && rateCard.rtoCharges.length > 0 && rateCard.rtoCharges[0].condition?.startsWith('RTO')) {
+      return rateCard.rtoCharges;
+    }
+    return [];
+  }
+
+  static calculateDTOCharges(rateCard, weight, zone) {
+    const dtoSlabs = this._getEffectiveDTOCharges(rateCard);
+    if (!dtoSlabs || dtoSlabs.length === 0) return 0;
+    return this._calculateSlabCharges(dtoSlabs, 'DTO', weight, zone);
+  }
+
+  static calculateRTOCharges(rateCard, weight, zone) {
+    // Try new RTO-prefixed slabs first
+    const rtoSlabs = this._getEffectiveRTOCharges(rateCard);
+    if (rtoSlabs && rtoSlabs.length > 0) {
+      return this._calculateSlabCharges(rtoSlabs, 'RTO', weight, zone);
+    }
+    // Backward compat: fall back to old DTO-prefixed slabs in rtoCharges
+    if (rateCard.rtoCharges && rateCard.rtoCharges.length > 0) {
+      return this._calculateSlabCharges(rateCard.rtoCharges, 'DTO', weight, zone);
+    }
+    return 0;
   }
 
   static getZoneKey(zone) {

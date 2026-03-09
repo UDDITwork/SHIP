@@ -271,6 +271,7 @@ export interface RateCard {
   is_current?: boolean;
   forwardCharges: WeightSlab[];
   rtoCharges: WeightSlab[];
+  dtoCharges?: WeightSlab[];
   codCharges: {
     percentage: number;
     minimumAmount: number;

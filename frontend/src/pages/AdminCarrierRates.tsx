@@ -48,6 +48,7 @@ const AdminCarrierRates: React.FC = () => {
   const [rateHistory, setRateHistory] = useState<RateCard[]>([]);
   const [expandedSections, setExpandedSections] = useState({
     forward: true,
+    dto: true,
     rto: true,
     cod: true
   });
@@ -89,7 +90,21 @@ const AdminCarrierRates: React.FC = () => {
   const handleEditClick = () => {
     const currentRate = rates?.[activeCategory as keyof RatesByCategory];
     if (currentRate) {
-      setEditedRateCard(JSON.parse(JSON.stringify(currentRate)));
+      const clone = JSON.parse(JSON.stringify(currentRate));
+      // Migration: if dtoCharges is empty but rtoCharges has DTO prefix, copy to dtoCharges
+      if ((!clone.dtoCharges || clone.dtoCharges.length === 0) && clone.rtoCharges?.length > 0 && clone.rtoCharges[0]?.condition?.startsWith('DTO')) {
+        clone.dtoCharges = JSON.parse(JSON.stringify(clone.rtoCharges));
+        clone.rtoCharges = getDefaultRTOSlabs();
+      }
+      // Ensure dtoCharges exists
+      if (!clone.dtoCharges || clone.dtoCharges.length === 0) {
+        clone.dtoCharges = getDefaultDTOSlabs();
+      }
+      // Ensure rtoCharges has RTO prefix
+      if (clone.rtoCharges?.length > 0 && !clone.rtoCharges[0]?.condition?.startsWith('RTO')) {
+        clone.rtoCharges = getDefaultRTOSlabs();
+      }
+      setEditedRateCard(clone);
     } else {
       // Create empty rate card structure
       setEditedRateCard({
@@ -97,6 +112,7 @@ const AdminCarrierRates: React.FC = () => {
         carrier: carrier?.carrier_code || '',
         forwardCharges: getDefaultWeightSlabs(),
         rtoCharges: getDefaultRTOSlabs(),
+        dtoCharges: getDefaultDTOSlabs(),
         codCharges: {
           percentage: 2,
           minimumAmount: 30,
@@ -120,6 +136,16 @@ const AdminCarrierRates: React.FC = () => {
   ];
 
   const getDefaultRTOSlabs = () => [
+    { condition: 'RTO 0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO 250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Upto 5kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Add. 1 kgs till 10k', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Upto 10 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Add. 1 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } }
+  ];
+
+  const getDefaultDTOSlabs = () => [
     { condition: 'DTO 0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
     { condition: 'DTO 250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
     { condition: 'DTO Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
@@ -144,6 +170,7 @@ const AdminCarrierRates: React.FC = () => {
       const response = await adminService.saveCarrierRate(carrierId, activeCategory, {
         forwardCharges: editedRateCard.forwardCharges,
         rtoCharges: editedRateCard.rtoCharges,
+        dtoCharges: editedRateCard.dtoCharges || [],
         codCharges: editedRateCard.codCharges
       });
 
@@ -160,7 +187,7 @@ const AdminCarrierRates: React.FC = () => {
   };
 
   const handleZoneChange = (
-    type: 'forwardCharges' | 'rtoCharges',
+    type: 'forwardCharges' | 'rtoCharges' | 'dtoCharges',
     slabIndex: number,
     zone: string,
     value: string
@@ -169,7 +196,11 @@ const AdminCarrierRates: React.FC = () => {
 
     const numValue = parseFloat(value) || 0;
     const updated = { ...editedRateCard };
-    (updated[type][slabIndex].zones as any)[zone] = numValue;
+    const charges = updated[type] || [];
+    if (charges[slabIndex]) {
+      (charges[slabIndex].zones as any)[zone] = numValue;
+    }
+    (updated as any)[type] = charges;
     setEditedRateCard(updated);
   };
 
@@ -185,7 +216,7 @@ const AdminCarrierRates: React.FC = () => {
     setEditedRateCard(updated);
   };
 
-  const toggleSection = (section: 'forward' | 'rto' | 'cod') => {
+  const toggleSection = (section: 'forward' | 'dto' | 'rto' | 'cod') => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
@@ -363,9 +394,60 @@ const AdminCarrierRates: React.FC = () => {
             <div className="rate-section">
               <div
                 className="section-header"
+                onClick={() => toggleSection('dto')}
+              >
+                <h3>DTO Charges</h3>
+                {expandedSections.dto ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+              </div>
+              {expandedSections.dto && (
+                <div className="table-wrapper">
+                  <table className="rate-table">
+                    <thead>
+                      <tr>
+                        <th>Weight Slab</th>
+                        {ZONES.map(zone => (
+                          <th key={zone}>Zone {zone}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(displayRate.dtoCharges && displayRate.dtoCharges.length > 0
+                        ? displayRate.dtoCharges
+                        : displayRate.rtoCharges?.filter(s => s.condition?.startsWith('DTO')) || []
+                      ).map((slab, index) => (
+                        <tr key={index}>
+                          <td className="slab-name">{slab.condition}</td>
+                          {ZONES.map(zone => (
+                            <td key={zone}>
+                              {editMode ? (
+                                <input
+                                  type="number"
+                                  value={(slab.zones as any)[zone] || 0}
+                                  onChange={(e) => handleZoneChange('dtoCharges', index, zone, e.target.value)}
+                                  min="0"
+                                  step="0.01"
+                                />
+                              ) : (
+                                <span className="rate-value">
+                                  {(slab.zones as any)[zone] || 0}
+                                </span>
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="rate-section">
+              <div
+                className="section-header"
                 onClick={() => toggleSection('rto')}
               >
-                <h3>RTO / DTO Charges</h3>
+                <h3>RTO Charges</h3>
                 {expandedSections.rto ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
               </div>
               {expandedSections.rto && (
@@ -380,28 +462,36 @@ const AdminCarrierRates: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {displayRate.rtoCharges.map((slab, index) => (
-                        <tr key={index}>
-                          <td className="slab-name">{slab.condition}</td>
-                          {ZONES.map(zone => (
-                            <td key={zone}>
-                              {editMode ? (
-                                <input
-                                  type="number"
-                                  value={(slab.zones as any)[zone] || 0}
-                                  onChange={(e) => handleZoneChange('rtoCharges', index, zone, e.target.value)}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              ) : (
-                                <span className="rate-value">
-                                  {(slab.zones as any)[zone] || 0}
-                                </span>
-                              )}
-                            </td>
-                          ))}
+                      {(displayRate.rtoCharges?.filter(s => s.condition?.startsWith('RTO')) || []).length > 0 ? (
+                        displayRate.rtoCharges.filter(s => s.condition?.startsWith('RTO')).map((slab, index) => (
+                          <tr key={index}>
+                            <td className="slab-name">{slab.condition}</td>
+                            {ZONES.map(zone => (
+                              <td key={zone}>
+                                {editMode ? (
+                                  <input
+                                    type="number"
+                                    value={(slab.zones as any)[zone] || 0}
+                                    onChange={(e) => handleZoneChange('rtoCharges', index, zone, e.target.value)}
+                                    min="0"
+                                    step="0.01"
+                                  />
+                                ) : (
+                                  <span className="rate-value">
+                                    {(slab.zones as any)[zone] || 0}
+                                  </span>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={ZONES.length + 1} style={{ textAlign: 'center', color: '#999', padding: '16px' }}>
+                            No RTO charges set yet — click Edit to add RTO rates
+                          </td>
                         </tr>
-                      ))}
+                      )}
                     </tbody>
                   </table>
                 </div>

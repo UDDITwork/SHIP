@@ -6968,7 +6968,35 @@ router.patch('/ratecard/:userCategory', adminOnly, async (req, res) => {
       
       rateCard.rtoCharges = updates.rtoCharges;
     }
-    
+
+    // Validate and update dtoCharges if provided
+    if (updates.dtoCharges) {
+      if (!Array.isArray(updates.dtoCharges)) {
+        return res.status(400).json({
+          success: false,
+          message: 'dtoCharges must be an array'
+        });
+      }
+      for (const charge of updates.dtoCharges) {
+        if (!charge.condition || !charge.zones) {
+          return res.status(400).json({
+            success: false,
+            message: 'Each dtoCharge must have condition and zones'
+          });
+        }
+        const validZones = ['A', 'B', 'C', 'D', 'E', 'F'];
+        for (const zone of validZones) {
+          if (charge.zones[zone] === undefined || typeof charge.zones[zone] !== 'number') {
+            return res.status(400).json({
+              success: false,
+              message: `Zone ${zone} must be a number in dtoCharges`
+            });
+          }
+        }
+      }
+      rateCard.dtoCharges = updates.dtoCharges;
+    }
+
     // Update codCharges if provided
     if (updates.codCharges) {
       if (updates.codCharges.percentage !== undefined) {
@@ -7002,6 +7030,7 @@ router.patch('/ratecard/:userCategory', adminOnly, async (req, res) => {
     const setDoc = {};
     if (updates.forwardCharges) setDoc.forwardCharges = rateCard.forwardCharges;
     if (updates.rtoCharges)     setDoc.rtoCharges     = rateCard.rtoCharges;
+    if (updates.dtoCharges)     setDoc.dtoCharges     = rateCard.dtoCharges;
     if (updates.codCharges) {
       setDoc['codCharges.percentage']    = rateCard.codCharges.percentage;
       setDoc['codCharges.minimumAmount'] = rateCard.codCharges.minimumAmount;
@@ -7597,6 +7626,7 @@ router.post('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
       newRateCard = await existingRate.createNewVersion({
         forwardCharges: rateData.forwardCharges,
         rtoCharges: rateData.rtoCharges,
+        dtoCharges: rateData.dtoCharges || existingRate.dtoCharges || [],
         codCharges: rateData.codCharges || existingRate.codCharges,
         zoneDefinitions: rateData.zoneDefinitions || existingRate.zoneDefinitions,
         termsAndConditions: rateData.termsAndConditions || existingRate.termsAndConditions
@@ -7609,6 +7639,7 @@ router.post('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
         carrier_id: carrier._id,
         forwardCharges: rateData.forwardCharges,
         rtoCharges: rateData.rtoCharges,
+        dtoCharges: rateData.dtoCharges || [],
         codCharges: rateData.codCharges || {
           percentage: 2,
           minimumAmount: 30,
@@ -7714,6 +7745,7 @@ router.patch('/carriers/:id/rates/:category', adminOnly, async (req, res) => {
     const setDoc = {};
     if (updates.forwardCharges) setDoc.forwardCharges = updates.forwardCharges;
     if (updates.rtoCharges)     setDoc.rtoCharges     = updates.rtoCharges;
+    if (updates.dtoCharges)     setDoc.dtoCharges     = updates.dtoCharges;
     if (updates.codCharges) {
       if (updates.codCharges.percentage !== undefined)    setDoc['codCharges.percentage']    = updates.codCharges.percentage;
       if (updates.codCharges.minimumAmount !== undefined) setDoc['codCharges.minimumAmount'] = updates.codCharges.minimumAmount;

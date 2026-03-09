@@ -101,6 +101,10 @@ const rateCardSchema = new mongoose.Schema({
       message: 'RTO charges must be a non-empty array'
     }
   },
+  dtoCharges: {
+    type: [weightSlabSchema],
+    default: []
+  },
   codCharges: {
     percentage: {
       type: Number,

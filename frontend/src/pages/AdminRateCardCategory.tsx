@@ -50,7 +50,7 @@ const AdminRateCardCategory: React.FC = () => {
   };
 
   const handleZonePriceChange = (
-    type: 'forward' | 'rto',
+    type: 'forward' | 'rto' | 'dto',
     slabIndex: number,
     zone: 'A' | 'B' | 'C' | 'D' | 'E' | 'F',
     value: string
@@ -61,7 +61,7 @@ const AdminRateCardCategory: React.FC = () => {
     if (isNaN(numValue) && value !== '') return;
 
     const updated = { ...editedRateCard };
-    const charges = type === 'forward' ? updated.forwardCharges : updated.rtoCharges;
+    const charges = type === 'forward' ? updated.forwardCharges : type === 'dto' ? (updated.dtoCharges || []) : updated.rtoCharges;
     const updatedCharges = [...charges];
     updatedCharges[slabIndex] = {
       ...updatedCharges[slabIndex],
@@ -73,6 +73,8 @@ const AdminRateCardCategory: React.FC = () => {
 
     if (type === 'forward') {
       updated.forwardCharges = updatedCharges;
+    } else if (type === 'dto') {
+      updated.dtoCharges = updatedCharges;
     } else {
       updated.rtoCharges = updatedCharges;
     }
@@ -109,6 +111,7 @@ const AdminRateCardCategory: React.FC = () => {
       const updates = {
         forwardCharges: editedRateCard.forwardCharges,
         rtoCharges: editedRateCard.rtoCharges,
+        dtoCharges: editedRateCard.dtoCharges || [],
         codCharges: editedRateCard.codCharges
       };
 
@@ -240,9 +243,9 @@ const AdminRateCardCategory: React.FC = () => {
           </div>
         </div>
 
-        {/* RTO Charges Table */}
+        {/* DTO Charges Table */}
         <div className="charges-section">
-          <h3>RTO (Return to Origin) Rates</h3>
+          <h3>DTO (Direct to Origin) Charges</h3>
           <div className="table-container">
             <table className="rate-table">
               <thead>
@@ -257,7 +260,10 @@ const AdminRateCardCategory: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {displayCard.rtoCharges.map((slab, index) => (
+                {(displayCard.dtoCharges && displayCard.dtoCharges.length > 0
+                  ? displayCard.dtoCharges
+                  : displayCard.rtoCharges?.filter(s => s.condition?.startsWith('DTO')) || []
+                ).map((slab, index) => (
                   <tr key={index}>
                     <td className="condition-cell">{slab.condition}</td>
                     {(['A', 'B', 'C', 'D', 'E', 'F'] as const).map((zone) => (
@@ -266,7 +272,7 @@ const AdminRateCardCategory: React.FC = () => {
                           <input
                             type="number"
                             value={slab.zones[zone]}
-                            onChange={(e) => handleZonePriceChange('rto', index, zone, e.target.value)}
+                            onChange={(e) => handleZonePriceChange('dto', index, zone, e.target.value)}
                             className="price-input"
                             min="0"
                             step="0.01"
@@ -278,6 +284,57 @@ const AdminRateCardCategory: React.FC = () => {
                     ))}
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* RTO Charges Table */}
+        <div className="charges-section">
+          <h3>RTO (Return to Origin) Charges</h3>
+          <div className="table-container">
+            <table className="rate-table">
+              <thead>
+                <tr>
+                  <th>RTO Slab Condition</th>
+                  <th>Zone A</th>
+                  <th>Zone B</th>
+                  <th>Zone C</th>
+                  <th>Zone D</th>
+                  <th>Zone E</th>
+                  <th>Zone F</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(displayCard.rtoCharges?.filter(s => s.condition?.startsWith('RTO')) || []).length > 0 ? (
+                  displayCard.rtoCharges.filter(s => s.condition?.startsWith('RTO')).map((slab, index) => (
+                    <tr key={index}>
+                      <td className="condition-cell">{slab.condition}</td>
+                      {(['A', 'B', 'C', 'D', 'E', 'F'] as const).map((zone) => (
+                        <td key={zone} className={isEditing ? 'editable-cell' : ''}>
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={slab.zones[zone]}
+                              onChange={(e) => handleZonePriceChange('rto', index, zone, e.target.value)}
+                              className="price-input"
+                              min="0"
+                              step="0.01"
+                            />
+                          ) : (
+                            `₹${slab.zones[zone]}`
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', color: '#999', padding: '16px' }}>
+                      No RTO charges set yet — edit to add RTO rates
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

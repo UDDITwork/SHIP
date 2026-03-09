@@ -60,6 +60,10 @@ interface RateCardData {
     condition: string;
     zones: { [key: string]: number };
   }>;
+  dtoCharges?: Array<{
+    condition: string;
+    zones: { [key: string]: number };
+  }>;
   codCharges: {
     percentage: number;
     minimumAmount: number;
@@ -333,6 +337,51 @@ const PriceListTab: React.FC<{ userCategory: string; onRefreshUserData: () => vo
           </div>
         </div>
 
+        {/* DTO Charges Table */}
+        <div className="price-table-container">
+          <h3>DTO Charges (₹)</h3>
+          <div className="table-wrapper">
+            <table className="price-table">
+              <thead>
+                <tr>
+                  <th>Weight Slab</th>
+                  {zones.map(zone => (
+                    <th key={zone}>Zone {zone}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  // Migration: use dtoCharges if available, else fall back to rtoCharges with DTO prefix
+                  const dtoData = rateCardData.dtoCharges && rateCardData.dtoCharges.length > 0
+                    ? rateCardData.dtoCharges
+                    : (rateCardData.rtoCharges && rateCardData.rtoCharges.length > 0 && rateCardData.rtoCharges[0]?.condition?.startsWith('DTO'))
+                      ? rateCardData.rtoCharges
+                      : [];
+                  return dtoData.length > 0 ? (
+                    dtoData.map((charge, index) => (
+                      <tr key={index}>
+                        <td className="weight-slab">{charge.condition}</td>
+                        {zones.map(zone => (
+                          <td key={zone} className="price-cell">
+                            ₹{charge.zones && charge.zones[zone] ? charge.zones[zone] : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={zones.length + 1} className="text-center text-gray-500">
+                        No DTO charges data available
+                      </td>
+                    </tr>
+                  );
+                })()}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* RTO Charges Table */}
         <div className="price-table-container">
           <h3>RTO Charges (₹)</h3>
@@ -347,24 +396,30 @@ const PriceListTab: React.FC<{ userCategory: string; onRefreshUserData: () => vo
                 </tr>
               </thead>
               <tbody>
-                {rateCardData.rtoCharges && rateCardData.rtoCharges.length > 0 ? (
-                  rateCardData.rtoCharges.map((charge, index) => (
-                    <tr key={index}>
-                      <td className="weight-slab">{charge.condition}</td>
-                      {zones.map(zone => (
-                        <td key={zone} className="price-cell">
-                          ₹{charge.zones && charge.zones[zone] ? charge.zones[zone] : '-'}
-                        </td>
-                      ))}
+                {(() => {
+                  // Only show RTO data if rtoCharges has RTO-prefixed conditions
+                  const rtoData = rateCardData.rtoCharges && rateCardData.rtoCharges.length > 0 && rateCardData.rtoCharges[0]?.condition?.startsWith('RTO')
+                    ? rateCardData.rtoCharges
+                    : [];
+                  return rtoData.length > 0 ? (
+                    rtoData.map((charge, index) => (
+                      <tr key={index}>
+                        <td className="weight-slab">{charge.condition}</td>
+                        {zones.map(zone => (
+                          <td key={zone} className="price-cell">
+                            ₹{charge.zones && charge.zones[zone] ? charge.zones[zone] : '-'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={zones.length + 1} className="text-center text-gray-500">
+                        No RTO charges data available — admin needs to set RTO rates
+                      </td>
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={zones.length + 1} className="text-center text-gray-500">
-                      No RTO charges data available
-                    </td>
-                  </tr>
-                )}
+                  );
+                })()}
               </tbody>
             </table>
           </div>

@@ -23,6 +23,7 @@ export interface RateCard {
   carrier: string;
   forwardCharges: WeightSlab[];
   rtoCharges: WeightSlab[];
+  dtoCharges: WeightSlab[];
   codCharges: {
     percentage: number;
     minimumAmount: number;
@@ -118,6 +119,7 @@ export const NEW_USER_RATE_CARD: RateCard = {
       zones: { A: 23, B: 27, C: 35, D: 40, E: 55, F: 58 }
     }
   ],
+  dtoCharges: [],
   codCharges: {
     percentage: 1.8,
     minimumAmount: 45,
@@ -191,6 +193,7 @@ export const BASIC_USER_RATE_CARD: RateCard = {
       zones: { A: 21, B: 25, C: 32, D: 37, E: 50, F: 53 }
     }
   ],
+  dtoCharges: [],
   codCharges: {
     percentage: 1.5,
     minimumAmount: 35,
@@ -264,6 +267,7 @@ export const ADVANCED_USER_RATE_CARD: RateCard = {
       zones: { A: 20, B: 24, C: 30, D: 35, E: 48, F: 51 }
     }
   ],
+  dtoCharges: [],
   codCharges: {
     percentage: 1.25,
     minimumAmount: 25,
@@ -337,6 +341,7 @@ export const LITE_USER_RATE_CARD: RateCard = {
       zones: { A: 22, B: 26, C: 33, D: 39, E: 53, F: 55 }
     }
   ],
+  dtoCharges: [],
   codCharges: {
     percentage: 1.8,
     minimumAmount: 40,
@@ -551,108 +556,83 @@ export class RateCardService {
     return totalCharges;
   }
 
-  private static calculateRTOCharges(rateCard: RateCard, weight: number, zone: string): number {
+  private static calculateSlabCharges(slabs: WeightSlab[], prefix: string, weight: number, zone: string): number {
     const zoneKey = this.getZoneKey(zone);
     if (!zoneKey) return 0;
 
-    // Find all required RTO slabs
-    const baseSlab = rateCard.rtoCharges.find(s => s.condition === "DTO 0-250 gm");
-    const slab250_500 = rateCard.rtoCharges.find(s => s.condition === "DTO 250-500 gm");
-    const slabAdd500gm = rateCard.rtoCharges.find(s => s.condition === "DTO Add. 500 gm till 5kg");
-    const slabUpto5kg = rateCard.rtoCharges.find(s => s.condition === "DTO Upto 5kgs");
-    const slabAdd1kgTill10 = rateCard.rtoCharges.find(s => s.condition === "DTO Add. 1 kgs till 10k");
-    const slabUpto10kg = rateCard.rtoCharges.find(s => s.condition === "DTO Upto 10 kgs");
-    const slabAdd1kg = rateCard.rtoCharges.find(s => s.condition === "DTO Add. 1 kgs");
+    const baseSlab = slabs.find(s => s.condition === `${prefix} 0-250 gm`);
+    const slab250_500 = slabs.find(s => s.condition === `${prefix} 250-500 gm`);
+    const slabAdd500gm = slabs.find(s => s.condition === `${prefix} Add. 500 gm till 5kg`);
+    const slabUpto5kg = slabs.find(s => s.condition === `${prefix} Upto 5kgs`);
+    const slabAdd1kgTill10 = slabs.find(s => s.condition === `${prefix} Add. 1 kgs till 10k`);
+    const slabUpto10kg = slabs.find(s => s.condition === `${prefix} Upto 10 kgs`);
+    const slabAdd1kg = slabs.find(s => s.condition === `${prefix} Add. 1 kgs`);
 
     if (!baseSlab) return 0;
 
-    let totalCharges = 0;
     const weightInGrams = weight;
 
-    // 1. First 250 grams (DTO 0-250 gm) - Base charge
-    if (weightInGrams <= 250) {
-      totalCharges = baseSlab.zones[zoneKey];
-      return totalCharges;
+    if (weightInGrams <= 250) return baseSlab.zones[zoneKey];
+
+    if (weightInGrams <= 500) {
+      let t = baseSlab.zones[zoneKey];
+      if (slab250_500) t += slab250_500.zones[zoneKey];
+      return t;
     }
 
-    // 2. Next 250 grams (DTO 250-500 gm) - Additive on top of base
-    if (weightInGrams > 250 && weightInGrams <= 500) {
-      totalCharges = baseSlab.zones[zoneKey]; // Base charge
-      if (slab250_500) {
-        totalCharges += slab250_500.zones[zoneKey]; // Add 250-500gm charge
-      }
-      return totalCharges;
+    if (weightInGrams < 5000) {
+      let t = baseSlab.zones[zoneKey];
+      if (slab250_500) t += slab250_500.zones[zoneKey];
+      const inc = Math.ceil((weightInGrams - 500) / 500);
+      if (slabAdd500gm) t += inc * slabAdd500gm.zones[zoneKey];
+      return t;
     }
 
-    // 3. Additional 500 gm increments till 5kg (500gm to 4999gm)
-    // Note: Exactly 5000gm is handled by checkpoint below
-    if (weightInGrams > 500 && weightInGrams < 5000) {
-      // Start with base + 250-500gm charge
-      totalCharges = baseSlab.zones[zoneKey];
-      if (slab250_500) {
-        totalCharges += slab250_500.zones[zoneKey];
-      }
-      
-      // Calculate how many 500gm increments beyond 500gm
-      const weightBeyond500 = weightInGrams - 500;
-      const increments500gm = Math.ceil(weightBeyond500 / 500);
-      
-      if (slabAdd500gm) {
-        totalCharges += increments500gm * slabAdd500gm.zones[zoneKey];
-      }
-      
-      return totalCharges;
-    }
+    if (weightInGrams === 5000 && slabUpto5kg) return slabUpto5kg.zones[zoneKey];
 
-    // 4. Weight is exactly 5kg - use cumulative checkpoint
-    if (weightInGrams === 5000 && slabUpto5kg) {
-      return slabUpto5kg.zones[zoneKey];
-    }
-
-    // 5. Additional 1 kg increments from 5kg to 10kg (5001gm to 9999gm)
-    // Note: Exactly 10000gm is handled by checkpoint below
-    if (weightInGrams > 5000 && weightInGrams < 10000) {
-      // Use "DTO Upto 5kgs" as base
+    if (weightInGrams < 10000) {
       if (!slabUpto5kg) return 0;
-      totalCharges = slabUpto5kg.zones[zoneKey];
-      
-      // Calculate weight beyond 5kg
-      const weightBeyond5kg = weightInGrams - 5000;
-      // Any remaining grams (<1kg) are charged as a full kg increment
-      // So we round up to the nearest kg
-      const additionalKgs = Math.ceil(weightBeyond5kg / 1000);
-      
-      // Add per-kg charges (including partial kgs charged as full kg)
-      if (slabAdd1kgTill10 && additionalKgs > 0) {
-        totalCharges += additionalKgs * slabAdd1kgTill10.zones[zoneKey];
-      }
-      
-      return totalCharges;
+      let t = slabUpto5kg.zones[zoneKey];
+      const addKgs = Math.ceil((weightInGrams - 5000) / 1000);
+      if (slabAdd1kgTill10 && addKgs > 0) t += addKgs * slabAdd1kgTill10.zones[zoneKey];
+      return t;
     }
 
-    // 6. Weight is exactly 10kg - use cumulative checkpoint
-    if (weightInGrams === 10000 && slabUpto10kg) {
-      return slabUpto10kg.zones[zoneKey];
-    }
+    if (weightInGrams === 10000 && slabUpto10kg) return slabUpto10kg.zones[zoneKey];
 
-    // 7. Additional 1 kg increments beyond 10kg
     if (weightInGrams > 10000) {
-      // Use "DTO Upto 10 kgs" as base
       if (!slabUpto10kg) return 0;
-      totalCharges = slabUpto10kg.zones[zoneKey];
-      
-      // Calculate kgs beyond 10kg
-      const weightBeyond10kg = weightInGrams - 10000;
-      const additionalKgs = Math.ceil(weightBeyond10kg / 1000); // Round up to nearest kg
-      
-      if (slabAdd1kg) {
-        totalCharges += additionalKgs * slabAdd1kg.zones[zoneKey];
-      }
-      
-      return totalCharges;
+      let t = slabUpto10kg.zones[zoneKey];
+      const addKgs = Math.ceil((weightInGrams - 10000) / 1000);
+      if (slabAdd1kg) t += addKgs * slabAdd1kg.zones[zoneKey];
+      return t;
     }
 
-    return totalCharges;
+    return 0;
+  }
+
+  private static calculateRTOCharges(rateCard: RateCard, weight: number, zone: string): number {
+    // Try RTO-prefixed slabs first
+    if (rateCard.rtoCharges?.length > 0 && rateCard.rtoCharges[0].condition?.startsWith('RTO')) {
+      return this.calculateSlabCharges(rateCard.rtoCharges, 'RTO', weight, zone);
+    }
+    // Backward compat: fall back to DTO-prefixed slabs in rtoCharges
+    if (rateCard.rtoCharges?.length > 0) {
+      return this.calculateSlabCharges(rateCard.rtoCharges, 'DTO', weight, zone);
+    }
+    return 0;
+  }
+
+  private static calculateDTOCharges(rateCard: RateCard, weight: number, zone: string): number {
+    // Use dtoCharges if available
+    if (rateCard.dtoCharges?.length > 0) {
+      return this.calculateSlabCharges(rateCard.dtoCharges, 'DTO', weight, zone);
+    }
+    // Backward compat: old rtoCharges has DTO-prefixed data
+    if (rateCard.rtoCharges?.length > 0 && rateCard.rtoCharges[0].condition?.startsWith('DTO')) {
+      return this.calculateSlabCharges(rateCard.rtoCharges, 'DTO', weight, zone);
+    }
+    return 0;
   }
 
   private static getZoneKey(zone: string): keyof RateCard['forwardCharges'][0]['zones'] | null {
