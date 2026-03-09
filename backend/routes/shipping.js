@@ -169,7 +169,8 @@ const normalizeTrackingResponse = (trackingResult, fallbackWaybill = '') => {
 
     const scans = scansSource
         .map((scan) => {
-            const scanObj = scan || {};
+            // Delhivery nests each scan inside a ScanDetail wrapper
+            const scanObj = scan?.ScanDetail || scan?.scanDetail || scan || {};
             const nestedStatus = extractStatus(
                 scanObj.Status || scanObj.status || scanObj.status_detail
             );

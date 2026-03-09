@@ -74,7 +74,7 @@ const AdminNDR: React.FC = () => {
 
   // Pagination
   const [page, setPage] = useState(1);
-  const [limit] = useState(20);
+  const [limit, setLimit] = useState(100);
   const [pagination, setPagination] = useState({
     current_page: 1,
     total_pages: 1,
@@ -645,29 +645,41 @@ const AdminNDR: React.FC = () => {
           )}
 
           {/* Pagination */}
-          {pagination.total_pages > 1 && (
-            <div className="pagination">
-              <div className="pagination-info">
-                Page {pagination.current_page} of {pagination.total_pages}
-              </div>
-              <div className="pagination-controls">
-                <button
-                  className="btn-secondary"
-                  disabled={pagination.current_page <= 1}
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                >
-                  Previous
-                </button>
-                <button
-                  className="btn-secondary"
-                  disabled={pagination.current_page >= pagination.total_pages}
-                  onClick={() => setPage(p => p + 1)}
-                >
-                  Next
-                </button>
-              </div>
+          <div className="pagination">
+            <div className="per-page-selector">
+              <span>Show</span>
+              <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}>
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+              <span>per page</span>
             </div>
-          )}
+            {pagination.total_pages > 1 && (
+              <>
+                <div className="pagination-info">
+                  Page {pagination.current_page} of {pagination.total_pages}
+                </div>
+                <div className="pagination-controls">
+                  <button
+                    className="btn-secondary"
+                    disabled={pagination.current_page <= 1}
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                  >
+                    Previous
+                  </button>
+                  <button
+                    className="btn-secondary"
+                    disabled={pagination.current_page >= pagination.total_pages}
+                    onClick={() => setPage(p => p + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </>
       )}
 

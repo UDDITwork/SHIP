@@ -85,7 +85,7 @@ const AdminWeightDiscrepancies: React.FC = () => {
   const [sortBy, setSortBy] = useState('discrepancy_date');
   const [sortOrder, setSortOrder] = useState('-1');
   const [page, setPage] = useState(1);
-  const limit = 50;
+  const [limit, setLimit] = useState(100);
 
   // Multi-select
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -631,6 +631,16 @@ const AdminWeightDiscrepancies: React.FC = () => {
           {/* Pagination */}
           {!loading && discrepancies.length > 0 && (
             <div className="pagination-section">
+              <div className="per-page-selector">
+                <span>Show</span>
+                <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}>
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span>per page</span>
+              </div>
               <div className="pagination-info">
                 Showing {((page - 1) * limit) + 1}–{Math.min(page * limit, total)} of {total}
               </div>

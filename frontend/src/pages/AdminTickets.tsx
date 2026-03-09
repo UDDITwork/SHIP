@@ -49,7 +49,7 @@ const AdminTickets: React.FC = () => {
 
   // Pagination
   const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(25);
+  const [limit, setLimit] = useState(100);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -392,29 +392,41 @@ const AdminTickets: React.FC = () => {
       )}
 
       {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="pagination">
-          <div className="pagination-info">
-            Page {pagination.currentPage} of {pagination.totalPages}
-          </div>
-          <div className="pagination-controls">
-            <button
-              className="btn-secondary"
-              disabled={!pagination.hasPrev}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-            >
-              Previous
-            </button>
-            <button
-              className="btn-secondary"
-              disabled={!pagination.hasNext}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </button>
-          </div>
+      <div className="pagination">
+        <div className="per-page-selector">
+          <span>Show</span>
+          <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}>
+            <option value={10}>10</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+          </select>
+          <span>per page</span>
         </div>
-      )}
+        {pagination.totalPages > 1 && (
+          <>
+            <div className="pagination-info">
+              Page {pagination.currentPage} of {pagination.totalPages}
+            </div>
+            <div className="pagination-controls">
+              <button
+                className="btn-secondary"
+                disabled={!pagination.hasPrev}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+              <button
+                className="btn-secondary"
+                disabled={!pagination.hasNext}
+                onClick={() => setPage((p) => p + 1)}
+              >
+                Next
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };

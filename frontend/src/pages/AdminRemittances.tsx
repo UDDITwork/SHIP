@@ -67,7 +67,7 @@ const AdminRemittances: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [stateFilter, setStateFilter] = useState<RemittanceState>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [pagination, setPagination] = useState({ page: 1, limit: 25, total: 0, pages: 0 });
+  const [pagination, setPagination] = useState({ page: 1, limit: 100, total: 0, pages: 0 });
 
   // Client summary state
   const [clientSummary, setClientSummary] = useState<ClientSummary[]>([]);
@@ -336,13 +336,25 @@ const AdminRemittances: React.FC = () => {
                 </table>
               </div>
 
-              {pagination.pages > 1 && (
-                <div className="pagination">
-                  <button disabled={pagination.page <= 1} onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}>Previous</button>
-                  <span>Page {pagination.page} of {pagination.pages} ({pagination.total} total)</span>
-                  <button disabled={pagination.page >= pagination.pages} onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}>Next</button>
+              <div className="pagination">
+                <div className="per-page-selector">
+                  <span>Show</span>
+                  <select value={pagination.limit} onChange={(e) => setPagination(p => ({ ...p, limit: Number(e.target.value), page: 1 }))}>
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                    <option value={100}>100</option>
+                  </select>
+                  <span>per page</span>
                 </div>
-              )}
+                {pagination.pages > 1 && (
+                  <>
+                    <button disabled={pagination.page <= 1} onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}>Previous</button>
+                    <span>Page {pagination.page} of {pagination.pages} ({pagination.total} total)</span>
+                    <button disabled={pagination.page >= pagination.pages} onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}>Next</button>
+                  </>
+                )}
+              </div>
             </>
           )}
         </div>

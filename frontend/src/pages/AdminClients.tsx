@@ -57,7 +57,7 @@ const AdminClients: React.FC = () => {
   });
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(10);
+  const [limit, setLimit] = useState(100);
 
   // Document viewer modal state
   const [documentModalOpen, setDocumentModalOpen] = useState(false);
@@ -465,6 +465,16 @@ const AdminClients: React.FC = () => {
 
         {/* Pagination */}
         <div className="pagination">
+          <div className="per-page-selector">
+            <span>Show</span>
+            <select value={limit} onChange={(e) => { setLimit(Number(e.target.value)); handlePageChange(1); }}>
+              <option value={10}>10</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+            <span>per page</span>
+          </div>
           <button
             onClick={() => handlePageChange(page - 1)}
             disabled={!pagination.hasPrev}
@@ -472,11 +482,11 @@ const AdminClients: React.FC = () => {
           >
             Previous
           </button>
-          
+
           <span className="pagination-info">
             Page {pagination.currentPage} of {pagination.totalPages}
           </span>
-          
+
           <button
             onClick={() => handlePageChange(page + 1)}
             disabled={!pagination.hasNext}

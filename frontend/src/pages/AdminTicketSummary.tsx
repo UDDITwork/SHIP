@@ -114,7 +114,7 @@ const AdminTicketSummary: React.FC = () => {
   const [sortBy, setSortBy] = useState<string>('created_at');
   const [sortOrder, setSortOrder] = useState<string>('-1');
   const [masterPage, setMasterPage] = useState<number>(1);
-  const [masterLimit] = useState<number>(20);
+  const [masterLimit, setMasterLimit] = useState<number>(100);
   const navigate = useNavigate();
 
   const loadSummary = async () => {
@@ -633,6 +633,16 @@ const AdminTicketSummary: React.FC = () => {
                     Page {ticketPagination.currentPage} of {ticketPagination.totalPages}
                   </div>
                   <div className="pagination-controls">
+                    <div className="per-page-selector">
+                      <span>Show</span>
+                      <select value={masterLimit} onChange={(e) => { setMasterLimit(Number(e.target.value)); setMasterPage(1); }}>
+                        <option value={10}>10</option>
+                        <option value={25}>25</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
+                      <span>per page</span>
+                    </div>
                     <button
                       className="btn-secondary"
                       disabled={!ticketPagination.hasPrev}

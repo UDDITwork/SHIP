@@ -3037,3 +3037,36 @@ body {
     font-size: 0.9rem;
   }
 }
+
+/* ============================================
+   Per-Page Selector — Shared across admin tables
+   ============================================ */
+.per-page-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.per-page-selector select {
+  padding: 5px 10px;
+  border: 1.5px solid #D1D5DB;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333;
+  background: #fff;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.per-page-selector select:hover {
+  border-color: #002B59;
+}
+
+.per-page-selector select:focus {
+  border-color: #002B59;
+  box-shadow: 0 0 0 2px rgba(0, 43, 89, 0.1);
+}
