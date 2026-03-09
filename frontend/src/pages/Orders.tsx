@@ -14,7 +14,7 @@ import { environmentConfig } from '../config/environment';
 import { formatDate, formatDateTime } from '../utils/dateFormat';
 import AWBLink from '../components/AWBLink';
 import OrderDetailPanel from '../components/OrderDetailPanel';
-import { Inbox, Calendar, X, Plus, AlertTriangle } from 'lucide-react';
+import { Inbox, Calendar, X, Plus, AlertTriangle, ChevronDown } from 'lucide-react';
 import { User } from '../services/userService';
 import DateRangeFilter from '../components/DateRangeFilter';
 import './Orders.css';
@@ -142,6 +142,8 @@ const Orders: React.FC = () => {
   const [bulkImportError, setBulkImportError] = useState<string | null>(null);
   const [isBulkImportLoading, setIsBulkImportLoading] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [actionDropdownOpen, setActionDropdownOpen] = useState<string | null>(null);
+  const actionDropdownRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [viewOrderModal, setViewOrderModal] = useState<{open: boolean, order: Order | null}>({
     open: false,
@@ -217,6 +219,19 @@ const Orders: React.FC = () => {
       }
     }
   }, []);
+
+  // Close action dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (actionDropdownRef.current && !actionDropdownRef.current.contains(e.target as Node)) {
+        setActionDropdownOpen(null);
+      }
+    };
+    if (actionDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [actionDropdownOpen]);
 
   const applyGlobalSearch = useCallback((query: string, type: OrderSearchType) => {
     const trimmedQuery = query.trim();
@@ -1806,146 +1821,102 @@ const Orders: React.FC = () => {
                     )}
                     <td>{order.warehouse}</td>
                     <td>
-                      <div className="action-buttons">
-                        {/* Generate AWB button - only for NEW status orders without AWB */}
-                        {order.status === 'new' && !order.awb && (
-                          <button 
-                            className="action-btn generate-awb-btn"
-                            title="Generate AWB Number"
-                            onClick={() => handleGenerateAWB(order.orderId, order._id)}
-                          >
-                            Generate AWB Number
-                          </button>
-                        )}
-                        
-                        {/* Create Pickup Request button - only for ready_to_ship status */}
-                        {order.awb && 
-                         activeTab !== 'pickups_manifests' &&
-                         order.status === 'ready_to_ship' && 
-                         !order.pickupRequestId &&
-                         (!order.pickupRequestStatus || order.pickupRequestStatus === 'pending') && (
-                          <button 
-                            className="action-btn request-pickup-btn"
-                            title="Create Pickup Request"
-                            onClick={() => handleRequestPickup(order._id, order.orderId, order.pickup_address?.name)}
-                          >
-                            Create Pickup Request
-                          </button>
-                        )}
-                        
-                        {/* Cancel Shipment button */}
-                        {['new', 'ready_to_ship', 'pickups_manifests'].includes(order.status) &&
-                         !order.delhivery_data?.cancellation_status && (
-                          <button 
-                            className="action-btn cancel-shipment-btn"
-                            title="Cancel Shipment"
-                            onClick={() => handleCancelShipment(order.orderId, order._id, order.awb)}
-                          >
-                            Cancel Shipment
-                          </button>
-                        )}
-                        
-                        {/* View button - always visible */}
-                        <button 
-                          className="action-icon-btn view-btn" 
-                          onClick={() => handleViewOrder(order._id)}
-                        ></button>
-                        
-                        {/* Edit button - only visible for NEW status orders (without AWB) */}
-                        {order.status === 'new' && !order.awb && (
-                          <button
-                            className="action-icon-btn edit-btn"
-                            onClick={() => handleEditOrder(order._id)}
-                            title="Edit Order"
-                          ></button>
-                        )}
-                        
-                        {/* Track button - only visible if AWB exists */}
-                        {order.awb && (
-                          <button 
-                            className="action-icon-btn track-btn" 
-                            onClick={() => handleTrackOrder(order.orderId, order.awb)}
-                          ></button>
-                        )}
-                        
-                        {/* Print button - always visible to print all order details */}
+                      <div className="action-dropdown-wrapper" ref={actionDropdownOpen === order._id ? actionDropdownRef : undefined}>
                         <button
-                          className="action-icon-btn print-btn"
-                          onClick={() => handlePrintLabel(order.orderId, order._id, order.awb)}
-                          title="Print Order Details"
-                        ></button>
-
-                        {/* Clone button - always visible, creates a new order pre-filled with this order's data */}
-                        <button
-                          className="action-btn clone-btn"
-                          onClick={() => handleCloneOrder(order)}
-                          title="Clone Order"
+                          className="action-dropdown-trigger"
+                          onClick={() => setActionDropdownOpen(actionDropdownOpen === order._id ? null : order._id)}
                         >
-                          Clone
+                          Action <ChevronDown size={14} className={`action-chevron ${actionDropdownOpen === order._id ? 'open' : ''}`} />
                         </button>
-
-                        {/* Additional Action Buttons for Delivered Tab */}
-                        {(activeTab === 'delivered' || order.status === 'delivered') && (
-                          <>
-                            <button
-                              className="action-btn label-btn"
-                              onClick={() => handlePrintLabel(order.orderId, order._id, order.awb)}
-                              title="Print Label"
-                            >
-                              Label
-                            </button>
-                            <button
-                              className="action-btn invoice-btn"
-                              onClick={() => handlePrintLabel(order.orderId, order._id, order.awb)}
-                              title="Print Invoice"
-                            >
-                              Invoice
-                            </button>
-                            <button
-                              className="action-btn need-help-btn"
-                              onClick={() => navigate(`/support?orderId=${order.orderId}`)}
-                              title="Need Help"
-                            >
-                              Need Help
-                            </button>
-                            <button
-                              className="action-btn return-order-btn"
-                              onClick={() => {
-                                showConfirm('Return Order', 'Initiate a return for this order?', () => {
-                                  showToast('Return request initiated for order: ' + order.orderId, 'success');
-                                }, { confirmText: 'Return', variant: 'danger' });
-                              }}
-                              title="Return Order"
-                            >
-                              Return Order
-                            </button>
-                          </>
-                        )}
-
-                        {/* Need Help and Return Order buttons for In Transit and Out for Delivery */}
-                        {['in_transit', 'out_for_delivery'].includes(activeTab) && (
-                          <>
-                            <button
-                              className="action-btn need-help-btn"
-                              onClick={() => navigate(`/support?orderId=${order.orderId}`)}
-                              title="Need Help"
-                            >
-                              Need Help
-                            </button>
-                            {activeTab === 'in_transit' && (
-                              <button
-                                className="action-btn return-order-btn"
-                                onClick={() => {
-                                  showConfirm('Return Order', 'Initiate a return for this order?', () => {
-                                    showToast('Return request initiated for order: ' + order.orderId, 'success');
-                                  }, { confirmText: 'Return', variant: 'danger' });
-                                }}
-                                title="Return Order"
-                              >
-                                Return Order
+                        {actionDropdownOpen === order._id && (
+                          <div className="action-dropdown-menu">
+                            {/* Generate AWB - only for NEW status orders without AWB */}
+                            {order.status === 'new' && !order.awb && (
+                              <button className="action-dropdown-item" onClick={() => { handleGenerateAWB(order.orderId, order._id); setActionDropdownOpen(null); }}>
+                                Generate AWB
                               </button>
                             )}
-                          </>
+
+                            {/* Create Pickup Request - only for ready_to_ship */}
+                            {order.awb &&
+                             activeTab !== 'pickups_manifests' &&
+                             order.status === 'ready_to_ship' &&
+                             !order.pickupRequestId &&
+                             (!order.pickupRequestStatus || order.pickupRequestStatus === 'pending') && (
+                              <button className="action-dropdown-item" onClick={() => { handleRequestPickup(order._id, order.orderId, order.pickup_address?.name); setActionDropdownOpen(null); }}>
+                                Create Pickup Request
+                              </button>
+                            )}
+
+                            {/* Cancel Shipment */}
+                            {['new', 'ready_to_ship', 'pickups_manifests'].includes(order.status) &&
+                             !order.delhivery_data?.cancellation_status && (
+                              <button className="action-dropdown-item danger" onClick={() => { handleCancelShipment(order.orderId, order._id, order.awb); setActionDropdownOpen(null); }}>
+                                Cancel Shipment
+                              </button>
+                            )}
+
+                            {/* View - always visible */}
+                            <button className="action-dropdown-item" onClick={() => { handleViewOrder(order._id); setActionDropdownOpen(null); }}>
+                              View
+                            </button>
+
+                            {/* Edit - only for NEW status without AWB */}
+                            {order.status === 'new' && !order.awb && (
+                              <button className="action-dropdown-item" onClick={() => { handleEditOrder(order._id); setActionDropdownOpen(null); }}>
+                                Edit
+                              </button>
+                            )}
+
+                            {/* Track - only if AWB exists */}
+                            {order.awb && (
+                              <button className="action-dropdown-item" onClick={() => { handleTrackOrder(order.orderId, order.awb); setActionDropdownOpen(null); }}>
+                                Track
+                              </button>
+                            )}
+
+                            {/* Print - always visible */}
+                            <button className="action-dropdown-item" onClick={() => { handlePrintLabel(order.orderId, order._id, order.awb); setActionDropdownOpen(null); }}>
+                              Print
+                            </button>
+
+                            {/* Clone - always visible */}
+                            <button className="action-dropdown-item" onClick={() => { handleCloneOrder(order); setActionDropdownOpen(null); }}>
+                              Clone
+                            </button>
+
+                            {/* Additional options for Delivered Tab */}
+                            {(activeTab === 'delivered' || order.status === 'delivered') && (
+                              <>
+                                <button className="action-dropdown-item" onClick={() => { handlePrintLabel(order.orderId, order._id, order.awb); setActionDropdownOpen(null); }}>
+                                  Label
+                                </button>
+                                <button className="action-dropdown-item" onClick={() => { handlePrintLabel(order.orderId, order._id, order.awb); setActionDropdownOpen(null); }}>
+                                  Invoice
+                                </button>
+                                <button className="action-dropdown-item" onClick={() => { navigate(`/support?orderId=${order.orderId}`); setActionDropdownOpen(null); }}>
+                                  Need Help
+                                </button>
+                                <button className="action-dropdown-item danger" onClick={() => { showConfirm('Return Order', 'Initiate a return for this order?', () => { showToast('Return request initiated for order: ' + order.orderId, 'success'); }, { confirmText: 'Return', variant: 'danger' }); setActionDropdownOpen(null); }}>
+                                  Return Order
+                                </button>
+                              </>
+                            )}
+
+                            {/* Need Help and Return for In Transit / Out for Delivery */}
+                            {['in_transit', 'out_for_delivery'].includes(activeTab) && (
+                              <>
+                                <button className="action-dropdown-item" onClick={() => { navigate(`/support?orderId=${order.orderId}`); setActionDropdownOpen(null); }}>
+                                  Need Help
+                                </button>
+                                {activeTab === 'in_transit' && (
+                                  <button className="action-dropdown-item danger" onClick={() => { showConfirm('Return Order', 'Initiate a return for this order?', () => { showToast('Return request initiated for order: ' + order.orderId, 'success'); }, { confirmText: 'Return', variant: 'danger' }); setActionDropdownOpen(null); }}>
+                                    Return Order
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         )}
                       </div>
                     </td>

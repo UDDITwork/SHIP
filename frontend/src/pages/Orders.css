@@ -1314,7 +1314,88 @@
     color: #721C24;
   }
   
-  /* Action Buttons - Consistent White with Orange Border */
+  /* Action Dropdown */
+  .action-dropdown-wrapper {
+    position: relative;
+    display: inline-block;
+  }
+
+  .action-dropdown-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    background: #FFFFFF;
+    border: 1.5px solid #002B59;
+    border-radius: 6px;
+    color: #002B59;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+
+  .action-dropdown-trigger:hover {
+    background: #002B59;
+    color: #FFFFFF;
+  }
+
+  .action-chevron {
+    transition: transform 0.2s ease;
+  }
+
+  .action-chevron.open {
+    transform: rotate(180deg);
+  }
+
+  .action-dropdown-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    min-width: 180px;
+    background: #FFFFFF;
+    border: 1px solid #E5E7EB;
+    border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    z-index: 100;
+    padding: 4px 0;
+    animation: dropdownFadeIn 0.15s ease;
+  }
+
+  @keyframes dropdownFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .action-dropdown-item {
+    display: block;
+    width: 100%;
+    padding: 8px 16px;
+    border: none;
+    background: none;
+    color: #333;
+    font-size: 13px;
+    font-weight: 500;
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.1s ease;
+    white-space: nowrap;
+  }
+
+  .action-dropdown-item:hover {
+    background: #F3F4F6;
+  }
+
+  .action-dropdown-item.danger {
+    color: #DC2626;
+  }
+
+  .action-dropdown-item.danger:hover {
+    background: #FEF2F2;
+  }
+
+  /* Legacy Action Buttons (kept for reference) */
   .action-buttons {
     display: flex;
     flex-direction: column;
