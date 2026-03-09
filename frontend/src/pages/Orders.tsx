@@ -1713,7 +1713,7 @@ const Orders: React.FC = () => {
                         <div className={`payment-mode ${order.paymentMode?.toLowerCase() || 'unknown'}`}>
                           {order.paymentMode || 'N/A'}
                         </div>
-                        {order.codAmount && <div>₹{order.codAmount}</div>}
+                        <div>₹{order.paymentMode === 'COD' ? (order.codAmount || order.totalAmount || 0) : (order.totalAmount || order.orderValue || 0)}</div>
                       </div>
                     </td>
                     <td>
@@ -1820,7 +1820,7 @@ const Orders: React.FC = () => {
                     )}
                     <td>{order.warehouse}</td>
                     <td>
-                      <div className="action-dropdown-wrapper" ref={actionDropdownOpen === order._id ? actionDropdownRef : undefined}>
+                      <div className="action-dropdown-wrapper" ref={actionDropdownOpen === order._id ? actionDropdownRef : null}>
                         <button
                           className="action-dropdown-trigger"
                           onClick={() => setActionDropdownOpen(actionDropdownOpen === order._id ? null : order._id)}
