@@ -2480,6 +2480,7 @@ class AdminService {
       errors: Array<{
         row: number;
         awb: string;
+        email: string;
         error: string;
       }>;
     };
@@ -2494,6 +2495,7 @@ class AdminService {
         errors: Array<{
           row: number;
           awb: string;
+          email: string;
           error: string;
         }>;
       };

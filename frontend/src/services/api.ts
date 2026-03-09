@@ -44,8 +44,8 @@ class ApiService {
           '🌐 URL': `${config.baseURL}${config.url}`,
           '📋 FULL URL': config.url,
           '🔗 BASE URL': config.baseURL,
-          '📦 DATA': config.data,
-          '📏 DATA SIZE': config.data ? JSON.stringify(config.data).length : 0,
+          '📦 DATA': config.data instanceof FormData ? '[FormData]' : config.data,
+          '📏 DATA SIZE': config.data instanceof FormData ? '[FormData]' : (config.data ? JSON.stringify(config.data).length : 0),
           '🔑 HAS TOKEN': !!token,
           '📎 IS FORMDATA': config.data instanceof FormData,
           '⏰ TIMESTAMP': new Date().toISOString(),
@@ -203,12 +203,16 @@ class ApiService {
         }
         
         if (error.response?.status === 401) {
-          console.error('🔐 UNAUTHORIZED - Clearing auth, cache and redirecting');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          // Clear all cached data to prevent stale cross-user data
-          DataCache.clearAll();
-          window.location.href = '/login';
+          const requestUrl = error.config?.url || '';
+          // Skip redirect for admin API calls — let the admin UI handle auth errors
+          if (!requestUrl.includes('/admin/')) {
+            console.error('🔐 UNAUTHORIZED - Clearing auth, cache and redirecting');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            // Clear all cached data to prevent stale cross-user data
+            DataCache.clearAll();
+            window.location.href = '/login';
+          }
         }
         
         return Promise.reject(error);

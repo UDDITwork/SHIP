@@ -9,6 +9,7 @@ interface UploadResult {
   errors: Array<{
     row: number;
     awb: string;
+    email: string;
     error: string;
   }>;
 }
@@ -167,6 +168,7 @@ export const AdminManualMapping: React.FC = () => {
                   <tr>
                     <th>Row #</th>
                     <th>AWB</th>
+                    <th>Client Email</th>
                     <th>Error</th>
                   </tr>
                 </thead>
@@ -175,6 +177,7 @@ export const AdminManualMapping: React.FC = () => {
                     <tr key={idx}>
                       <td>{err.row}</td>
                       <td className="awb-cell">{err.awb}</td>
+                      <td>{err.email}</td>
                       <td className="error-cell">{err.error}</td>
                     </tr>
                   ))}

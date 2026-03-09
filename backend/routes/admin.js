@@ -8573,6 +8573,7 @@ async function createManualMappedOrder(row, client, adminUser) {
     manually_mapped_by: adminUser.email,
     manually_mapped_at: new Date(),
     manual_mapping_source: 'excel_upload',
+    manual_mapping_client_email: client.email,
 
     // Status
     status: 'ready_to_ship',
@@ -8603,7 +8604,7 @@ async function createManualMappedOrder(row, client, adminUser) {
  * POST /admin/orders/manual-mapping/upload
  * Admin uploads Excel file with manual AWB mappings
  */
-router.post('/orders/manual-mapping/upload', adminAuth, upload.single('file'), async (req, res) => {
+router.post('/orders/manual-mapping/upload', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
@@ -8617,7 +8618,16 @@ router.post('/orders/manual-mapping/upload', adminAuth, upload.single('file'), a
     const workbook = XLSX.read(req.file.buffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[sheetName];
-    const rows = XLSX.utils.sheet_to_json(worksheet);
+    const rawRows = XLSX.utils.sheet_to_json(worksheet);
+
+    // Normalize column headers: trim whitespace to avoid mismatches from Excel
+    const rows = rawRows.map(row => {
+      const normalized = {};
+      for (const [key, value] of Object.entries(row)) {
+        normalized[key.trim()] = value;
+      }
+      return normalized;
+    });
 
     if (rows.length === 0) {
       return res.status(400).json({
@@ -8647,6 +8657,7 @@ router.post('/orders/manual-mapping/upload', adminAuth, upload.single('file'), a
     // Process each row
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
+      let clientEmail = '';
 
       try {
         // Validate mandatory fields
@@ -8656,7 +8667,7 @@ router.post('/orders/manual-mapping/upload', adminAuth, upload.single('file'), a
         }
 
         // Find client by email
-        const clientEmail = row['*Client mail id']?.toString().trim().toLowerCase();
+        clientEmail = row['*Client mail id']?.toString().trim().toLowerCase();
         const client = await User.findOne({
           email: clientEmail,
           user_type: { $in: ['seller', 'brand', 'manufacturer', 'distributor'] }
@@ -8690,9 +8701,15 @@ router.post('/orders/manual-mapping/upload', adminAuth, upload.single('file'), a
           const dupOrderId = row['*Order ID']?.toString() || 'unknown';
           errorMessage = `Order ID "${dupOrderId}" already exists. Please use a unique Order ID.`;
         }
+        // Parse Mongoose validation errors for cleaner messages
+        if (error.name === 'ValidationError' && error.errors) {
+          const fields = Object.keys(error.errors).map(k => error.errors[k].message);
+          errorMessage = `Validation failed: ${fields.join('; ')}`;
+        }
         results.errors.push({
           row: i + 2, // +2 for Excel row number (1-indexed + header)
           awb: row['*awb']?.toString() || 'N/A',
+          email: clientEmail || row['*Client mail id']?.toString() || 'N/A',
           error: errorMessage
         });
       }
