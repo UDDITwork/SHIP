@@ -54,6 +54,7 @@ import AdminClients from './pages/AdminClients';
 import AdminClientTickets from './pages/AdminClientTickets';
 import AdminTicketSummary from './pages/AdminTicketSummary';
 import AdminStaffManagement from './pages/AdminStaffManagement';
+import AdminProfile from './pages/AdminProfile';
 import AdminRateCard from './pages/AdminRateCard';
 import AdminRateCardCategory from './pages/AdminRateCardCategory';
 import AdminWalletRecharge from './pages/AdminWalletRecharge';
@@ -542,6 +543,14 @@ function App() {
               element={
                 <AdminLayout>
                   <AdminRateCardCategory />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/profile"
+              element={
+                <AdminLayout>
+                  <AdminProfile />
                 </AdminLayout>
               }
             />

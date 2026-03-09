@@ -19,6 +19,8 @@ const Staff = require('../models/Staff');
 const RateCard = require('../models/RateCard');
 const Carrier = require('../models/Carrier');
 const Notification = require('../models/Notification');
+const AdminConfig = require('../models/AdminConfig');
+const bcrypt = require('bcryptjs');
 const Invoice = require('../models/Invoice');
 const RateCardService = require('../services/rateCardService');
 const logger = require('../utils/logger');
@@ -198,40 +200,78 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Seed admin account on first load
+const seedAdmin = async () => {
+  try {
+    const existing = await AdminConfig.findOne({});
+    if (!existing) {
+      await AdminConfig.create({
+        user_id: 'Shipsarthi.root.9636',
+        email: 'hello@shipsarthi.com',
+        password: 'Root@Admin_SS9636'
+      });
+      logger.info('Root admin account created: Shipsarthi.root.9636');
+    }
+  } catch (err) {
+    if (err.code !== 11000) logger.error('Admin seed error:', err.message);
+  }
+};
+seedAdmin();
+
 // Admin authentication middleware
 const adminAuth = async (req, res, next) => {
+  const adminUserId = req.headers['x-admin-userid'];
   const adminEmail = req.headers['x-admin-email'];
   const adminPassword = req.headers['x-admin-password'];
-  
-  // Check for admin credentials first
-  if (adminEmail === 'udditalerts247@gmail.com' && adminPassword === 'jpmcA123') {
-    req.admin = { email: adminEmail, role: 'admin' };
-    return next();
+
+  if (!adminPassword) {
+    return res.status(401).json({ success: false, message: 'Unauthorized access.' });
   }
-  
-  // Check for staff credentials
+
+  // Check admin credentials from DB (by user_id or email)
   try {
-    const Staff = require('../models/Staff');
-    const staff = await Staff.findByEmail(adminEmail);
-    
-    if (staff && staff.is_active) {
-      const isPasswordValid = await staff.comparePassword(adminPassword);
-      if (isPasswordValid) {
-        req.staff = { 
-          email: staff.email, 
-          name: staff.name, 
-          role: 'staff',
-          _id: staff._id
-        };
-        return next();
+    const query = adminUserId
+      ? { user_id: adminUserId }
+      : adminEmail
+        ? { $or: [{ user_id: adminEmail }, { email: adminEmail }] }
+        : null;
+
+    if (query) {
+      const admin = await AdminConfig.findOne(query).select('+password');
+      if (admin) {
+        const isValid = await admin.comparePassword(adminPassword);
+        if (isValid) {
+          req.admin = { user_id: admin.user_id, email: admin.email, role: 'admin' };
+          return next();
+        }
       }
     }
   } catch (error) {
-    // If Staff model doesn't exist or error, continue to fail
-    logger.error('Staff authentication error:', error);
+    logger.error('Admin authentication error:', error.message);
   }
-  
-  // Neither admin nor staff authentication succeeded
+
+  // Check for staff credentials
+  try {
+    const identifier = adminEmail || adminUserId;
+    if (identifier) {
+      const staff = await Staff.findByEmail(identifier);
+      if (staff && staff.is_active) {
+        const isPasswordValid = await staff.comparePassword(adminPassword);
+        if (isPasswordValid) {
+          req.staff = {
+            email: staff.email,
+            name: staff.name,
+            role: 'staff',
+            _id: staff._id
+          };
+          return next();
+        }
+      }
+    }
+  } catch (error) {
+    logger.error('Staff authentication error:', error.message);
+  }
+
   return res.status(401).json({
     success: false,
     message: 'Unauthorized access. Admin or staff credentials required.'
@@ -6666,6 +6706,7 @@ router.post('/staff/verify', async (req, res) => {
       return res.json({
         success: true,
         admin: {
+          user_id: req.admin.user_id,
           email: req.admin.email,
           role: 'admin'
         }
@@ -6682,6 +6723,85 @@ router.post('/staff/verify', async (req, res) => {
       success: false,
       message: 'Verification failed'
     });
+  }
+});
+
+// ==========================================
+// ADMIN PROFILE MANAGEMENT
+// ==========================================
+
+// @route   GET /api/admin/profile
+// @desc    Get admin profile info
+router.get('/profile', adminOnly, async (req, res) => {
+  try {
+    const admin = await AdminConfig.findOne({ user_id: req.admin.user_id });
+    if (!admin) return res.status(404).json({ success: false, message: 'Admin not found' });
+    res.json({ success: true, data: { user_id: admin.user_id, email: admin.email } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch profile' });
+  }
+});
+
+// @route   PUT /api/admin/profile/change-userid
+// @desc    Change admin user ID (requires old user_id + password)
+router.put('/profile/change-userid', adminOnly, async (req, res) => {
+  try {
+    const { old_user_id, password, new_user_id } = req.body;
+
+    if (!old_user_id || !password || !new_user_id) {
+      return res.status(400).json({ success: false, message: 'Old User ID, password, and new User ID are required' });
+    }
+
+    if (new_user_id.length < 4) {
+      return res.status(400).json({ success: false, message: 'New User ID must be at least 4 characters' });
+    }
+
+    const admin = await AdminConfig.findOne({ user_id: old_user_id }).select('+password');
+    if (!admin) return res.status(404).json({ success: false, message: 'Admin not found with this User ID' });
+
+    const isValid = await admin.comparePassword(password);
+    if (!isValid) return res.status(401).json({ success: false, message: 'Incorrect password' });
+
+    const exists = await AdminConfig.findOne({ user_id: new_user_id });
+    if (exists) return res.status(409).json({ success: false, message: 'This User ID is already taken' });
+
+    admin.user_id = new_user_id;
+    await admin.save();
+
+    res.json({ success: true, message: 'User ID changed successfully', data: { user_id: new_user_id } });
+  } catch (error) {
+    logger.error('Change user ID error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to change User ID' });
+  }
+});
+
+// @route   PUT /api/admin/profile/change-password
+// @desc    Change admin password (requires current user_id + old password)
+router.put('/profile/change-password', adminOnly, async (req, res) => {
+  try {
+    const { user_id, old_password, new_password } = req.body;
+
+    if (!user_id || !old_password || !new_password) {
+      return res.status(400).json({ success: false, message: 'User ID, old password, and new password are required' });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    }
+
+    const admin = await AdminConfig.findOne({ user_id }).select('+password');
+    if (!admin) return res.status(404).json({ success: false, message: 'Admin not found' });
+
+    const isValid = await admin.comparePassword(old_password);
+    if (!isValid) return res.status(401).json({ success: false, message: 'Incorrect old password' });
+
+    admin.password = new_password;
+    await admin.save();
+
+    res.json({ success: true, message: 'Password changed successfully' });
+  } catch (error) {
+    logger.error('Change password error:', error.message);
+    res.status(500).json({ success: false, message: 'Failed to change password' });
   }
 });
 

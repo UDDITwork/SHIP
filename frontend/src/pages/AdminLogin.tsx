@@ -5,7 +5,7 @@ import './AdminLogin.css';
 
 const AdminLogin: React.FC = () => {
   const [credentials, setCredentials] = useState({
-    email: '',
+    userId: '',
     password: ''
   });
   const [loading, setLoading] = useState(false);
@@ -26,59 +26,56 @@ const AdminLogin: React.FC = () => {
     setError(null);
 
     try {
-      // Check admin credentials first
-      if (credentials.email === 'udditalerts247@gmail.com' && credentials.password === 'jpmcA123') {
-        // Store admin session
-        localStorage.setItem('admin_authenticated', 'true');
-        localStorage.setItem('admin_email', credentials.email);
-        localStorage.setItem('admin_password', credentials.password);
-        localStorage.setItem('admin_role', 'admin');
-        localStorage.removeItem('is_staff');
-        localStorage.removeItem('staff_name');
-        localStorage.removeItem('staff_email');
-        
-        // Navigate to admin dashboard
-        navigate('/admin/dashboard');
-        setLoading(false);
-        return;
-      }
-
-      // Check staff credentials via API
+      // Verify credentials via API (supports both admin User ID and staff email)
       const response = await fetch(`${environmentConfig.apiUrl}/admin/staff/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-admin-email': credentials.email,
+          'x-admin-userid': credentials.userId,
+          'x-admin-email': credentials.userId,
           'x-admin-password': credentials.password
         }
       });
 
       if (response.ok) {
         const data = await response.json();
+
+        if (data.success && data.admin) {
+          // Admin login
+          localStorage.setItem('admin_authenticated', 'true');
+          localStorage.setItem('admin_userid', data.admin.user_id);
+          localStorage.setItem('admin_email', data.admin.email);
+          localStorage.setItem('admin_password', credentials.password);
+          localStorage.setItem('admin_role', 'admin');
+          localStorage.removeItem('is_staff');
+          localStorage.removeItem('staff_name');
+          localStorage.removeItem('staff_email');
+          navigate('/admin/dashboard');
+          setLoading(false);
+          return;
+        }
+
         if (data.success && data.staff) {
-          // Store staff session
+          // Staff login
           localStorage.setItem('admin_authenticated', 'true');
           localStorage.setItem('is_staff', 'true');
           localStorage.setItem('staff_name', data.staff.name);
           localStorage.setItem('staff_email', data.staff.email);
-          localStorage.setItem('admin_email', data.staff.email); // Needed for API calls
-          localStorage.setItem('admin_password', credentials.password); // Store password for API calls
+          localStorage.setItem('admin_email', data.staff.email);
+          localStorage.setItem('admin_password', credentials.password);
           localStorage.setItem('admin_role', 'staff');
-          
-          // Navigate to admin dashboard
           navigate('/admin/dashboard');
           setLoading(false);
           return;
         }
       }
 
-      // If neither admin nor staff authentication succeeded
-      setError('Invalid credentials');
+      setError('Invalid User ID or password');
     } catch (err: any) {
       setError('Login failed. Please try again.');
       console.error('Login error:', err);
     }
-    
+
     setLoading(false);
   };
 
@@ -87,7 +84,7 @@ const AdminLogin: React.FC = () => {
       <div className="login-container">
         <div className="login-header">
           <h1>Admin Portal</h1>
-          <p>Enter your admin or staff credentials to access the management panel</p>
+          <p>Enter your credentials to access the management panel</p>
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
@@ -98,14 +95,14 @@ const AdminLogin: React.FC = () => {
           )}
 
           <div className="form-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="userId">User ID</label>
             <input
-              type="email"
-              id="email"
-              name="email"
-              value={credentials.email}
+              type="text"
+              id="userId"
+              name="userId"
+              value={credentials.userId}
               onChange={handleInputChange}
-              placeholder="Enter admin or staff email"
+              placeholder="Enter User ID or staff email"
               required
               className="form-input"
             />
@@ -136,7 +133,7 @@ const AdminLogin: React.FC = () => {
 
         <div className="login-footer">
           <p>Authorized personnel only</p>
-          <button 
+          <button
             onClick={() => navigate('/')}
             className="back-button"
           >

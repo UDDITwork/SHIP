@@ -804,9 +804,11 @@ export interface AdminNDRStats {
 
 class AdminService {
   private getAdminHeaders() {
-    const adminEmail = localStorage.getItem('admin_email') || localStorage.getItem('staff_email') || 'udditalerts247@gmail.com';
-    const adminPassword = localStorage.getItem('admin_password') || 'jpmcA123';
+    const adminUserId = localStorage.getItem('admin_userid') || '';
+    const adminEmail = localStorage.getItem('admin_email') || localStorage.getItem('staff_email') || '';
+    const adminPassword = localStorage.getItem('admin_password') || '';
     return {
+      'x-admin-userid': adminUserId,
       'x-admin-email': adminEmail,
       'x-admin-password': adminPassword
     };
@@ -1921,8 +1923,7 @@ class AdminService {
     const response = await fetch(`${environmentConfig.apiUrl}/admin/remittances/upload`, {
       method: 'POST',
       headers: {
-        'x-admin-email': localStorage.getItem('admin_email') || '',
-        'x-admin-password': 'jpmcA123' // TODO: Use secure admin authentication
+        ...this.getAdminHeaders()
       },
       body: formData
     });
@@ -2590,6 +2591,19 @@ class AdminService {
       { headers: this.getAdminHeaders() }
     );
     return response;
+  }
+  // ==================== ADMIN PROFILE ====================
+
+  async getAdminProfile(): Promise<{ success: boolean; data: { user_id: string; email: string }; message?: string }> {
+    return apiService.get('/admin/profile', { headers: this.getAdminHeaders() });
+  }
+
+  async changeAdminUserId(data: { old_user_id: string; password: string; new_user_id: string }): Promise<{ success: boolean; message: string; data?: { user_id: string } }> {
+    return apiService.put('/admin/profile/change-userid', data, { headers: this.getAdminHeaders() });
+  }
+
+  async changeAdminPassword(data: { user_id: string; old_password: string; new_password: string }): Promise<{ success: boolean; message: string }> {
+    return apiService.put('/admin/profile/change-password', data, { headers: this.getAdminHeaders() });
   }
 }
 

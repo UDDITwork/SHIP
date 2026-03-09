@@ -120,6 +120,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const handleLogout = () => {
     localStorage.removeItem('admin_authenticated');
+    localStorage.removeItem('admin_userid');
     localStorage.removeItem('admin_email');
     localStorage.removeItem('admin_password');
     localStorage.removeItem('admin_role');
@@ -151,6 +152,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     ...(isStaff ? [] : [{ path: '/admin/staff-management', label: 'Staff Management', icon: 'S' }]),
     // Rate Card Management - only visible to admins
     ...(isStaff ? [] : [{ path: '/admin/ratecard', label: 'Rate Card Management', icon: 'RC' }]),
+    // Profile - only visible to admins
+    ...(isStaff ? [] : [{ path: '/admin/profile', label: 'Profile', icon: 'P' }]),
   ];
 
   // Debug: Log menu items to verify they're being added
