@@ -64,7 +64,7 @@ app.use(cors({
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'X-Admin-Email', 'X-Admin-Password'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'X-Admin-Email', 'X-Admin-Password', 'X-Admin-Userid'],
   exposedHeaders: ['Content-Length', 'Content-Type', 'Content-Disposition', 'Cache-Control', 'X-Foo', 'X-Bar'],
   optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 }));
