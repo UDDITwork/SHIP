@@ -28,7 +28,8 @@
 }
 
 .drf-calendar-icon {
-  font-size: 14px;
+  flex-shrink: 0;
+  color: #555;
 }
 
 .drf-date-text {

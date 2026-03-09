@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { Calendar } from 'lucide-react';
 import './DateRangeFilter.css';
 
 type DatePreset = 'today' | 'yesterday' | 'thisWeek' | 'lastWeek' | 'thisMonth' | 'lastMonth' | 'custom';
@@ -140,7 +141,7 @@ const DateRangeFilter: React.FC<DateRangeFilterProps> = ({
         className="drf-trigger"
         onClick={() => setShowDatePicker(!showDatePicker)}
       >
-        <span className="drf-calendar-icon">📅</span>
+        <Calendar size={16} className="drf-calendar-icon" />
         <span className="drf-date-text">{formatDateRange()}</span>
       </button>
 
