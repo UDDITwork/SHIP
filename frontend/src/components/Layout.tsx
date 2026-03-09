@@ -47,7 +47,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const lastWalletFetchRef = useRef<number>(0);
   const lastProfileFetchRef = useRef<number>(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchType, setSearchType] = useState<'order' | 'awb' | 'reference'>('order');
+  const [searchType, setSearchType] = useState<'order' | 'awb' | 'phone'>('order');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [walletBalance, setWalletBalance] = useState<WalletBalance | null>(null);
@@ -534,11 +534,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <select
               className="search-select"
               value={searchType}
-              onChange={(e) => setSearchType(e.target.value as 'order' | 'awb' | 'reference')}
+              onChange={(e) => setSearchType(e.target.value as 'order' | 'awb' | 'phone')}
             >
               <option value="order">Order ID</option>
               <option value="awb">AWB</option>
-              <option value="reference">Reference ID</option>
+              <option value="phone">Phone Number</option>
             </select>
             <input
               type="text"

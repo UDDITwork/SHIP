@@ -1319,7 +1319,7 @@ router.get('/', auth, [
             { awb: searchRegex },
             { waybill: searchRegex }
           ];
-        } else if (searchType === 'mobile') {
+        } else if (searchType === 'phone' || searchType === 'mobile') {
           filterQuery['customer_info.phone'] = searchRegex;
         } else {
           filterQuery.$or = [

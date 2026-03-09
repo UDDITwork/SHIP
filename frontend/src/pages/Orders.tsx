@@ -38,7 +38,7 @@ interface OrderFilters {
   dateFrom: string;
   dateTo: string;
   searchQuery: string;
-  searchType: 'reference' | 'awb' | 'order' | 'mobile';
+  searchType: 'order' | 'awb' | 'phone';
   paymentMode?: string;
   warehouseId?: string;
   state?: string;
@@ -54,7 +54,7 @@ interface BulkImportSummary {
   details: Array<{ row: number; order_id: string | null }>;
 }
 
-type OrderSearchType = 'reference' | 'awb' | 'order' | 'mobile';
+type OrderSearchType = 'order' | 'awb' | 'phone';
 
 const Orders: React.FC = () => {
   const navigate = useNavigate();
@@ -328,9 +328,9 @@ const Orders: React.FC = () => {
 
     const effectiveQuery = (searchParam || stateQuery || '').trim();
     const effectiveType: OrderSearchType =
-      typeParam && ['order', 'awb', 'reference', 'mobile'].includes(typeParam)
+      typeParam && ['order', 'awb', 'phone'].includes(typeParam)
         ? typeParam
-        : stateType && ['order', 'awb', 'reference', 'mobile'].includes(stateType)
+        : stateType && ['order', 'awb', 'phone'].includes(stateType)
         ? stateType
         : 'order';
 
@@ -1489,10 +1489,9 @@ const Orders: React.FC = () => {
               value={filters.searchType}
               onChange={(e) => setFilters({...filters, searchType: e.target.value as any})}
             >
-              <option value="reference">Search by Reference ID</option>
-              <option value="awb">Search by AWB</option>
               <option value="order">Search by Order ID</option>
-              <option value="mobile">Search by Mobile Number</option>
+              <option value="awb">Search by AWB</option>
+              <option value="phone">Search by Phone Number</option>
             </select>
             <input
               type="text"
