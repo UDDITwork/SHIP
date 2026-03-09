@@ -7,6 +7,7 @@ import { DataCache } from '../utils/dataCache';
 import { useAuth } from '../contexts/AuthContext';
 import ProfileDropdown from './ProfileDropdown';
 import ClientNotificationBell from './ClientNotificationBell';
+import RechargeModal from './RechargeModal';
 import './Layout.css';
 
 // Import sidebar vector icons
@@ -105,8 +106,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     }, 0);
   };
 
+  const [showRechargeModal, setShowRechargeModal] = useState(false);
+
   const handleRecharge = () => {
-    navigate('/billing');
+    setShowRechargeModal(true);
   };
 
   const handleRefreshWallet = async () => {
@@ -815,6 +818,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </main>
       </div>
 
+      <RechargeModal
+        isOpen={showRechargeModal}
+        onClose={() => setShowRechargeModal(false)}
+        currentBalance={walletBalance?.balance || (userProfile as any)?.wallet_balance || 0}
+      />
     </div>
   );
 };

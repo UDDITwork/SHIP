@@ -96,7 +96,7 @@ const ClientNotificationBell: React.FC = () => {
           navigate('/settings');
           break;
         case 'ticket':
-          navigate(`/support${entity.entity_id ? `/${entity.entity_id}` : ''}`);
+          navigate(entity.entity_id ? `/support/tickets/${entity.entity_id}` : '/support');
           break;
         case 'invoice':
           navigate('/invoices');

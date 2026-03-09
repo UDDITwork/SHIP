@@ -328,8 +328,8 @@ const Billing: React.FC = () => {
   const initiateRecharge = async () => {
     const amount = parseFloat(rechargeAmount);
 
-    if (isNaN(amount) || amount < 10 || amount > 50000) {
-      setRechargeError('Amount must be between Rs 10 and Rs 50,000');
+    if (isNaN(amount) || amount < 500 || amount > 50000) {
+      setRechargeError('Amount must be between Rs 500 and Rs 50,000');
       return;
     }
 
@@ -494,7 +494,7 @@ const Billing: React.FC = () => {
                   <input
                     type="number"
                     id="recharge-amount"
-                    placeholder="Enter amount (10 - 50,000)"
+                    placeholder="Enter amount (500 - 50,000)"
                     value={rechargeAmount}
                     onChange={(e) => {
                       setRechargeAmount(e.target.value);
@@ -507,7 +507,7 @@ const Billing: React.FC = () => {
                   {rechargeError && <div className="error-message">{rechargeError}</div>}
                 </div>
                 <div className="quick-amounts">
-                  {[100, 500, 1000, 2000, 5000].map((amt) => (
+                  {[500, 1000, 2000, 5000].map((amt) => (
                     <button
                       key={amt}
                       className={`quick-amount-btn ${rechargeAmount === amt.toString() ? 'selected' : ''}`}

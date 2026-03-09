@@ -2736,20 +2736,6 @@ router.post('/wallet-recharge', async (req, res) => {
 
     // Send notification to client about wallet adjustment
     try {
-      const notification = {
-        type: type === 'credit' ? 'wallet_recharge' : 'wallet_deduction',
-        title: type === 'credit' ? 'Wallet Recharged' : 'Wallet Deducted',
-        message: type === 'credit' 
-          ? `Your wallet has been recharged with ₹${amount}. New balance: ₹${liveUpdatedBalance}`
-          : `₹${amount} deducted from your wallet. New balance: ₹${liveUpdatedBalance}`,
-        client_id: client_id,
-        client_name: updatedClient.company_name,
-        amount: amount,
-        transaction_type: type,
-        new_balance: liveUpdatedBalance,
-        created_at: new Date()
-      };
-
       // Send real-time wallet balance update (raw WS for instant UI sync)
       websocketService.sendNotificationToClient(String(client_id), {
         type: 'wallet_balance_update',
@@ -3283,7 +3269,7 @@ router.post('/weight-discrepancies/bulk-import', upload.single('file'), async (r
               notification_type: 'billing_generated',
               heading: `Weight Discrepancy Charge: ₹${deduction_amount.toFixed(2)}`,
               message: `Weight discrepancy charge applied for AWB ${parsedAWB}. New balance: ₹${closingBalance.toFixed(2)}`,
-              related_entity: { entity_type: 'order' }
+              related_entity: { entity_type: 'order', entity_id: order._id }
             });
           } catch (notifError) {
             console.error('Failed to send notification:', notifError);
@@ -3558,7 +3544,7 @@ router.post('/weight-discrepancies/bulk-action', async (req, res) => {
               notification_type: 'billing_generated',
               heading: 'Weight Dispute Rejected',
               message: `Your dispute for AWB ${discrepancy.awb_number} has been rejected. Final weight applied.`,
-              related_entity: { entity_type: 'order' }
+              related_entity: { entity_type: 'order', entity_id: discrepancy.order_id }
             });
           } catch (_) {}
         }
@@ -3787,7 +3773,7 @@ router.put('/weight-discrepancies/:id/accept-dispute', async (req, res) => {
         notification_type: 'billing_generated',
         heading: 'Weight Dispute Accepted — Refund Issued',
         message: `Your dispute for AWB ${discrepancy.awb_number} has been accepted. ₹${refundAmount.toFixed(2)} refunded to your wallet.`,
-        related_entity: { entity_type: 'wallet' }
+        related_entity: { entity_type: 'wallet', entity_id: discrepancy.order_id }
       });
     } catch (notifError) {
       console.error('Failed to send notification:', notifError);
@@ -3846,7 +3832,7 @@ router.put('/weight-discrepancies/:id/reject-dispute', async (req, res) => {
         notification_type: 'billing_generated',
         heading: 'Weight Dispute Rejected',
         message: `Your dispute for AWB ${discrepancy.awb_number} has been rejected. Final weight charges applied.`,
-        related_entity: { entity_type: 'order' }
+        related_entity: { entity_type: 'order', entity_id: discrepancy.order_id }
       });
     } catch (notifError) {
       console.error('Failed to send notification:', notifError);

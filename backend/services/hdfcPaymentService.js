@@ -13,7 +13,7 @@ const initializeJuspay = () => {
   if (juspay) return juspay;
 
   const merchantId = process.env.HDFC_MERCHANT_ID;
-  const baseUrl = process.env.HDFC_BASE_URL || 'https://smartgateway.hdfcuat.bank.in';
+  const baseUrl = process.env.HDFC_BASE_URL || 'https://smartgateway.hdfc.bank.in';
   const keyUuid = process.env.HDFC_KEY_UUID;
   const privateKeyPath = process.env.HDFC_PRIVATE_KEY_PATH;
   const publicKeyPath = process.env.HDFC_PUBLIC_KEY_PATH;

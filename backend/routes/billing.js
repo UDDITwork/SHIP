@@ -379,7 +379,7 @@ router.post('/wallet/payment-return', handlePaymentReturn);
 router.post('/wallet/initiate-payment',
     auth,
     [
-        body('amount').isFloat({ min: 10, max: 50000 }).withMessage('Amount must be between ₹10 and ₹50,000')
+        body('amount').isFloat({ min: 500, max: 50000 }).withMessage('Amount must be between ₹500 and ₹50,000')
     ],
     async (req, res) => {
         try {
@@ -764,7 +764,7 @@ router.get('/wallet/payment-status/:order_id', auth, async (req, res) => {
 router.post('/wallet/add-money',
     auth,
     [
-        body('amount').isFloat({ min: 10, max: 50000 }).withMessage('Amount must be between ₹10 and ₹50,000'),
+        body('amount').isFloat({ min: 500, max: 50000 }).withMessage('Amount must be between ₹500 and ₹50,000'),
         body('payment_method').isIn(['upi', 'netbanking', 'card', 'wallet']).withMessage('Invalid payment method'),
         body('payment_details.upi_id').optional().matches(/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/).withMessage('Invalid UPI ID'),
         body('payment_details.card_last4').optional().isLength({ min: 4, max: 4 }).withMessage('Invalid card details')
