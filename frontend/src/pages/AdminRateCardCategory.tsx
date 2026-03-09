@@ -39,9 +39,40 @@ const AdminRateCardCategory: React.FC = () => {
     }
   };
 
+  const getDefaultRTOSlabs = () => [
+    { condition: 'RTO 0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO 250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Upto 5kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Add. 1 kgs till 10k', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Upto 10 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'RTO Add. 1 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } }
+  ];
+
+  const getDefaultDTOSlabs = () => [
+    { condition: 'DTO 0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO 250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO Upto 5kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO Add. 1 kgs till 10k', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO Upto 10 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+    { condition: 'DTO Add. 1 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } }
+  ];
+
   const handleEdit = () => {
     setIsEditing(true);
-    setEditedRateCard(JSON.parse(JSON.stringify(rateCard))); // Deep copy for editing
+    const clone = JSON.parse(JSON.stringify(rateCard)); // Deep copy for editing
+    // Ensure RTO slabs exist with RTO prefix
+    const rtoSlabs = clone.rtoCharges?.filter((s: any) => s.condition?.startsWith('RTO')) || [];
+    if (rtoSlabs.length === 0) {
+      clone.rtoCharges = getDefaultRTOSlabs();
+    }
+    // Ensure DTO slabs exist with DTO prefix
+    const dtoSlabs = clone.dtoCharges?.filter((s: any) => s.condition?.startsWith('DTO')) || [];
+    if (dtoSlabs.length === 0) {
+      clone.dtoCharges = getDefaultDTOSlabs();
+    }
+    setEditedRateCard(clone);
   };
 
   const handleCancel = () => {
