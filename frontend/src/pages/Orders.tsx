@@ -74,6 +74,16 @@ const Orders: React.FC = () => {
   const ordersRef = useRef<Order[]>([]);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Sync activeTab when navigating from Dashboard with ?status= param
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get('status');
+    const validTabs = ['new', 'ready_to_ship', 'pickups_manifests', 'in_transit', 'out_for_delivery', 'delivered', 'ndr', 'rto', 'all', 'lost'];
+    if (status && validTabs.includes(status)) {
+      setActiveTab(status as OrderStatus);
+    }
+  }, [location.search]);
+
   // Debug orders state changes
   useEffect(() => {
     console.log('📋 ORDERS STATE UPDATED:', {
