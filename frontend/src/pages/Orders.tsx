@@ -61,7 +61,14 @@ const Orders: React.FC = () => {
   const location = useLocation();
   
   // State Management
-  const [activeTab, setActiveTab] = useState<OrderStatus>('new');
+  // Read initial tab from URL query param (?status=all, ?status=in_transit, etc.)
+  const initialTab = (() => {
+    const params = new URLSearchParams(location.search);
+    const status = params.get('status');
+    const validTabs = ['new', 'ready_to_ship', 'pickups_manifests', 'in_transit', 'out_for_delivery', 'delivered', 'ndr', 'rto', 'all', 'lost'];
+    return status && validTabs.includes(status) ? status as OrderStatus : 'new';
+  })();
+  const [activeTab, setActiveTab] = useState<OrderStatus>(initialTab);
   const [orderType, setOrderType] = useState<OrderType>('forward');
   const [orders, setOrders] = useState<Order[]>([]);
   const ordersRef = useRef<Order[]>([]);
