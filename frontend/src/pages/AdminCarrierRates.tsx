@@ -462,8 +462,10 @@ const AdminCarrierRates: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {(displayRate.rtoCharges?.filter(s => s.condition?.startsWith('RTO')) || []).length > 0 ? (
-                        displayRate.rtoCharges.filter(s => s.condition?.startsWith('RTO')).map((slab, index) => (
+                      {(() => {
+                        const rtoSlabs = displayRate.rtoCharges?.filter(s => s.condition?.startsWith('RTO')) || [];
+                        const slabsToShow = rtoSlabs.length > 0 ? rtoSlabs : getDefaultRTOSlabs();
+                        return slabsToShow.map((slab, index) => (
                           <tr key={index}>
                             <td className="slab-name">{slab.condition}</td>
                             {ZONES.map(zone => (
@@ -484,14 +486,8 @@ const AdminCarrierRates: React.FC = () => {
                               </td>
                             ))}
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={ZONES.length + 1} style={{ textAlign: 'center', color: '#999', padding: '16px' }}>
-                            No RTO charges set yet — click Edit to add RTO rates
-                          </td>
-                        </tr>
-                      )}
+                        ));
+                      })()}
                     </tbody>
                   </table>
                 </div>

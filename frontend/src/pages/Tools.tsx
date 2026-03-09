@@ -357,25 +357,25 @@ const PriceListTab: React.FC<{ userCategory: string; onRefreshUserData: () => vo
                     ? rateCardData.dtoCharges
                     : (rateCardData.rtoCharges && rateCardData.rtoCharges.length > 0 && rateCardData.rtoCharges[0]?.condition?.startsWith('DTO'))
                       ? rateCardData.rtoCharges
-                      : [];
-                  return dtoData.length > 0 ? (
-                    dtoData.map((charge, index) => (
-                      <tr key={index}>
-                        <td className="weight-slab">{charge.condition}</td>
-                        {zones.map(zone => (
-                          <td key={zone} className="price-cell">
-                            ₹{charge.zones && charge.zones[zone] ? charge.zones[zone] : '-'}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={zones.length + 1} className="text-center text-gray-500">
-                        No DTO charges data available
-                      </td>
+                      : [
+                          { condition: 'DTO 0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                          { condition: 'DTO 250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                          { condition: 'DTO Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                          { condition: 'DTO Upto 5kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                          { condition: 'DTO Add. 1 kgs till 10k', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                          { condition: 'DTO Upto 10 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                          { condition: 'DTO Add. 1 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } }
+                        ];
+                  return dtoData.map((charge, index) => (
+                    <tr key={index}>
+                      <td className="weight-slab">{charge.condition}</td>
+                      {zones.map(zone => (
+                        <td key={zone} className="price-cell">
+                          ₹{charge.zones && charge.zones[zone] ? charge.zones[zone] : 0}
+                        </td>
+                      ))}
                     </tr>
-                  );
+                  ));
                 })()}
               </tbody>
             </table>
@@ -397,28 +397,28 @@ const PriceListTab: React.FC<{ userCategory: string; onRefreshUserData: () => vo
               </thead>
               <tbody>
                 {(() => {
-                  // Only show RTO data if rtoCharges has RTO-prefixed conditions
+                  // Show RTO data if available, else show default slabs with zero values
                   const rtoData = rateCardData.rtoCharges && rateCardData.rtoCharges.length > 0 && rateCardData.rtoCharges[0]?.condition?.startsWith('RTO')
                     ? rateCardData.rtoCharges
-                    : [];
-                  return rtoData.length > 0 ? (
-                    rtoData.map((charge, index) => (
-                      <tr key={index}>
-                        <td className="weight-slab">{charge.condition}</td>
-                        {zones.map(zone => (
-                          <td key={zone} className="price-cell">
-                            ₹{charge.zones && charge.zones[zone] ? charge.zones[zone] : '-'}
-                          </td>
-                        ))}
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan={zones.length + 1} className="text-center text-gray-500">
-                        No RTO charges data available — admin needs to set RTO rates
-                      </td>
+                    : [
+                        { condition: 'RTO 0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                        { condition: 'RTO 250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                        { condition: 'RTO Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                        { condition: 'RTO Upto 5kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                        { condition: 'RTO Add. 1 kgs till 10k', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                        { condition: 'RTO Upto 10 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                        { condition: 'RTO Add. 1 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } }
+                      ];
+                  return rtoData.map((charge, index) => (
+                    <tr key={index}>
+                      <td className="weight-slab">{charge.condition}</td>
+                      {zones.map(zone => (
+                        <td key={zone} className="price-cell">
+                          ₹{charge.zones && charge.zones[zone] ? charge.zones[zone] : 0}
+                        </td>
+                      ))}
                     </tr>
-                  );
+                  ));
                 })()}
               </tbody>
             </table>

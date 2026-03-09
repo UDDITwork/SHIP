@@ -306,8 +306,19 @@ const AdminRateCardCategory: React.FC = () => {
                 </tr>
               </thead>
               <tbody>
-                {(displayCard.rtoCharges?.filter(s => s.condition?.startsWith('RTO')) || []).length > 0 ? (
-                  displayCard.rtoCharges.filter(s => s.condition?.startsWith('RTO')).map((slab, index) => (
+                {(() => {
+                  const rtoSlabs = displayCard.rtoCharges?.filter(s => s.condition?.startsWith('RTO')) || [];
+                  const defaultRTOSlabs = [
+                    { condition: 'RTO 0-250 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                    { condition: 'RTO 250-500 gm', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                    { condition: 'RTO Add. 500 gm till 5kg', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                    { condition: 'RTO Upto 5kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                    { condition: 'RTO Add. 1 kgs till 10k', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                    { condition: 'RTO Upto 10 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } },
+                    { condition: 'RTO Add. 1 kgs', zones: { A: 0, B: 0, C: 0, D: 0, E: 0, F: 0 } }
+                  ];
+                  const slabsToShow = rtoSlabs.length > 0 ? rtoSlabs : defaultRTOSlabs;
+                  return slabsToShow.map((slab, index) => (
                     <tr key={index}>
                       <td className="condition-cell">{slab.condition}</td>
                       {(['A', 'B', 'C', 'D', 'E', 'F'] as const).map((zone) => (
@@ -327,14 +338,8 @@ const AdminRateCardCategory: React.FC = () => {
                         </td>
                       ))}
                     </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', color: '#999', padding: '16px' }}>
-                      No RTO charges set yet — edit to add RTO rates
-                    </td>
-                  </tr>
-                )}
+                  ));
+                })()}
               </tbody>
             </table>
           </div>
