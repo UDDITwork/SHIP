@@ -55,3 +55,4 @@ Component*.svg
 *-specification.svg
 EXACT-FIGMA-SHAPE.svg
 *.xlsx
+!backend/public/*.xlsx
