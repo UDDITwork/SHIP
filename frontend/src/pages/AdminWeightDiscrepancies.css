@@ -122,8 +122,8 @@
   color: white;
 }
 
-/* Bulk Action Bar */
-.bulk-action-bar {
+/* Bulk Action Bar — scoped to prevent leaking into client BulkActionBar component */
+.admin-weight-discrepancies .bulk-action-bar {
   position: sticky;
   top: 0;
   z-index: 10;
@@ -139,7 +139,7 @@
   flex-wrap: wrap;
 }
 
-.bulk-action-bar span {
+.admin-weight-discrepancies .bulk-action-bar span {
   font-size: 14px;
   font-weight: 600;
 }
