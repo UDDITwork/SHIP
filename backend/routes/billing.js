@@ -369,8 +369,23 @@ const handlePaymentReturn = async (req, res) => {
 };
 
 // Handle both GET and POST from HDFC
-router.get('/wallet/payment-return', handlePaymentReturn);
-router.post('/wallet/payment-return', handlePaymentReturn);
+// Wrap in explicit error catcher to ALWAYS redirect, never leak JSON to user
+const safePaymentReturn = (req, res, next) => {
+    const frontendUrl = process.env.NODE_ENV === 'production'
+        ? 'https://shipsarthi.com'
+        : 'http://localhost:3000';
+
+    handlePaymentReturn(req, res, next).catch((err) => {
+        console.error('CRITICAL: Payment return unhandled error:', err.message);
+        try {
+            return res.redirect(`${frontendUrl}/billing/payment-confirmation?status=error&reason=unhandled_exception`);
+        } catch (e) {
+            return res.send(`<html><head><meta http-equiv="refresh" content="0;url=${frontendUrl}/billing/payment-confirmation?status=error"><script>window.location.href='${frontendUrl}/billing/payment-confirmation?status=error';</script></head><body>Redirecting...</body></html>`);
+        }
+    });
+};
+router.get('/wallet/payment-return', safePaymentReturn);
+router.post('/wallet/payment-return', safePaymentReturn);
 
 /**
  * Initiate wallet recharge via HDFC SmartGateway
