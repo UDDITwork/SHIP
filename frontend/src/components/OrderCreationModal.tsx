@@ -916,7 +916,9 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
   ]);
 
   // Mandatory shipping charges calculation before final buttons appear
-  const calculateFinalShippingCharges = async () => {
+  const calculateFinalShippingCharges = async (serviceType?: 'surface' | 'air') => {
+    const effectiveServiceType = serviceType || formData.service_type;
+    const effectiveShippingMode = effectiveServiceType === 'air' ? 'Express' : 'Surface';
     // Validate required fields
     if (
       !formData.delivery_address.pincode || formData.delivery_address.pincode.length !== 6 ||
@@ -1000,11 +1002,11 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         // Don't provide zone - let backend get it from Delhivery API using pincodes
         pickup_pincode: formData.pickup_address.pincode,
         delivery_pincode: formData.delivery_address.pincode,
-        shipping_mode: (formData.shipping_mode || 'Surface') as 'Surface' | 'Express' | 'S' | 'E',
+        shipping_mode: effectiveShippingMode as 'Surface' | 'Express' | 'S' | 'E',
         payment_mode: formData.payment_info.payment_mode as 'Prepaid' | 'COD' | 'Pre-paid',
         cod_amount: formData.payment_info.payment_mode === 'COD' ? formData.payment_info.cod_amount : 0,
-        order_type: orderType === 'reverse' ? 'rto' : 'forward', // Use 'rto' for reverse orders, 'forward' for forward orders
-        service_type: formData.service_type as 'surface' | 'air' // Delhivery Surface or Air
+        order_type: orderType === 'reverse' ? 'rto' : 'forward',
+        service_type: effectiveServiceType as 'surface' | 'air'
       };
 
       const response = await shippingService.calculateShippingCharges(calculationRequest);
@@ -1060,6 +1062,18 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         walletBalance,
         insufficientBalance
       });
+
+      // Sync carrier modal rates if open
+      if (serviceType) {
+        setCarrierRates({
+          calculating: false,
+          zone: response.zone || null,
+          charges: response.totalCharges,
+          walletBalance,
+          insufficientBalance,
+          error: null
+        });
+      }
       
     } catch (error: any) {
       console.error('[Error] Final shipping charges calculation failed:', error);
@@ -1071,40 +1085,74 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
         walletBalance: null,
         insufficientBalance: false
       });
+
+      // Sync carrier modal error if open
+      if (serviceType) {
+        setCarrierRates({
+          calculating: false,
+          zone: null,
+          charges: 0,
+          walletBalance: null,
+          insufficientBalance: false,
+          error: error.message || 'Failed to calculate shipping charges.'
+        });
+      }
     }
   };
 
-  // Handle Save button (no AWB generation)
+  // Handle Save button (no AWB generation) — no shipping calc needed
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Ensure shipping charges are calculated before proceeding
-    if (!finalShippingCalculation.completed || formData.payment_info.shipping_charges === 0) {
-      showNotification('Please wait for shipping charges to be calculated before saving.', 'error');
-      await calculateFinalShippingCharges();
-      return;
-    }
-    // Check wallet balance before proceeding
-    if (finalShippingCalculation.insufficientBalance) {
-      showNotification(`Insufficient Wallet Balance. Your balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}). Please ask admin to recharge your wallet.`, 'error', 8000);
-      return;
-    }
     await handleOrderSubmission(false); // generate_awb = false
   };
 
-  // Handle Save & Assign Order button (with AWB generation)
+  // Carrier selection modal state
+  const [showCarrierModal, setShowCarrierModal] = useState(false);
+  const [selectedCarrier, setSelectedCarrier] = useState<'surface' | 'air' | null>(null);
+  const [carrierRates, setCarrierRates] = useState<{
+    calculating: boolean;
+    zone: string | null;
+    charges: number;
+    walletBalance: number | null;
+    insufficientBalance: boolean;
+    error: string | null;
+  }>({ calculating: false, zone: null, charges: 0, walletBalance: null, insufficientBalance: false, error: null });
+
+  // Handle Assign Courier button — opens carrier selection modal
   const handleSaveAndAssign = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Ensure shipping charges are calculated before proceeding
-    if (!finalShippingCalculation.completed || formData.payment_info.shipping_charges === 0) {
-      showNotification('Please wait for shipping charges to be calculated before saving.', 'error');
-      await calculateFinalShippingCharges();
-      return;
+    // Reset carrier modal state
+    setSelectedCarrier(null);
+    setCarrierRates({ calculating: false, zone: null, charges: 0, walletBalance: null, insufficientBalance: false, error: null });
+    setShowCarrierModal(true);
+  };
+
+  // Handle carrier selection — auto-calculate rates
+  const handleCarrierSelect = async (carrier: 'surface' | 'air') => {
+    setSelectedCarrier(carrier);
+    setCarrierRates({ calculating: true, zone: null, charges: 0, walletBalance: null, insufficientBalance: false, error: null });
+
+    try {
+      await calculateFinalShippingCharges(carrier);
+      // After calculation, read the results from finalShippingCalculation state
+    } catch (err: any) {
+      setCarrierRates(prev => ({ ...prev, calculating: false, error: err.message || 'Calculation failed' }));
     }
-    // Check wallet balance before proceeding
-    if (finalShippingCalculation.insufficientBalance) {
-      showNotification(`Insufficient Wallet Balance. Your balance (₹${finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}) is less than shipping charges (₹${formData.payment_info.shipping_charges.toFixed(2)}). Please ask admin to recharge your wallet.`, 'error', 8000);
-      return;
-    }
+  };
+
+  // Confirm carrier and generate AWB
+  const handleConfirmCarrier = async () => {
+    if (!selectedCarrier) return;
+    const shippingMode = selectedCarrier === 'air' ? 'Express' : 'Surface';
+    // Update formData synchronously via callback, then submit
+    formData.shipping_mode = shippingMode;
+    formData.service_type = selectedCarrier;
+    setFormData(prev => ({
+      ...prev,
+      shipping_mode: shippingMode,
+      service_type: selectedCarrier
+    }));
+    setShowCarrierModal(false);
     await handleOrderSubmission(true); // generate_awb = true
   };
 
@@ -1951,28 +1999,6 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                   </div>
                 </div>
 
-                {/* Carrier / Shipping Method Selection */}
-                {availableCarriers.length > 0 && (
-                  <div className="form-row">
-                    <div className="form-group">
-                      <label>Shipping Method *</label>
-                      <div className="carrier-options-row">
-                        {availableCarriers.map(carrier => (
-                          <button
-                            key={carrier._id}
-                            type="button"
-                            className={`carrier-select-card ${formData.service_type === carrier.service_type ? 'selected' : ''}`}
-                            onClick={() => setFormData(prev => ({ ...prev, service_type: carrier.service_type }))}
-                          >
-                            <span className="cscard-name">{carrier.display_name}</span>
-                            <span className="cscard-type">{carrier.service_type}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 <div className="form-row">
                   <div className="form-group">
                     <label>Payment Type *</label>
@@ -2036,26 +2062,6 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                   </div>
                 )}
 
-                <div className="form-row">
-                  <div className="form-group">
-                    <label>
-                      Shipping Charges *
-                    </label>
-                    <div className="price-input">
-                      <span className="currency-symbol">₹</span>
-                      <input
-                        type="number"
-                        value={formData.payment_info.shipping_charges || 0}
-                        onChange={(e) => handleNestedInputChange('payment_info', 'shipping_charges', parseFloat(e.target.value) || 0)}
-                        placeholder="Enter shipping charges manually"
-                        min="0"
-                        step="0.01"
-                        required
-                      />
-                    </div>
-                    <small className="form-note">Enter shipping charges manually. Charges will be calculated automatically in the final step before saving.</small>
-                  </div>
-                </div>
             </div>
 
             {/* Package Type & Dimensions Section */}
@@ -2513,240 +2519,35 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                 </div>
               )}
               
-              {/* Shipping Charges Calculation Section */}
-              {formData.pickup_address.pincode && formData.delivery_address.pincode && formData.package_info.weight > 0 && (
-                <div style={{ marginTop: '20px', padding: '16px', backgroundColor: '#f8f9fa', borderRadius: '8px', border: '1px solid #e0e0e0' }}>
-                  <div className="section-header" style={{ marginBottom: '12px' }}>
-                    <h4> Shipping Charges Calculation</h4>
-                  </div>
-                  
-                  {finalShippingCalculation.calculating ? (
-                    <div style={{ textAlign: 'center', padding: '20px' }}>
-                      <div style={{ fontSize: '16px', color: '#666', marginBottom: '10px' }}>
-                        Refresh Calculating shipping charges...
-                      </div>
-                      <div style={{ fontSize: '14px', color: '#999' }}>
-                        Fetching zone from Delhivery API and calculating {orderType === 'reverse' ? 'RTO' : 'forward'} charges based on your rate card...
-                      </div>
-                    </div>
-                  ) : finalShippingCalculation.completed && !finalShippingCalculation.insufficientBalance ? (
-                    <div style={{ padding: '15px', backgroundColor: '#d4edda', borderRadius: '6px', border: '1px solid #c3e6cb' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                        <div>
-                          <strong style={{ color: '#155724', fontSize: '16px' }}>[Success] Shipping Charges Calculated</strong>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={calculateFinalShippingCharges}
-                          style={{
-                            padding: '6px 12px',
-                            fontSize: '12px',
-                            backgroundColor: '#2C4563',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Refresh Recalculate
-                        </button>
-                      </div>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
-                        <div>
-                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Zone</div>
-                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#155724' }}>
-                            {finalShippingCalculation.zone || 'N/A'}
-                          </div>
-                        </div>
-                        <div>
-                          <div style={{ fontSize: '12px', color: '#666', marginBottom: '4px' }}>Shipping Charges</div>
-                          <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#155724' }}>
-                            ₹{formData.payment_info.shipping_charges.toFixed(2)}
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
-                        <div>Pickup: {formData.pickup_address.pincode} | Delivery: {formData.delivery_address.pincode}</div>
-                        <div>Weight: {formData.package_info.weight} kg | User Category: {userCategory}</div>
-                        <div>Order Type: <strong>{orderType === 'reverse' ? 'Reverse (RTO)' : 'Forward'}</strong> | Charges: <strong>{orderType === 'reverse' ? 'RTO Charges' : 'Forward Charges'}</strong></div>
-                        {finalShippingCalculation.walletBalance !== null && (
-                          <div style={{ marginTop: '8px', padding: '8px', backgroundColor: '#f0f8ff', borderRadius: '4px' }}>
-                            Wallet Balance: <strong>Rs.{finalShippingCalculation.walletBalance.toFixed(2)}</strong> |
-                            After Deduction: <strong>Rs.{(finalShippingCalculation.walletBalance - formData.payment_info.shipping_charges).toFixed(2)}</strong>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ) : finalShippingCalculation.insufficientBalance ? (
-                    <div style={{ padding: '15px', backgroundColor: '#fff3cd', borderRadius: '6px', border: '2px solid #ffc107' }}>
-                      <div style={{ color: '#856404', marginBottom: '15px' }}>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
-                          [Warning] Insufficient Wallet Balance
-                        </div>
-                        <div style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '12px' }}>
-                          <div><strong>Wallet Balance:</strong> ₹{finalShippingCalculation.walletBalance?.toFixed(2) || '0.00'}</div>
-                          <div><strong>Shipping Charges Required:</strong> ₹{formData.payment_info.shipping_charges.toFixed(2)}</div>
-                          <div style={{ marginTop: '8px', color: '#dc3545', fontWeight: 'bold' }}>
-                            <strong>Shortfall:</strong> ₹{(formData.payment_info.shipping_charges - (finalShippingCalculation.walletBalance || 0)).toFixed(2)}
-                          </div>
-                        </div>
-                        <div style={{ 
-                          padding: '12px', 
-                          backgroundColor: '#fff', 
-                          borderRadius: '6px', 
-                          border: '1px solid #ffc107',
-                          fontSize: '14px',
-                          color: '#856404',
-                          marginTop: '12px'
-                        }}>
-                          <strong>[Error] Order cannot proceed.</strong><br/>
-                          Your wallet balance is less than the shipping charges calculated.<br/>
-                          <strong>Please ask admin to recharge your wallet</strong> before creating this order.
-                        </div>
-                      </div>
-                      <div style={{ display: 'flex', gap: '10px', marginTop: '15px' }}>
-                        <button
-                          type="button"
-                          onClick={calculateFinalShippingCharges}
-                          style={{
-                            padding: '8px 16px',
-                            fontSize: '14px',
-                            backgroundColor: '#2C4563',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Refresh Recalculate
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            // Refresh wallet balance
-                            walletService.getWalletBalance(false).then(walletData => {
-                              calculateFinalShippingCharges();
-                            });
-                          }}
-                          style={{
-                            padding: '8px 16px',
-                            fontSize: '14px',
-                            backgroundColor: '#6c757d',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Refresh Refresh Balance
-                        </button>
-                      </div>
-                    </div>
-                  ) : finalShippingCalculation.error ? (
-                    <div style={{ padding: '15px', backgroundColor: '#f8d7da', borderRadius: '6px', border: '1px solid #f5c6cb' }}>
-                      <div style={{ color: '#721c24', marginBottom: '10px' }}>
-                        <strong>[Error] Calculation Failed</strong>
-                      </div>
-                      <div style={{ color: '#721c24', fontSize: '14px', marginBottom: '15px' }}>
-                        {finalShippingCalculation.error}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={calculateFinalShippingCharges}
-                        style={{
-                          padding: '8px 16px',
-                          fontSize: '14px',
-                          backgroundColor: '#2C4563',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Refresh Try Again
-                      </button>
-                    </div>
-                  ) : (
-                    <div style={{ textAlign: 'center', padding: '20px' }}>
-                      <div style={{ fontSize: '14px', color: '#666', marginBottom: '15px' }}>
-                        Click the button below to calculate shipping charges before proceeding
-                      </div>
-                      <button
-                        type="button"
-                        onClick={calculateFinalShippingCharges}
-                        style={{
-                          padding: '12px 24px',
-                          fontSize: '16px',
-                          backgroundColor: '#2C4563',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          fontWeight: 'bold'
-                        }}
-                      >
-                         Calculate Shipping Charges
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Shipping Charges Calculation Section removed — now handled in Carrier Selection Modal */}
             </div>
 
           {/* Action Buttons */}
           <div className="page-footer">
             <div className="button-group">
-              {/* Show warning if shipping charges not calculated */}
-              {!finalShippingCalculation.completed && !finalShippingCalculation.insufficientBalance && !finalShippingCalculation.error && (
-                <div style={{
-                  padding: '12px 16px',
-                  backgroundColor: '#fff3cd',
-                  border: '1px solid #ffc107',
-                  borderRadius: '6px',
-                  color: '#856404',
-                  fontSize: '11px',
-                  textAlign: 'center'
-                }}>
-                  [Warning] Please calculate shipping charges above before proceeding
-                </div>
-              )}
-              {finalShippingCalculation.insufficientBalance && (
-                <div style={{
-                  padding: '12px 16px',
-                  backgroundColor: '#fff3cd',
-                  border: '2px solid #ffc107',
-                  borderRadius: '6px',
-                  color: '#856404',
-                  fontSize: '11px',
-                  textAlign: 'center',
-                  fontWeight: 'bold'
-                }}>
-                  [Warning] Insufficient wallet balance detected above. Please recharge your wallet before proceeding.
-                </div>
-              )}
               <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-end' }}>
                 {onBack && (
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={onBack}
                     className="btn btn-secondary"
                   >
                     Cancel
                   </button>
                 )}
-                <button 
-                  type="button" 
-                  onClick={handleSave} 
-                  className="btn btn-secondary" 
-                  disabled={loading || !finalShippingCalculation.completed || formData.payment_info.shipping_charges === 0 || finalShippingCalculation.insufficientBalance}
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  className="btn btn-secondary"
+                  disabled={loading}
                 >
                   {loading ? 'Saving...' : 'Save'}
                 </button>
-                <button 
-                  type="button" 
-                  onClick={handleSaveAndAssign} 
-                  className="btn btn-success" 
-                  disabled={loading || !finalShippingCalculation.completed || formData.payment_info.shipping_charges === 0 || finalShippingCalculation.insufficientBalance}
+                <button
+                  type="button"
+                  onClick={handleSaveAndAssign}
+                  className="btn btn-success"
+                  disabled={loading}
                 >
                   {loading ? 'Creating Order...' : 'Assign Courier'}
                 </button>
@@ -2754,6 +2555,106 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
             </div>
           </div>
         </form>
+
+        {/* Carrier Selection Modal */}
+        {showCarrierModal && (
+          <div className="carrier-modal-overlay" onClick={() => { setShowCarrierModal(false); setSelectedCarrier(null); setCarrierRates({ calculating: false, zone: null, charges: 0, walletBalance: null, insufficientBalance: false, error: null }); }}>
+            <div className="carrier-modal" onClick={(e) => e.stopPropagation()}>
+              <div className="carrier-modal-header">
+                <h3>Select Carrier</h3>
+                <button className="carrier-modal-close" onClick={() => { setShowCarrierModal(false); setSelectedCarrier(null); setCarrierRates({ calculating: false, zone: null, charges: 0, walletBalance: null, insufficientBalance: false, error: null }); }}>✕</button>
+              </div>
+
+              <div className="carrier-modal-body">
+                <div className="carrier-options">
+                  <div
+                    className={`carrier-card ${selectedCarrier === 'surface' ? 'selected' : ''}`}
+                    onClick={() => handleCarrierSelect('surface')}
+                  >
+                    <div className="carrier-card-icon">🚚</div>
+                    <div className="carrier-card-title">Delhivery Surface</div>
+                    <div className="carrier-card-desc">Standard delivery via road</div>
+                    {selectedCarrier === 'surface' && carrierRates.calculating && (
+                      <div className="carrier-card-loading">
+                        <div className="spinner-small"></div>
+                        <span>Calculating rates...</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div
+                    className={`carrier-card ${selectedCarrier === 'air' ? 'selected' : ''}`}
+                    onClick={() => handleCarrierSelect('air')}
+                  >
+                    <div className="carrier-card-icon">✈️</div>
+                    <div className="carrier-card-title">Delhivery Air</div>
+                    <div className="carrier-card-desc">Express delivery via air</div>
+                    {selectedCarrier === 'air' && carrierRates.calculating && (
+                      <div className="carrier-card-loading">
+                        <div className="spinner-small"></div>
+                        <span>Calculating rates...</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {carrierRates.error && (
+                  <div className="carrier-error">
+                    ❌ {carrierRates.error}
+                  </div>
+                )}
+
+                {selectedCarrier && !carrierRates.calculating && carrierRates.zone && !carrierRates.error && (
+                  <div className="carrier-rates-display">
+                    <div className="rate-row">
+                      <span className="rate-label">Zone</span>
+                      <span className="rate-value">{carrierRates.zone}</span>
+                    </div>
+                    <div className="rate-row">
+                      <span className="rate-label">Shipping Charges</span>
+                      <span className="rate-value">₹{carrierRates.charges.toFixed(2)}</span>
+                    </div>
+                    {carrierRates.walletBalance !== null && (
+                      <>
+                        <div className="rate-row">
+                          <span className="rate-label">Wallet Balance</span>
+                          <span className="rate-value">₹{carrierRates.walletBalance.toFixed(2)}</span>
+                        </div>
+                        <div className="rate-row">
+                          <span className="rate-label">Balance After Deduction</span>
+                          <span className={`rate-value ${carrierRates.insufficientBalance ? 'insufficient' : ''}`}>
+                            ₹{(carrierRates.walletBalance - carrierRates.charges).toFixed(2)}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                    {carrierRates.insufficientBalance && (
+                      <div className="carrier-warning">
+                        ⚠️ Insufficient wallet balance. Please recharge your wallet to proceed.
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="carrier-modal-footer">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => { setShowCarrierModal(false); setSelectedCarrier(null); setCarrierRates({ calculating: false, zone: null, charges: 0, walletBalance: null, insufficientBalance: false, error: null }); }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="btn btn-success"
+                  disabled={!selectedCarrier || carrierRates.calculating || !carrierRates.zone || carrierRates.insufficientBalance || loading}
+                  onClick={handleConfirmCarrier}
+                >
+                  {loading ? 'Generating AWB...' : 'Confirm & Generate AWB'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
