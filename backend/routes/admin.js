@@ -27,6 +27,7 @@ const logger = require('../utils/logger');
 const websocketService = require('../services/websocketService');
 const cloudinaryService = require('../services/cloudinaryService');
 const excelService = require('../services/excelService');
+const trackingService = require('../services/trackingService');
 
 const STATUS_KEYS = ['open', 'in_progress', 'resolved', 'closed', 'escalated'];
 const PRIORITY_KEYS = ['urgent', 'high', 'medium', 'low'];
@@ -4513,6 +4514,23 @@ router.post('/remittances/upload-cod', upload.single('file'), async (req, res) =
       });
     }
 
+    // Auto-sync order status from Delhivery API for all valid AWBs
+    const syncResults = { synced: 0, failed: 0 };
+    const validAwbs = validRows.map(r => r.awb);
+    if (validAwbs.length > 0) {
+      logger.info(`🔄 Auto-syncing ${validAwbs.length} order statuses after COD remittance upload...`);
+      for (const awb of validAwbs) {
+        try {
+          await trackingService.syncOrderByAWB(awb);
+          syncResults.synced++;
+        } catch (syncErr) {
+          logger.warn(`⚠️ Status sync failed for AWB ${awb}:`, syncErr.message);
+          syncResults.failed++;
+        }
+      }
+      logger.info(`✅ Status sync complete: ${syncResults.synced} synced, ${syncResults.failed} failed`);
+    }
+
     // Build error report as downloadable Excel if errors exist
     let errorReportBuffer = null;
     if (errors.length > 0) {
@@ -4535,7 +4553,8 @@ router.post('/remittances/upload-cod', upload.single('file'), async (req, res) =
         remittances_created: createdRemittances.length,
         remittances: createdRemittances,
         errors: errors,
-        error_report_base64: errorReportBuffer
+        error_report_base64: errorReportBuffer,
+        status_sync: syncResults
       }
     });
   } catch (error) {
