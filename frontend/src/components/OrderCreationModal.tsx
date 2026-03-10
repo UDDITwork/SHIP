@@ -2069,7 +2069,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
 
                 <div className="tip-box">
                   <span className="tip-icon">Tip:</span>
-                  <span>Tip: Add correct values to avoid weight discrepancy.</span>
+                  <span>Add correct values to avoid weight discrepancy.</span>
                 </div>
 
                 <div className="form-row">

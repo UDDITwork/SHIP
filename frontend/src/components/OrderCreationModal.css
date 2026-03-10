@@ -828,16 +828,16 @@
   background: #002B59;
   color: #FFFFFF;
   border: none;
-  padding: 11px 20px;
+  padding: 10px 28px;
   border-radius: 6px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   transition: background 0.2s;
-  width: 100%;
-  text-align: center;
-  display: block;
-  box-sizing: border-box;
+  display: inline-block;
+  width: fit-content !important;
+  max-width: fit-content;
+  align-self: flex-start;
 }
 
 .add-address-btn:hover {
