@@ -43,6 +43,15 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
       'https://shipsarthi.com'
     ];
 
+// Skip CORS for HDFC payment gateway callback — the bank POSTs a form from its own
+// domain, so the browser sends an Origin header that isn't in our allowed list.
+// This is a browser navigation/form-submit, NOT an XHR call, so CORS doesn't apply.
+app.use('/api/billing/wallet/payment-return', (req, res, next) => {
+  // Remove origin so cors middleware won't reject it
+  delete req.headers.origin;
+  next();
+});
+
 // CORS middleware - MUST be before helmet
 app.use(cors({
   origin: function (origin, callback) {
