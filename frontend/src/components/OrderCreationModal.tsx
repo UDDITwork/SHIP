@@ -2384,7 +2384,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                     </div>
                   )}
                   
-                  <div style={{ marginTop: '12px', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div style={{ marginTop: '12px' }}>
                     <button
                       type="button"
                       onClick={handleAddAddress}
@@ -2400,13 +2400,16 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                           setSearchQuery('');
                         }}
                         style={{
+                          marginTop: '8px',
                           padding: '8px 16px',
-                          fontSize: '12px',
+                          fontSize: '13px',
                           backgroundColor: '#f5f5f5',
                           color: '#666',
                           border: '1px solid #ddd',
                           borderRadius: '6px',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          width: '100%',
+                          textAlign: 'center' as const
                         }}
                       >
                         Clear Selection
