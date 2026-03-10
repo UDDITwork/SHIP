@@ -89,12 +89,13 @@
   background: white;
   border-radius: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  overflow: hidden;
+  overflow-x: auto;
   margin-bottom: 1.5rem;
 }
 
 .tickets-table {
   width: 100%;
+  min-width: 1200px;
   border-collapse: collapse;
 }
 
