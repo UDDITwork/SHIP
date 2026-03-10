@@ -14,7 +14,7 @@ export interface ShippingCalculationRequest {
   shipping_mode?: 'Surface' | 'Express' | 'S' | 'E'; // For zone calculation
   payment_mode?: 'Prepaid' | 'COD' | 'Pre-paid'; // For zone calculation
   cod_amount?: number;
-  order_type?: 'forward' | 'rto';
+  order_type?: 'forward' | 'rto' | 'dto';
   service_type?: 'surface' | 'air'; // Delhivery Surface or Air (affects rate card selection)
   declared_value?: number; // Shipment/product value for insurance and billing
 }
@@ -83,6 +83,7 @@ class ShippingService {
   async calculateShippingCharges(request: ShippingCalculationRequest): Promise<{
     forwardCharges: number;
     rtoCharges: number;
+    dtoCharges: number;
     codCharges: number;
     totalCharges: number;
     volumetricWeight: number;
@@ -93,6 +94,7 @@ class ShippingService {
       const response = await apiService.post<{ success: boolean; data: {
         forwardCharges: number;
         rtoCharges: number;
+        dtoCharges: number;
         codCharges: number;
         totalCharges: number;
         volumetricWeight: number;

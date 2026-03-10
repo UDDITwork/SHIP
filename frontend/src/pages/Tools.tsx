@@ -24,6 +24,7 @@ interface ShippingCalculationResult {
   calculation_result: {
     forwardCharges: number;
     rtoCharges: number;
+    dtoCharges: number;
     codCharges: number;
     totalCharges: number;
     volumetricWeight: number;
@@ -39,6 +40,7 @@ interface ShippingCalculationResult {
 interface ShippingCalculationResponse {
   forwardCharges: number;
   rtoCharges: number;
+  dtoCharges: number;
   codCharges: number;
   totalCharges: number;
   volumetricWeight: number;
@@ -666,7 +668,7 @@ const Tools: React.FC = () => {
         delivery_pincode: formData.deliveryPincode,
         payment_mode: formData.paymentType === 'cod' ? 'COD' : 'Prepaid',
         cod_amount: codAmount,
-        order_type: formData.shipmentType === 'return' ? 'rto' : 'forward'
+        order_type: formData.shipmentType === 'reverse' ? 'dto' : 'forward'
       };
 
       // Use the intelligent rate card calculation
@@ -763,27 +765,30 @@ const Tools: React.FC = () => {
                     <div className="form-group">
                       <label>Shipment Type</label>
                       <div className="radio-group">
-                        <label className="radio-label">
-                          <input 
-                            type="radio" 
-                            name="shipmentType" 
+                        <label className="radio-label" title="Seller to Buyer">
+                          <input
+                            type="radio"
+                            name="shipmentType"
                             value="forward"
                             checked={formData.shipmentType === 'forward'}
                             onChange={(e) => handleInputChange('shipmentType', e.target.value)}
                           />
                           Forward
                         </label>
-                        <label className="radio-label">
-                          <input 
-                            type="radio" 
-                            name="shipmentType" 
-                            value="return"
-                            checked={formData.shipmentType === 'return'}
+                        <label className="radio-label" title="Buyer to Seller (DTO)">
+                          <input
+                            type="radio"
+                            name="shipmentType"
+                            value="reverse"
+                            checked={formData.shipmentType === 'reverse'}
                             onChange={(e) => handleInputChange('shipmentType', e.target.value)}
                           />
-                          Return
+                          Reverse
                         </label>
                       </div>
+                      <small style={{ color: '#8c98a4', fontSize: '12px', marginTop: '4px' }}>
+                        {formData.shipmentType === 'forward' ? 'Seller to Buyer' : 'Buyer to Seller (DTO charges apply)'}
+                      </small>
                     </div>
 
                     <div className="inline-field-row">
@@ -1050,10 +1055,10 @@ const Tools: React.FC = () => {
                           <span className="result-value">₹{result.calculation_result.forwardCharges.toFixed(2)}</span>
                         </div>
                       )}
-                      {formData.shipmentType === 'return' && (
+                      {formData.shipmentType === 'reverse' && (
                         <div className="result-row">
-                          <span className="result-label">RTO Charges:</span>
-                          <span className="result-value">₹{result.calculation_result.rtoCharges.toFixed(2)}</span>
+                          <span className="result-label">DTO Charges:</span>
+                          <span className="result-value">₹{result.calculation_result.dtoCharges.toFixed(2)}</span>
                         </div>
                       )}
                       {result.cod_amount > 0 && (

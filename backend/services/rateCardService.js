@@ -159,6 +159,8 @@ class RateCardService {
       totalCharges = forwardCharges + codCharges;
     } else if (orderType === 'rto') {
       totalCharges = rtoCharges + codCharges;
+    } else if (orderType === 'dto') {
+      totalCharges = dtoCharges + codCharges;
     } else {
       // For display purposes, show forward charges as default
       totalCharges = forwardCharges + codCharges;
@@ -226,6 +228,8 @@ class RateCardService {
       totalCharges = forwardCharges + codCharges;
     } else if (orderType === 'rto') {
       totalCharges = rtoCharges + codCharges;
+    } else if (orderType === 'dto') {
+      totalCharges = dtoCharges + codCharges;
     } else {
       totalCharges = forwardCharges + codCharges;
     }
