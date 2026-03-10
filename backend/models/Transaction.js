@@ -77,7 +77,9 @@ const transactionSchema = new mongoose.Schema({
         // HDFC/Juspay specific payment methods
         'UPI_COLLECT', 'UPI_PAY', 'UPI_INTENT', 'UPI_QR',
         'NB_HDFC', 'NB_ICICI', 'NB_SBI', 'NB_AXIS', 'NB_KOTAK', 'NB_YES', 'NB_PNB', 'NB_BOB', 'NB_CANARA', 'NB_UNION', 'NB_IDBI', 'NB_FEDERAL', 'NB_INDUSIND', 'NB_RBL', 'NB_SCB', 'NB_CITI', 'NB_DBS', 'NB_HSBC',
-        'CARD', 'SAVED_CARD', 'EMANDATE', 'PAYLATER', 'CARDLESS_EMI', 'WALLET_PAYTM', 'WALLET_PHONEPE', 'WALLET_AMAZON', 'WALLET_FREECHARGE', 'WALLET_MOBIKWIK', 'WALLET_AIRTEL', 'WALLET_JIOMONEY', 'WALLET_OLAMONEY'
+        'CARD', 'SAVED_CARD', 'EMANDATE', 'PAYLATER', 'CARDLESS_EMI', 'WALLET_PAYTM', 'WALLET_PHONEPE', 'WALLET_AMAZON', 'WALLET_FREECHARGE', 'WALLET_MOBIKWIK', 'WALLET_AIRTEL', 'WALLET_JIOMONEY', 'WALLET_OLAMONEY',
+        // Card network names returned by HDFC/Juspay
+        'VISA', 'MASTERCARD', 'MAESTRO', 'RUPAY', 'AMEX', 'DINERS', 'JCB', 'DISCOVER'
       ],
     },
     // More specific payment method type from HDFC (e.g., NB for NetBanking, UPI for UPI, etc.)
