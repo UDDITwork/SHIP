@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { environmentConfig } from '../config/environment';
 import './PackageCreationModal.css';
 
@@ -33,6 +33,28 @@ const PackageCreationModal: React.FC<PackageCreationModalProps> = ({
   });
 
   const [loading, setLoading] = useState(false);
+
+  // Sync form data when editingPackage changes (useState only runs once at mount)
+  useEffect(() => {
+    if (editingPackage) {
+      setFormData({
+        name: editingPackage.name || '',
+        description: editingPackage.description || '',
+        package_type: editingPackage.package_type || 'Single Package (B2C)',
+        product_name: editingPackage.product_name || 'Package Item',
+        dimensions: {
+          length: editingPackage.dimensions?.length?.toString() || '',
+          width: editingPackage.dimensions?.width?.toString() || '',
+          height: editingPackage.dimensions?.height?.toString() || ''
+        },
+        weight: editingPackage.weight?.toString() || '',
+        number_of_boxes: editingPackage.number_of_boxes?.toString() || '',
+        weight_per_box: editingPackage.weight_per_box?.toString() || '',
+        tags: editingPackage.tags?.join(', ') || '',
+        notes: editingPackage.notes || ''
+      });
+    }
+  }, [editingPackage]);
 
   const testPackageCreation = async () => {
     const token = localStorage.getItem('token');

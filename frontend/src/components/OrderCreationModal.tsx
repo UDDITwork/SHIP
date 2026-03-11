@@ -843,12 +843,14 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
 
   // Calculate order value and grand total when products or shipping charges change
   useEffect(() => {
-    const orderValue = formData.products.reduce(
-      (sum, product) => sum + product.unit_price * product.quantity,
-      0
-    );
+    const orderValue = Math.round(
+      formData.products.reduce(
+        (sum: number, product: any) => sum + product.unit_price * product.quantity,
+        0
+      ) * 100
+    ) / 100;
     const shippingCharges = formData.payment_info.shipping_charges || 0;
-    const grandTotal = orderValue + shippingCharges;
+    const grandTotal = Math.round((orderValue + shippingCharges) * 100) / 100;
 
     // Use functional update to avoid stale closure issues and check inside
     setFormData(prev => {
@@ -1912,7 +1914,7 @@ const OrderCreationModal: React.FC<OrderCreationModalProps> = ({
                           <input
                             type="number"
                             value={product.unit_price}
-                            onChange={(e) => handleProductChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                            onChange={(e) => handleProductChange(index, 'unit_price', Math.round((parseFloat(e.target.value) || 0) * 100) / 100)}
                             placeholder="Unit Price"
                             min="0"
                             step="0.01"

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { environmentConfig } from '../config/environment';
 import './PackageCreationModal.css';
 
@@ -29,6 +29,23 @@ const ProductCreationModal: React.FC<ProductCreationModalProps> = ({
 
   const [loading, setLoading] = useState(false);
 
+  // Sync form data when editingProduct changes (useState only runs once at mount)
+  useEffect(() => {
+    if (editingProduct) {
+      setFormData({
+        name: editingProduct.name || '',
+        product_name: editingProduct.product_name || '',
+        unit_price: editingProduct.unit_price != null ? String(Math.round(editingProduct.unit_price * 100) / 100) : '',
+        tax: editingProduct.tax?.toString() || '',
+        discount: editingProduct.discount?.toString() || '',
+        hsn_code: editingProduct.hsn_code || '',
+        category: editingProduct.category || '',
+        sku: editingProduct.sku || '',
+        tags: editingProduct.tags?.join(', ') || ''
+      });
+    }
+  }, [editingProduct]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -50,7 +67,7 @@ const ProductCreationModal: React.FC<ProductCreationModalProps> = ({
 
       if (formData.unit_price && formData.unit_price.trim() !== '') {
         const val = parseFloat(formData.unit_price);
-        if (!isNaN(val) && val >= 0) productData.unit_price = val;
+        if (!isNaN(val) && val >= 0) productData.unit_price = Math.round(val * 100) / 100;
       }
       if (formData.tax && formData.tax.trim() !== '') {
         const val = parseFloat(formData.tax);
