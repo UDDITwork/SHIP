@@ -813,7 +813,59 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
           };
           order.status = 'ready_to_ship';
 
-          await order.save();
+          // Retry save with Delhivery rollback on failure
+          {
+            let saveRetries = 2;
+            let saved = false;
+            let saveError = null;
+
+            while (saveRetries >= 0 && !saved) {
+              try {
+                await order.save();
+                saved = true;
+              } catch (err) {
+                saveError = err;
+                if (err.code === 11000 || err.name === 'ValidationError') break;
+                saveRetries--;
+                if (saveRetries >= 0) {
+                  console.warn(`⚠️ createSingleOrder: order.save() retry (${2 - saveRetries}/2)`, {
+                    orderId: order.order_id,
+                    awb: awbNumber,
+                    error: err.message
+                  });
+                  await new Promise(r => setTimeout(r, 500));
+                }
+              }
+            }
+
+            if (!saved) {
+              console.error('❌ createSingleOrder: ORDER SAVE FAILED - CANCELLING DELHIVERY SHIPMENT', {
+                orderId: order.order_id,
+                awb: awbNumber,
+                error: saveError.message,
+                code: saveError.code
+              });
+
+              try {
+                await delhiveryService.cancelShipment(awbNumber);
+                console.log('✅ createSingleOrder: Delhivery shipment cancelled after DB save failure', { awb: awbNumber });
+              } catch (cancelErr) {
+                console.error('❌ CRITICAL: Could not cancel Delhivery shipment after DB failure — ORPHAN AWB', {
+                  awb: awbNumber,
+                  orderId: order.order_id,
+                  error: cancelErr.message
+                });
+              }
+
+              return {
+                success: false,
+                order: null,
+                awb: null,
+                status: 'failed',
+                error: `Order save failed (${saveError.message}). Delhivery shipment has been cancelled.`
+              };
+            }
+          }
 
           // Deduct wallet
           await deductWalletForOrder(order, userId, awbNumber);
@@ -2534,8 +2586,66 @@ router.post('/', auth, [
           }
           
           // NOW SAVE TO DATABASE - Only after Delhivery confirms shipment creation
-          await order.save();
-          
+          // Retry up to 2 extra times for transient errors; rollback Delhivery if all fail
+          {
+            let saveRetries = 2;
+            let saved = false;
+            let saveError = null;
+
+            while (saveRetries >= 0 && !saved) {
+              try {
+                await order.save();
+                saved = true;
+              } catch (err) {
+                saveError = err;
+                // Don't retry on duplicate key or validation — those won't self-resolve
+                if (err.code === 11000 || err.name === 'ValidationError') break;
+                saveRetries--;
+                if (saveRetries >= 0) {
+                  console.warn(`⚠️ order.save() retry (${2 - saveRetries}/2)`, {
+                    orderId: order.order_id,
+                    awb: awbNumber,
+                    error: err.message
+                  });
+                  await new Promise(r => setTimeout(r, 500));
+                }
+              }
+            }
+
+            if (!saved) {
+              console.error('❌ ORDER SAVE FAILED AFTER RETRIES - CANCELLING DELHIVERY SHIPMENT', {
+                orderId: order.order_id,
+                awb: awbNumber,
+                error: saveError.message,
+                code: saveError.code,
+                timestamp: new Date().toISOString()
+              });
+
+              // Rollback: cancel shipment on Delhivery so AWB doesn't become orphan
+              try {
+                await delhiveryService.cancelShipment(awbNumber);
+                console.log('✅ Delhivery shipment cancelled after DB save failure', { awb: awbNumber });
+              } catch (cancelErr) {
+                console.error('❌ CRITICAL: Could not cancel Delhivery shipment after DB failure — ORPHAN AWB', {
+                  awb: awbNumber,
+                  orderId: order.order_id,
+                  error: cancelErr.message
+                });
+              }
+
+              return res.status(500).json({
+                status: 'error',
+                message: 'Order could not be saved. The shipment has been cancelled on Delhivery. Please try again.',
+                error: saveError.message,
+                debug_info: {
+                  awb: awbNumber,
+                  error_code: saveError.code,
+                  error_name: saveError.name
+                }
+              });
+            }
+          }
+
           console.log('💾 ORDER SAVED TO DATABASE AFTER DELHIVERY SUCCESS', {
             orderId: order.order_id,
             awb: awbNumber,

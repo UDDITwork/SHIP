@@ -9066,4 +9066,167 @@ router.get('/ndr/:orderId/detail', async (req, res) => {
   }
 });
 
+// ====================================================
+// ORPHAN AWB RECOVERY — Recover orders that exist on
+// Delhivery but were never saved to Shipsarthi DB
+// ====================================================
+
+// @desc    Recover an orphaned AWB from Delhivery into Shipsarthi
+// @route   POST /api/admin/orders/recover-orphan
+// @access  Admin
+router.post('/orders/recover-orphan', async (req, res) => {
+  try {
+    const { awb, user_id } = req.body;
+
+    if (!awb || !user_id) {
+      return res.status(400).json({
+        success: false,
+        message: 'Both "awb" (waybill number) and "user_id" (client MongoDB ID) are required'
+      });
+    }
+
+    // 1. Check if AWB already exists in our DB
+    const existingOrder = await Order.findOne({
+      $or: [
+        { 'delhivery_data.waybill': awb },
+        { 'shipping_info.awb_number': awb }
+      ]
+    });
+
+    if (existingOrder) {
+      return res.status(409).json({
+        success: false,
+        message: 'This AWB already exists in Shipsarthi',
+        data: {
+          order_id: existingOrder.order_id,
+          status: existingOrder.status,
+          created_at: existingOrder.createdAt
+        }
+      });
+    }
+
+    // 2. Validate user_id exists
+    const user = await User.findById(user_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client user_id not found in database'
+      });
+    }
+
+    // 3. Track shipment on Delhivery to verify it exists
+    const delhiveryService = require('../services/delhiveryService');
+    const trackingResult = await delhiveryService.trackShipment(awb);
+
+    if (!trackingResult.success) {
+      return res.status(404).json({
+        success: false,
+        message: 'AWB not found on Delhivery. Cannot recover.',
+        error: trackingResult.error
+      });
+    }
+
+    const trackingData = trackingResult.data;
+
+    // 4. Map Delhivery status to Shipsarthi status
+    const delhiveryStatusMap = {
+      'Manifested': 'ready_to_ship',
+      'In Transit': 'in_transit',
+      'Pending': 'ready_to_ship',
+      'Out For Delivery': 'out_for_delivery',
+      'Delivered': 'delivered',
+      'RTO': 'rto',
+      'Returned': 'rto_delivered',
+      'Cancelled': 'cancelled'
+    };
+    const mappedStatus = delhiveryStatusMap[trackingData.Status] || 'ready_to_ship';
+
+    // 5. Create the order document
+    const { generateOrderId } = require('../utils/orderIdGenerator');
+    const recoveredOrder = new Order({
+      user_id: user_id,
+      order_id: generateOrderId(),
+      order_date: new Date(),
+      customer_info: {
+        buyer_name: trackingData.Consignee || 'Unknown (Recovered)',
+        phone: trackingData.DestRecievePhone || '0000000000'
+      },
+      delivery_address: {
+        address_line_1: trackingData.Destination || 'Unknown',
+        full_address: trackingData.Destination || 'Unknown',
+        city: trackingData.DestinationCity || 'Unknown',
+        state: trackingData.DestinationState || 'Unknown',
+        pincode: trackingData.DestinationPincode || trackingData.Destination?.match(/\d{6}/)?.[0] || '000000',
+        country: 'India'
+      },
+      pickup_address: {
+        name: trackingData.Origin || 'Unknown',
+        full_address: trackingData.Origin || 'Unknown',
+        city: trackingData.OriginCity || 'Unknown',
+        state: trackingData.OriginState || 'Unknown',
+        pincode: trackingData.OriginPincode || '000000',
+        phone: '0000000000'
+      },
+      products: [{
+        product_name: 'Recovered Order',
+        quantity: 1,
+        unit_price: 0
+      }],
+      package_info: {
+        package_type: 'Single Package (B2C)',
+        weight: trackingData.ChargedWeight || 0.5,
+        dimensions: { length: 10, width: 10, height: 10 }
+      },
+      payment_info: {
+        payment_mode: trackingData.PaymentMode || 'Prepaid',
+        order_value: trackingData.InvoiceAmount || 0,
+        total_amount: trackingData.InvoiceAmount || 0,
+        cod_amount: trackingData.CODAmount || 0
+      },
+      delhivery_data: {
+        waybill: awb,
+        status: 'Success'
+      },
+      status: mappedStatus,
+      shipping_mode: 'Surface',
+      order_type: 'forward'
+    });
+
+    await recoveredOrder.save();
+
+    logger.info('✅ ORPHAN AWB RECOVERED', {
+      awb,
+      order_id: recoveredOrder.order_id,
+      user_id,
+      client_name: user.company_name || user.name,
+      status: mappedStatus,
+      admin: req.admin?.email || 'unknown'
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Orphaned AWB ${awb} recovered successfully`,
+      data: {
+        order_id: recoveredOrder.order_id,
+        awb: awb,
+        status: mappedStatus,
+        client: user.company_name || user.name,
+        created_at: recoveredOrder.createdAt
+      }
+    });
+
+  } catch (error) {
+    logger.error('❌ Orphan recovery failed', {
+      awb: req.body?.awb,
+      error: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({
+      success: false,
+      message: 'Failed to recover orphaned AWB',
+      error: error.message
+    });
+  }
+});
+
 module.exports = router;
