@@ -232,8 +232,7 @@ async function refundShippingChargesToWallet(order, userId) {
         currency: 'INR',
         previous_balance: openingBalance,
         amount: shippingCharges,
-        transaction_id: refundTransaction.transaction_id,
-        timestamp: new Date().toISOString()
+        transaction_id: refundTransaction.transaction_id
       });
 
       // Persistent notification for bell
@@ -267,8 +266,7 @@ async function refundShippingChargesToWallet(order, userId) {
     logger.error('❌ WALLET REFUND FAILED', {
       orderId: order.order_id,
       error: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
+      stack: error.stack
     });
     return null;
   }
@@ -310,10 +308,9 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
       return { success: true, transaction: null, message: 'No shipping charges to deduct' };
     }
     
-    console.log('💳 DEDUCTING WALLET FOR ORDER', {
+    logger.info('DEDUCTING WALLET FOR ORDER', {
       orderId: order.order_id,
-      shippingCharges,
-      timestamp: new Date().toISOString()
+      shippingCharges
     });
     
     // Get current wallet balance
@@ -325,11 +322,10 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
     const openingBalance = user.wallet_balance || 0;
     
     if (openingBalance < shippingCharges) {
-      console.error('❌ INSUFFICIENT WALLET BALANCE', {
+      logger.error('INSUFFICIENT WALLET BALANCE', {
         orderId: order.order_id,
         required: shippingCharges,
-        available: openingBalance,
-        timestamp: new Date().toISOString()
+        available: openingBalance
       });
       throw new Error(`Insufficient wallet balance. Required: ₹${shippingCharges}, Available: ₹${openingBalance}`);
     }
@@ -370,7 +366,7 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
         chargeableWeightGrams: chargeableWeightGrams
       });
     } catch (zoneError) {
-      console.warn('⚠️ Zone retrieval failed (non-critical):', zoneError.message);
+      logger.warn('Zone retrieval failed (non-critical):', zoneError.message);
       // Continue without zone - not critical for transaction
     }
     
@@ -480,7 +476,7 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
             order.carrier_used = selectedCarrierId;
           }
         } catch (rateError) {
-          console.warn('⚠️ Rate calculation failed, using shipping_charges:', rateError.message);
+          logger.warn('Rate calculation failed, using shipping_charges:', rateError.message);
         }
       }
       
@@ -514,18 +510,16 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
       });
       await billingCycle.save();
       
-      console.log('✅ BILLING INFO TRACKED', {
+      logger.info('BILLING INFO TRACKED', {
         orderId: order.order_id,
         billingCycleId: billingCycle._id,
         zone: zone,
-        charges: billingCharges,
-        timestamp: new Date().toISOString()
+        charges: billingCharges
       });
     } catch (billingError) {
-      console.error('❌ BILLING INFO TRACKING FAILED (non-critical):', {
+      logger.error('BILLING INFO TRACKING FAILED (non-critical):', {
         orderId: order.order_id,
-        error: billingError.message,
-        timestamp: new Date().toISOString()
+        error: billingError.message
       });
       // Don't fail wallet deduction if billing tracking fails
     }
@@ -539,8 +533,7 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
         currency: 'INR',
         previous_balance: openingBalance,
         amount: shippingCharges,
-        transaction_id: transaction.transaction_id,
-        timestamp: new Date().toISOString()
+        transaction_id: transaction.transaction_id
       });
 
       // Persistent notification for bell
@@ -551,7 +544,7 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
         related_entity: { entity_type: 'order', entity_id: order._id }
       });
 
-      console.log('📡 WALLET NOTIFICATIONS SENT:', {
+      logger.info('WALLET NOTIFICATIONS SENT:', {
         orderId: order.order_id,
         transactionId: transaction.transaction_id,
         userId: userId,
@@ -559,19 +552,18 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
         closing_balance: closingBalance
       });
     } catch (notifError) {
-      console.error('Failed to send wallet notifications:', notifError);
+      logger.error('Failed to send wallet notifications:', notifError);
       // Don't fail wallet deduction if notifications fail
     }
     
-    console.log('✅ WALLET DEDUCTED SUCCESSFULLY', {
+    logger.info('WALLET DEDUCTED SUCCESSFULLY', {
       orderId: order.order_id,
       transactionId: transaction.transaction_id,
       amount: shippingCharges,
       oldBalance: openingBalance,
       newBalance: closingBalance,
       zone: zone,
-      userCategory: user.user_category,
-      timestamp: new Date().toISOString()
+      userCategory: user.user_category
     });
     
     return { 
@@ -582,11 +574,10 @@ async function deductWalletForOrder(order, userId, awbNumber = null) {
       closingBalance
     };
   } catch (error) {
-    console.error('❌ WALLET DEDUCTION FAILED', {
+    logger.error('WALLET DEDUCTION FAILED', {
       orderId: order.order_id,
       error: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
+      stack: error.stack
     });
     return {
       success: false,
@@ -609,12 +600,11 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
   const orderId = orderData.order_id || generateOrderId();
 
   try {
-    console.log('📦 createSingleOrder: Starting', {
+    logger.info('createSingleOrder: Starting', {
       orderId,
       userId,
       generateAWB,
-      weight: orderData.package_info?.weight,
-      timestamp: new Date().toISOString()
+      weight: orderData.package_info?.weight
     });
 
     // Handle warehouse selection
@@ -828,7 +818,7 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
                 if (err.code === 11000 || err.name === 'ValidationError') break;
                 saveRetries--;
                 if (saveRetries >= 0) {
-                  console.warn(`⚠️ createSingleOrder: order.save() retry (${2 - saveRetries}/2)`, {
+                  logger.warn(`createSingleOrder: order.save() retry (${2 - saveRetries}/2)`, {
                     orderId: order.order_id,
                     awb: awbNumber,
                     error: err.message
@@ -839,7 +829,7 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
             }
 
             if (!saved) {
-              console.error('❌ createSingleOrder: ORDER SAVE FAILED - CANCELLING DELHIVERY SHIPMENT', {
+              logger.error('createSingleOrder: ORDER SAVE FAILED - CANCELLING DELHIVERY SHIPMENT', {
                 orderId: order.order_id,
                 awb: awbNumber,
                 error: saveError.message,
@@ -848,9 +838,9 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
 
               try {
                 await delhiveryService.cancelShipment(awbNumber);
-                console.log('✅ createSingleOrder: Delhivery shipment cancelled after DB save failure', { awb: awbNumber });
+                logger.info('createSingleOrder: Delhivery shipment cancelled after DB save failure', { awb: awbNumber });
               } catch (cancelErr) {
-                console.error('❌ CRITICAL: Could not cancel Delhivery shipment after DB failure — ORPHAN AWB', {
+                logger.error('CRITICAL: Could not cancel Delhivery shipment after DB failure — ORPHAN AWB', {
                   awb: awbNumber,
                   orderId: order.order_id,
                   error: cancelErr.message
@@ -870,7 +860,7 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
           // Deduct wallet
           await deductWalletForOrder(order, userId, awbNumber);
 
-          console.log('📦 createSingleOrder: SUCCESS', {
+          logger.info('createSingleOrder: SUCCESS', {
             orderId: order.order_id,
             awb: awbNumber,
             status: order.status
@@ -916,7 +906,7 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
       };
     }
   } catch (error) {
-    console.error('📦 createSingleOrder: ERROR', {
+    logger.error('createSingleOrder: ERROR', {
       orderId,
       error: error.message,
       stack: error.stack
@@ -949,8 +939,7 @@ router.post('/bulk-import', auth, upload.single('file'), async (req, res) => {
       userId: req.user._id,
       fileName: file.originalname,
       fileSize: file.size,
-      mimeType: file.mimetype,
-      timestamp: new Date().toISOString()
+      mimeType: file.mimetype
     });
 
     const workbook = XLSX.read(file.buffer, { type: 'buffer', cellDates: true });
@@ -1272,8 +1261,7 @@ router.post('/bulk-import', auth, upload.single('file'), async (req, res) => {
     logger.error('❌ Bulk order import error', {
       userId: req.user._id,
       error: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
+      stack: error.stack
     });
 
     return res.status(500).json({
@@ -1350,7 +1338,7 @@ router.get('/', auth, [
           filterQuery['pickup_address.name'] = selectedWarehouse.name;
         }
       } catch (whErr) {
-        console.error('Warehouse lookup for filter failed:', whErr);
+        logger.error('Warehouse lookup for filter failed:', whErr);
       }
     }
 
@@ -1467,8 +1455,7 @@ router.get('/', auth, [
       userId: userId.toString(),
       totalOrders,
       filteredCount: orders.length,
-      filters: filterQuery,
-      timestamp: new Date().toISOString()
+      filters: filterQuery
     });
 
     res.json({
@@ -1485,7 +1472,7 @@ router.get('/', auth, [
     });
 
   } catch (error) {
-    console.error('Get orders error:', error);
+    logger.error('Get orders error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error fetching orders'
@@ -1849,7 +1836,7 @@ router.get('/:id', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get order error:', error);
+    logger.error('Get order error:', error);
     // Handle CastError (invalid ObjectId format) gracefully
     if (error.name === 'CastError') {
       return res.status(400).json({
@@ -1887,7 +1874,7 @@ router.get('/order/:orderId', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Get order by order_id error:', error);
+    logger.error('Get order by order_id error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error fetching order'
@@ -2033,19 +2020,17 @@ router.post('/', auth, [
   const orderId = req.body.order_id || generateOrderId();
   
   try {
-    console.log('🚀 ORDER CREATION STARTED', {
+    logger.info('ORDER CREATION STARTED', {
       orderId,
       userId: req.user._id,
-      timestamp: new Date().toISOString(),
       formData: req.body
     });
 
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      console.log('❌ VALIDATION FAILED', {
+      logger.warn('VALIDATION FAILED', {
         orderId,
-        errors: errors.array(),
-        timestamp: new Date().toISOString()
+        errors: errors.array()
       });
       return res.status(400).json({
         status: 'error',
@@ -2054,22 +2039,14 @@ router.post('/', auth, [
       });
     }
 
-    console.log('✅ VALIDATION PASSED', {
-      orderId,
-      timestamp: new Date().toISOString()
-    });
+    logger.debug('VALIDATION PASSED', { orderId });
 
     // Cross-validate order_type and payment_mode
     const orderType = req.body.order_type || 'forward';
     const paymentMode = req.body.payment_info?.payment_mode;
 
     if (orderType === 'reverse' && paymentMode !== 'Pickup') {
-      console.log('❌ INVALID PAYMENT MODE FOR REVERSE ORDER', {
-        orderId,
-        orderType,
-        paymentMode,
-        timestamp: new Date().toISOString()
-      });
+      logger.warn('INVALID PAYMENT MODE FOR REVERSE ORDER', { orderId, orderType, paymentMode });
       return res.status(400).json({
         status: 'error',
         message: 'Reverse orders must use Pickup payment mode'
@@ -2077,12 +2054,7 @@ router.post('/', auth, [
     }
 
     if (orderType === 'forward' && paymentMode === 'Pickup') {
-      console.log('❌ INVALID PAYMENT MODE FOR FORWARD ORDER', {
-        orderId,
-        orderType,
-        paymentMode,
-        timestamp: new Date().toISOString()
-      });
+      logger.warn('INVALID PAYMENT MODE FOR FORWARD ORDER', { orderId, orderType, paymentMode });
       return res.status(400).json({
         status: 'error',
         message: 'Forward orders cannot use Pickup payment mode'
@@ -2100,10 +2072,9 @@ router.post('/', auth, [
                            req.body.package_info.boxes.length > 0;
 
     if (isMultiPackage) {
-      console.log('📦 MULTI-PACKAGE B2C DETECTED', {
+      logger.info('MULTI-PACKAGE B2C DETECTED', {
         totalBoxes: req.body.package_info.boxes.length,
-        boxes: req.body.package_info.boxes,
-        timestamp: new Date().toISOString()
+        boxes: req.body.package_info.boxes
       });
 
       // Create multiple orders - one per box
@@ -2117,7 +2088,7 @@ router.post('/', auth, [
         const boxOrderId = `${orderId}-${String(boxIndex + 1).padStart(2, '0')}`;
 
         try {
-          console.log(`📦 Creating order ${boxIndex + 1}/${boxes.length}`, {
+          logger.info(`Creating order ${boxIndex + 1}/${boxes.length}`, {
             boxOrderId,
             weight: box.weight,
             dimensions: { length: box.length, width: box.width, height: box.height }
@@ -2167,7 +2138,7 @@ router.post('/', auth, [
             });
           }
         } catch (boxError) {
-          console.error(`❌ Failed to create order for box ${boxIndex + 1}`, {
+          logger.error(`Failed to create order for box ${boxIndex + 1}`, {
             boxOrderId,
             error: boxError.message
           });
@@ -2183,12 +2154,11 @@ router.post('/', auth, [
       const allSuccess = failedOrders.length === 0;
       const partialSuccess = createdOrders.length > 0 && failedOrders.length > 0;
 
-      console.log('📦 MULTI-PACKAGE CREATION COMPLETED', {
+      logger.info('MULTI-PACKAGE CREATION COMPLETED', {
         parentOrderId: orderId,
         totalBoxes: boxes.length,
         created: createdOrders.length,
-        failed: failedOrders.length,
-        timestamp: new Date().toISOString()
+        failed: failedOrders.length
       });
 
       return res.status(allSuccess ? 201 : (partialSuccess ? 207 : 400)).json({
@@ -2411,13 +2381,12 @@ router.post('/', auth, [
     // Explicit check: only generate AWB if flag is NOT explicitly false
     const generateAWB = generateAWBFlag !== false && generateAWBFlag !== 'false' && generateAWBFlag !== 0 && generateAWBFlag !== '0';
     
-    console.log('📋 ORDER PREPARED (NOT SAVED YET)', {
+    logger.info('ORDER PREPARED (NOT SAVED YET)', {
       orderId: order.order_id,
       generateAWB: generateAWB,
       generate_awb_received: req.body.generate_awb,
       generate_awb_type: typeof req.body.generate_awb,
-      will_call_delhivery: generateAWB,
-      timestamp: new Date().toISOString()
+      will_call_delhivery: generateAWB
     });
 
     let delhiveryResult = null;
@@ -2444,13 +2413,12 @@ router.post('/', auth, [
         });
       }
 
-      console.log('🔄 CALLING DELHIVERY API (AWB generation requested)');
+      logger.info('CALLING DELHIVERY API (AWB generation requested)');
       // Create shipment with Delhivery API FIRST
       try {
         // STEP 1: Fetch waybill from Delhivery BEFORE creating shipment
-      console.log('📋 FETCHING WAYBILL FROM DELHIVERY', {
-        orderId: order.order_id,
-        timestamp: new Date().toISOString()
+      logger.info('FETCHING WAYBILL FROM DELHIVERY', {
+        orderId: order.order_id
       });
 
       // STEP 2: Prepare order data for Delhivery API (service expects order structure, not formatted shipment data)
@@ -2507,28 +2475,26 @@ router.post('/', auth, [
         waybill: '' // Let Delhivery auto-generate waybill
       };
 
-      console.log('🌐 CALLING DELHIVERY API', {
+      logger.info('CALLING DELHIVERY API', {
         orderId: order.order_id,
         orderData: {
           order_id: orderDataForDelhivery.order_id,
           customer_name: orderDataForDelhivery.customer_info.buyer_name,
           delivery_pincode: orderDataForDelhivery.delivery_address.pincode,
           pickup_pincode: orderDataForDelhivery.pickup_address.pincode
-        },
-        timestamp: new Date().toISOString()
+        }
       });
 
       // Call Delhivery API to create shipment
       delhiveryResult = await delhiveryService.createShipment(orderDataForDelhivery);
 
-      console.log('📥 DELHIVERY RESULT RECEIVED', {
+      logger.info('DELHIVERY RESULT RECEIVED', {
         orderId: order.order_id,
         success: delhiveryResult?.success,
         hasWaybill: !!delhiveryResult?.waybill,
         hasPackages: !!delhiveryResult?.packages,
         packagesLength: delhiveryResult?.packages?.length || 0,
-        fullResult: JSON.stringify(delhiveryResult),
-        timestamp: new Date().toISOString()
+        fullResult: JSON.stringify(delhiveryResult)
       });
 
       if (delhiveryResult.success) {
@@ -2555,12 +2521,11 @@ router.post('/', auth, [
         }
 
         if (awbNumber) {
-          console.log('✅ DELHIVERY API SUCCESS - SHIPMENT CREATED', {
+          logger.info('DELHIVERY API SUCCESS - SHIPMENT CREATED', {
             orderId: order.order_id,
             awb: awbNumber,
             source: delhiveryResult.packages ? 'packages' : 'waybill',
-            delhiveryResponse: delhiveryResult,
-            timestamp: new Date().toISOString()
+            delhiveryResponse: delhiveryResult
           });
           
           // Update order with Delhivery response
@@ -2602,7 +2567,7 @@ router.post('/', auth, [
                 if (err.code === 11000 || err.name === 'ValidationError') break;
                 saveRetries--;
                 if (saveRetries >= 0) {
-                  console.warn(`⚠️ order.save() retry (${2 - saveRetries}/2)`, {
+                  logger.warn(`order.save() retry (${2 - saveRetries}/2)`, {
                     orderId: order.order_id,
                     awb: awbNumber,
                     error: err.message
@@ -2613,20 +2578,19 @@ router.post('/', auth, [
             }
 
             if (!saved) {
-              console.error('❌ ORDER SAVE FAILED AFTER RETRIES - CANCELLING DELHIVERY SHIPMENT', {
+              logger.error('ORDER SAVE FAILED AFTER RETRIES - CANCELLING DELHIVERY SHIPMENT', {
                 orderId: order.order_id,
                 awb: awbNumber,
                 error: saveError.message,
-                code: saveError.code,
-                timestamp: new Date().toISOString()
+                code: saveError.code
               });
 
               // Rollback: cancel shipment on Delhivery so AWB doesn't become orphan
               try {
                 await delhiveryService.cancelShipment(awbNumber);
-                console.log('✅ Delhivery shipment cancelled after DB save failure', { awb: awbNumber });
+                logger.info('Delhivery shipment cancelled after DB save failure', { awb: awbNumber });
               } catch (cancelErr) {
-                console.error('❌ CRITICAL: Could not cancel Delhivery shipment after DB failure — ORPHAN AWB', {
+                logger.error('CRITICAL: Could not cancel Delhivery shipment after DB failure — ORPHAN AWB', {
                   awb: awbNumber,
                   orderId: order.order_id,
                   error: cancelErr.message
@@ -2646,11 +2610,10 @@ router.post('/', auth, [
             }
           }
 
-          console.log('💾 ORDER SAVED TO DATABASE AFTER DELHIVERY SUCCESS', {
+          logger.info('ORDER SAVED TO DATABASE AFTER DELHIVERY SUCCESS', {
             orderId: order.order_id,
             awb: awbNumber,
-            status: order.status,
-            timestamp: new Date().toISOString()
+            status: order.status
           });
           
           // Create or update customer record AFTER successful order save
@@ -2680,18 +2643,16 @@ router.post('/', auth, [
             // Update customer order statistics
             await customer.updateOrderStats(order.payment_info.total_amount);
             
-            console.log('👤 CUSTOMER CREATED/UPDATED AFTER ORDER SUCCESS', {
+            logger.info('CUSTOMER CREATED/UPDATED AFTER ORDER SUCCESS', {
               orderId: order.order_id,
               customerId: customer._id,
               customerName: customer.name,
-              customerPhone: customer.phone,
-              timestamp: new Date().toISOString()
+              customerPhone: customer.phone
             });
           } catch (customerError) {
-            console.error('❌ CUSTOMER CREATION FAILED', {
+            logger.error('CUSTOMER CREATION FAILED', {
               orderId: order.order_id,
-              error: customerError.message,
-              timestamp: new Date().toISOString()
+              error: customerError.message
             });
             // Don't fail the order creation if customer creation fails
           }
@@ -2699,29 +2660,27 @@ router.post('/', auth, [
           // Deduct wallet and create transaction AFTER successful order save
           const walletResult = await deductWalletForOrder(order, userId, awbNumber);
           if (!walletResult.success) {
-            console.error('❌ WALLET DEDUCTION FAILED', {
+            logger.error('WALLET DEDUCTION FAILED', {
               orderId: order.order_id,
-              error: walletResult.error,
-              timestamp: new Date().toISOString()
+              error: walletResult.error
             });
             // Log error but don't fail order creation - order is already saved
             // This allows the order to exist even if wallet deduction fails
             // Admin can manually process the wallet deduction if needed
           }
           
-          console.log('✅ Shipment created successfully for order:', order.order_id, 'AWB:', awbNumber);
+          logger.info('Shipment created successfully for order:', order.order_id, 'AWB:', awbNumber);
           
           // Note: Auto-pickup removed - order will appear in 'ready_to_ship' tab
           // User can manually request pickup using "Create Pickup Request" button
         } else {
-          console.log('⚠️ DELHIVERY API SUCCESS BUT NO AWB FOUND - ORDER NOT SAVED', {
+          logger.warn('DELHIVERY API SUCCESS BUT NO AWB FOUND - ORDER NOT SAVED', {
             orderId: order.order_id,
             delhiveryResponse: delhiveryResult,
             hasWaybill: !!delhiveryResult?.waybill,
             hasPackages: !!delhiveryResult?.packages,
             hasTrackingId: !!delhiveryResult?.tracking_id,
-            delhiveryResultKeys: Object.keys(delhiveryResult || {}),
-            timestamp: new Date().toISOString()
+            delhiveryResultKeys: Object.keys(delhiveryResult || {})
           });
           
           // Don't save order if no AWB was generated
@@ -2737,11 +2696,10 @@ router.post('/', auth, [
           });
         }
       } else {
-        console.log('❌ DELHIVERY API FAILED - ORDER NOT SAVED', {
+        logger.error('DELHIVERY API FAILED - ORDER NOT SAVED', {
           orderId: order.order_id,
           delhiveryResponse: delhiveryResult,
-          error: delhiveryResult.error,
-          timestamp: new Date().toISOString()
+          error: delhiveryResult.error
         });
         
         // Return error - don't save order if Delhivery fails
@@ -2756,10 +2714,9 @@ router.post('/', auth, [
         });
       }
     } catch (delhiveryError) {
-      console.error('❌ DELHIVERY API ERROR - ORDER NOT SAVED:', {
+      logger.error('DELHIVERY API ERROR - ORDER NOT SAVED:', {
         orderId: order.order_id,
-        error: delhiveryError.message,
-        timestamp: new Date().toISOString()
+        error: delhiveryError.message
       });
       
       // Return error - don't save order if Delhivery API fails
@@ -2775,14 +2732,13 @@ router.post('/', auth, [
     }
     } else {
       // If generate_awb is false, just save order without calling Delhivery API
-      console.log('⏭️ SKIPPING DELHIVERY API (AWB generation NOT requested)', {
+      logger.info('SKIPPING DELHIVERY API (AWB generation NOT requested)', {
         orderId: order.order_id,
         generate_awb_flag: req.body.generate_awb
       });
-      console.log('💾 SAVING ORDER WITHOUT AWB GENERATION', {
+      logger.info('SAVING ORDER WITHOUT AWB GENERATION', {
         orderId: order.order_id,
-        status: 'new',
-        timestamp: new Date().toISOString()
+        status: 'new'
       });
       
       // Set status to 'new' since no AWB is generated
@@ -2791,10 +2747,9 @@ router.post('/', auth, [
       // Save order to database
       await order.save();
       
-      console.log('✅ ORDER SAVED TO DATABASE (NO AWB)', {
+      logger.info('ORDER SAVED TO DATABASE (NO AWB)', {
         orderId: order.order_id,
-        status: order.status,
-        timestamp: new Date().toISOString()
+        status: order.status
       });
       
       // Create or update customer record AFTER successful order save
@@ -2823,17 +2778,15 @@ router.post('/', auth, [
         const customer = await Customer.findOrCreate(userId, customerData);
         await customer.updateOrderStats(order.payment_info.total_amount);
         
-        console.log('👤 CUSTOMER CREATED/UPDATED AFTER ORDER SAVE (NO AWB)', {
+        logger.info('CUSTOMER CREATED/UPDATED AFTER ORDER SAVE (NO AWB)', {
           orderId: order.order_id,
           customerId: customer._id,
-          customerName: customer.name,
-          timestamp: new Date().toISOString()
+          customerName: customer.name
         });
       } catch (customerError) {
-        console.error('❌ CUSTOMER CREATION FAILED (NO AWB)', {
+        logger.error('CUSTOMER CREATION FAILED (NO AWB)', {
           orderId: order.order_id,
-          error: customerError.message,
-          timestamp: new Date().toISOString()
+          error: customerError.message
         });
         // Don't fail the order creation if customer creation fails
       }
@@ -2842,10 +2795,9 @@ router.post('/', auth, [
       // Note: AWB is null for orders saved without AWB generation
       const walletResult = await deductWalletForOrder(order, userId, null);
       if (!walletResult.success) {
-        console.error('❌ WALLET DEDUCTION FAILED', {
+        logger.error('WALLET DEDUCTION FAILED', {
           orderId: order.order_id,
-          error: walletResult.error,
-          timestamp: new Date().toISOString()
+          error: walletResult.error
         });
         // Log error but don't fail order creation - order is already saved
         // This allows the order to exist even if wallet deduction fails
@@ -2878,9 +2830,9 @@ router.post('/', auth, [
         });
 
         await packageTemplate.save();
-        console.log('✅ Package template saved for future use');
+        logger.info('Package template saved for future use');
       } catch (packageError) {
-        console.error('❌ Error saving package template:', packageError.message);
+        logger.error('Error saving package template:', packageError.message);
       }
     }
 
@@ -2891,18 +2843,16 @@ router.post('/', auth, [
     
     // Log completion based on whether AWB was generated
     if (generateAWB) {
-      console.log('🎉 ORDER AND SHIPMENT CREATION COMPLETED', {
+      logger.info('ORDER AND SHIPMENT CREATION COMPLETED', {
         orderId: order.order_id,
         awb: order.delhivery_data?.waybill || 'N/A',
         status: order.status,
-        delhiverySuccess: delhiveryResult?.success || false,
-        timestamp: new Date().toISOString()
+        delhiverySuccess: delhiveryResult?.success || false
       });
     } else {
-      console.log('🎉 ORDER SAVED SUCCESSFULLY (NO AWB)', {
+      logger.info('ORDER SAVED SUCCESSFULLY (NO AWB)', {
         orderId: order.order_id,
-        status: order.status,
-        timestamp: new Date().toISOString()
+        status: order.status
       });
     }
 
@@ -2934,7 +2884,7 @@ router.post('/', auth, [
     });
 
   } catch (error) {
-    console.log('💥 ORDER CREATION ERROR', {
+    logger.error('ORDER CREATION ERROR', {
       orderId,
       errorName: error.name,
       errorMessage: error.message,
@@ -2942,8 +2892,7 @@ router.post('/', auth, [
       validationErrors: error.errors,
       keyPattern: error.keyPattern,
       keyValue: error.keyValue,
-      stack: error.stack,
-      timestamp: new Date().toISOString()
+      stack: error.stack
     });
 
     // Handle specific error types with detailed messages
@@ -2987,7 +2936,7 @@ router.post('/', auth, [
       };
     }
 
-    console.error('Create order error:', error);
+    logger.error('Create order error:', error);
     res.status(statusCode).json({
       status: 'error',
       message: errorMessage,
@@ -3294,7 +3243,7 @@ router.put('/:id', auth, [
     });
 
   } catch (error) {
-    console.error('Update order error:', error);
+    logger.error('Update order error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error updating order'
@@ -3335,7 +3284,7 @@ router.delete('/:id', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Cancel order error:', error);
+    logger.error('Cancel order error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error cancelling order'
@@ -3391,7 +3340,7 @@ router.patch('/:id/status', auth, [
     });
 
   } catch (error) {
-    console.error('Update order status error:', error);
+    logger.error('Update order status error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error updating order status'
@@ -3472,7 +3421,7 @@ router.patch('/bulk-update', auth, [
     });
 
   } catch (error) {
-    console.error('Bulk update orders error:', error);
+    logger.error('Bulk update orders error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error updating orders'
@@ -3516,7 +3465,7 @@ router.get('/statistics/overview', auth, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Order statistics error:', error);
+    logger.error('Order statistics error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error fetching order statistics'
@@ -3559,7 +3508,7 @@ router.get('/track/:identifier', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Track order error:', error);
+    logger.error('Track order error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error tracking order'
@@ -3705,7 +3654,7 @@ router.get('/:id/label', auth, async (req, res) => {
       error: error.message,
       errorStack: error.stack
     });
-    console.error('Generate label error:', error);
+    logger.error('Generate label error:', error);
     res.status(500).json({
       status: 'error',
       message: 'Server error generating label'
@@ -5239,7 +5188,7 @@ router.patch('/:id/order-id', auth, [
     });
 
   } catch (error) {
-    console.error('Update order_id error:', error);
+    logger.error('Update order_id error:', error);
     res.status(500).json({ status: 'error', message: 'Server error updating Order ID' });
   }
 });
