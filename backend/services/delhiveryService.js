@@ -509,14 +509,37 @@ class DelhiveryService {
 
             if (response.data.ShipmentData && response.data.ShipmentData.length > 0) {
                 const shipmentData = response.data.ShipmentData[0];
+                const shipment = shipmentData.Shipment || shipmentData;
                 return {
                     success: true,
                     data: {
                         AWB: shipmentData.AWB || waybill,
                         Status: shipmentData.Status || 'Unknown',
                         StatusDateTime: shipmentData.StatusDateTime || new Date().toISOString(),
-                        Origin: shipmentData.Origin || '',
-                        Destination: shipmentData.Destination || '',
+                        Origin: shipment.Origin || shipmentData.Origin || '',
+                        Destination: shipment.Destination || shipmentData.Destination || '',
+                        // Consignee details
+                        ConsigneeName: shipment.ConsigneeName || shipmentData.ConsigneeName || '',
+                        ConsigneeAddress: shipment.ConsigneeAddress || shipmentData.ConsigneeAddress || '',
+                        ConsigneePhone: shipment.ConsigneePhone || shipmentData.ConsigneePhone || '',
+                        // Origin details
+                        OriginCity: shipment.OriginCity || shipmentData.OriginCity || '',
+                        OriginState: shipment.OriginState || shipmentData.OriginState || '',
+                        OriginPincode: shipment.OriginPincode || shipmentData.OriginPincode || '',
+                        // Destination details
+                        DestinationCity: shipment.DestinationCity || shipmentData.DestinationCity || '',
+                        DestinationState: shipment.DestinationState || shipmentData.DestinationState || '',
+                        DestinationPincode: shipment.DestinationPincode || shipmentData.DestinationPincode || '',
+                        // Payment & weight
+                        PaymentMode: shipment.PaymentMode || shipmentData.PaymentMode || '',
+                        CODAmount: shipment.CODAmount || shipmentData.CODAmount || 0,
+                        DeclaredValue: shipment.DeclaredValue || shipmentData.DeclaredValue || 0,
+                        Weight: shipment.Weight || shipmentData.Weight || 0,
+                        ChargedWeight: shipment.ChargedWeight || shipmentData.ChargedWeight || 0,
+                        // Reference
+                        ReferenceNumber: shipment.ReferenceNumber || shipmentData.ReferenceNumber || '',
+                        ExpectedDeliveryDate: shipment.ExpectedDeliveryDate || shipmentData.ExpectedDeliveryDate || '',
+                        PickupDate: shipment.PickupDate || shipmentData.PickupDate || '',
                         Scans: shipmentData.Scans ? shipmentData.Scans.map(scan => ({
                             ScanType: scan.ScanType || scan.Scan || '',
                             ScanDateTime: scan.ScanDateTime || '',
@@ -540,6 +563,52 @@ class DelhiveryService {
             return {
                 success: false,
                 error: error.response?.data?.message || error.message || 'Failed to track shipment'
+            };
+        }
+    }
+
+    /**
+     * Track Shipment by Client Reference ID (order_id)
+     * Used to verify if Delhivery created a shipment after a timeout
+     * @param {string} refId - Client reference / order ID
+     * @returns {Promise} Tracking information with AWB if found
+     */
+    async trackByReference(refId) {
+        try {
+            logger.info('📍 Tracking shipment by reference', { refId });
+
+            const response = await this.client.get(`/v1/packages/json/?ref_ids=${refId}`);
+
+            if (response.data.ShipmentData && response.data.ShipmentData.length > 0) {
+                const shipmentData = response.data.ShipmentData[0];
+                const shipment = shipmentData.Shipment || shipmentData;
+                return {
+                    success: true,
+                    data: {
+                        AWB: shipmentData.AWB || '',
+                        Status: shipmentData.Status || 'Unknown',
+                        ReferenceNumber: shipment.ReferenceNumber || shipmentData.ReferenceNumber || refId,
+                        ConsigneeName: shipment.ConsigneeName || shipmentData.ConsigneeName || '',
+                        PaymentMode: shipment.PaymentMode || shipmentData.PaymentMode || '',
+                        CODAmount: shipment.CODAmount || shipmentData.CODAmount || 0,
+                        Weight: shipment.Weight || shipmentData.Weight || 0
+                    }
+                };
+            } else {
+                return {
+                    success: false,
+                    error: 'No shipment found for this reference ID'
+                };
+            }
+        } catch (error) {
+            logger.error('❌ Track by reference failed', {
+                refId,
+                error: error.response?.data || error.message
+            });
+
+            return {
+                success: false,
+                error: error.response?.data?.message || error.message || 'Failed to track by reference'
             };
         }
     }

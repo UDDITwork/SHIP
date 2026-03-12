@@ -777,8 +777,75 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
         waybill: '' // Let Delhivery auto-generate waybill
       };
 
-      // Call Delhivery API
-      const delhiveryResult = await delhiveryService.createShipment(orderDataForDelhivery);
+      // Call Delhivery API — with timeout recovery
+      let delhiveryResult;
+      try {
+        delhiveryResult = await delhiveryService.createShipment(orderDataForDelhivery);
+      } catch (delhiveryErr) {
+        // If timeout, Delhivery may have created the shipment — verify before giving up
+        const isTimeout = delhiveryErr.code === 'ECONNABORTED' || delhiveryErr.code === 'ETIMEDOUT' ||
+          delhiveryErr.code === 'ECONNRESET' || (delhiveryErr.message && delhiveryErr.message.toLowerCase().includes('timeout'));
+
+        if (isTimeout) {
+          logger.info('createSingleOrder: TIMEOUT — verifying if Delhivery created shipment', { orderId });
+          await new Promise(r => setTimeout(r, 2000));
+
+          const verifyResult = await delhiveryService.trackByReference(orderId);
+          if (verifyResult.success && verifyResult.data.AWB) {
+            const awbNumber = verifyResult.data.AWB;
+            logger.info('createSingleOrder: TIMEOUT RECOVERY — shipment exists on Delhivery', { orderId, awb: awbNumber });
+
+            order.delhivery_data = {
+              waybill: awbNumber,
+              package_id: orderId,
+              status: 'Success',
+              remarks: ['Recovered after Delhivery API timeout']
+            };
+            order.status = 'ready_to_ship';
+
+            // Retry save with rollback (same pattern as normal flow)
+            let saveRetries = 2;
+            let saved = false;
+            let saveError = null;
+            while (saveRetries >= 0 && !saved) {
+              try {
+                await order.save();
+                saved = true;
+              } catch (err) {
+                saveError = err;
+                if (err.code === 11000 || err.name === 'ValidationError') break;
+                saveRetries--;
+                if (saveRetries >= 0) await new Promise(r => setTimeout(r, 500));
+              }
+            }
+
+            if (saved) {
+              try { await deductWalletForOrder(order, userId, awbNumber); } catch (walletErr) {
+                logger.error('Wallet deduction failed after timeout recovery', { orderId, error: walletErr.message });
+              }
+              logger.info('createSingleOrder: TIMEOUT RECOVERY SUCCESS', { orderId, awb: awbNumber });
+              return {
+                success: true,
+                order: order,
+                awb: awbNumber,
+                status: 'ready_to_ship',
+                error: null
+              };
+            } else {
+              // Rollback Delhivery shipment
+              try { await delhiveryService.cancelShipment(awbNumber); } catch (cancelErr) {
+                logger.error('CRITICAL: Could not cancel Delhivery after timeout recovery DB failure — ORPHAN AWB', {
+                  awb: awbNumber, orderId, error: cancelErr.message
+                });
+              }
+              logger.error('createSingleOrder: TIMEOUT RECOVERY — DB save failed', { orderId, awb: awbNumber, error: saveError?.message });
+            }
+          }
+          logger.info('createSingleOrder: TIMEOUT VERIFICATION — shipment NOT found on Delhivery', { orderId });
+        }
+        // Re-throw if not timeout or verification failed
+        throw delhiveryErr;
+      }
 
       if (delhiveryResult.success) {
         let awbNumber = null;
@@ -909,6 +976,7 @@ async function createSingleOrder(orderData, user, generateAWB = true) {
     logger.error('createSingleOrder: ERROR', {
       orderId,
       error: error.message,
+      code: error.code,
       stack: error.stack
     });
     return {
@@ -2716,9 +2784,81 @@ router.post('/', auth, [
     } catch (delhiveryError) {
       logger.error('DELHIVERY API ERROR - ORDER NOT SAVED:', {
         orderId: order.order_id,
-        error: delhiveryError.message
+        error: delhiveryError.message,
+        code: delhiveryError.code
       });
-      
+
+      // If timeout/network error, Delhivery may have created the shipment — verify before giving up
+      const isTimeout = delhiveryError.code === 'ECONNABORTED' || delhiveryError.code === 'ETIMEDOUT' ||
+        delhiveryError.code === 'ECONNRESET' || (delhiveryError.message && delhiveryError.message.toLowerCase().includes('timeout'));
+
+      if (isTimeout) {
+        try {
+          logger.info('TIMEOUT DETECTED — verifying if Delhivery created shipment', { orderId: order.order_id });
+          await new Promise(r => setTimeout(r, 2000)); // Give Delhivery time to process
+
+          const verifyResult = await delhiveryService.trackByReference(order.order_id);
+          if (verifyResult.success && verifyResult.data.AWB) {
+            const awbNumber = verifyResult.data.AWB;
+            logger.info('TIMEOUT RECOVERY — shipment exists on Delhivery, saving order', {
+              orderId: order.order_id,
+              awb: awbNumber
+            });
+
+            order.delhivery_data = {
+              waybill: awbNumber,
+              package_id: order.order_id,
+              status: 'Success',
+              remarks: ['Recovered after Delhivery API timeout']
+            };
+            order.status = 'ready_to_ship';
+
+            // Retry save with rollback (same pattern as normal flow)
+            let saveRetries = 2;
+            let saved = false;
+            let saveError = null;
+
+            while (saveRetries >= 0 && !saved) {
+              try {
+                await order.save();
+                saved = true;
+              } catch (err) {
+                saveError = err;
+                if (err.code === 11000 || err.name === 'ValidationError') break;
+                saveRetries--;
+                if (saveRetries >= 0) await new Promise(r => setTimeout(r, 500));
+              }
+            }
+
+            if (saved) {
+              logger.info('TIMEOUT RECOVERY SUCCESS — order saved', { orderId: order.order_id, awb: awbNumber });
+
+              // Deduct wallet
+              try { await deductWalletForOrder(order, userId, awbNumber); } catch (walletErr) {
+                logger.error('Wallet deduction failed after timeout recovery', { orderId: order.order_id, error: walletErr.message });
+              }
+
+              return res.status(201).json({
+                status: 'success',
+                message: 'Order created successfully (recovered after timeout)',
+                data: { order_id: order.order_id, awb: awbNumber, status: order.status }
+              });
+            } else {
+              // Save failed — cancel Delhivery shipment
+              try { await delhiveryService.cancelShipment(awbNumber); } catch (cancelErr) {
+                logger.error('CRITICAL: Could not cancel Delhivery shipment after timeout recovery DB failure — ORPHAN AWB', {
+                  awb: awbNumber, orderId: order.order_id, error: cancelErr.message
+                });
+              }
+            }
+          } else {
+            logger.info('TIMEOUT VERIFICATION — shipment NOT found on Delhivery', { orderId: order.order_id });
+          }
+        } catch (verifyErr) {
+          logger.error('Timeout verification failed', { orderId: order.order_id, error: verifyErr.message });
+        }
+      }
+
       // Return error - don't save order if Delhivery API fails
       return res.status(500).json({
         status: 'error',
@@ -2726,7 +2866,8 @@ router.post('/', auth, [
         error: delhiveryError.message,
         debug_info: {
           error_type: 'DELHIVERY_API_ERROR',
-          order_id: order.order_id
+          order_id: order.order_id,
+          was_timeout: isTimeout
         }
       });
     }

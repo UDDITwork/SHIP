@@ -605,10 +605,12 @@
 .awb-badge {
   background: #fef3c7;
   color: #b45309;
-  padding: 3px 6px;
+  padding: 3px 8px;
   border-radius: 4px;
-  font-size: 11px;
-  font-family: monospace;
+  font-size: 13px;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
 }
 
 .no-awb {

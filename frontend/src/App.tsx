@@ -68,6 +68,7 @@ import AdminOrders from './pages/AdminOrders';
 import AdminClientDashboard from './pages/AdminClientDashboard';
 import AdminNDR from './pages/AdminNDR';
 import { AdminManualMapping } from './pages/AdminManualMapping';
+import { AdminOrphanRecovery } from './pages/AdminOrphanRecovery';
 import AdminCarriers from './pages/AdminCarriers';
 import AdminCarrierRates from './pages/AdminCarrierRates';
 import AdminKYC from './pages/AdminKYC';
@@ -519,6 +520,14 @@ function App() {
               element={
                 <AdminLayout>
                   <AdminManualMapping />
+                </AdminLayout>
+              }
+            />
+            <Route
+              path="/admin/orphan-recovery"
+              element={
+                <AdminLayout>
+                  <AdminOrphanRecovery />
                 </AdminLayout>
               }
             />

@@ -2608,6 +2608,24 @@ class AdminService {
   async changeAdminPassword(data: { user_id: string; old_password: string; new_password: string }): Promise<{ success: boolean; message: string }> {
     return apiService.put('/admin/profile/change-password', data, { headers: this.getAdminHeaders() });
   }
+
+  async recoverOrphanAWBsBulk(awbs: string[], userId: string): Promise<{
+    success: boolean;
+    message: string;
+    summary: { total: number; recovered: number; already_exists: number; not_found: number; failed: number };
+    results: Array<{
+      awb: string;
+      status: 'recovered' | 'already_exists' | 'not_found' | 'failed';
+      order_id?: string;
+      current_status?: string;
+      mapped_status?: string;
+      customer?: string;
+      error?: string;
+    }>;
+    client: string;
+  }> {
+    return apiService.post('/admin/orders/recover-orphan/bulk', { awbs, user_id: userId }, { headers: this.getAdminHeaders() });
+  }
 }
 
 export const adminService = new AdminService();

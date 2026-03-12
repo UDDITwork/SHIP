@@ -199,7 +199,9 @@
 .awb-number {
   font-family: 'Courier New', monospace;
   font-weight: 600;
+  font-size: 0.95rem;
   color: #002B59;
+  letter-spacing: 0.5px;
 }
 
 .no-data {

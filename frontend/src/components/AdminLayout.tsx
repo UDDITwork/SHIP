@@ -144,6 +144,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { path: '/admin/tracking', label: 'Tracking', icon: 'TR' },
     { path: '/admin/ndr', label: 'NDR', icon: 'N' },
     { path: '/admin/manual-mapping', label: 'Manual AWB Mapping', icon: 'M' },
+    { path: '/admin/orphan-recovery', label: 'Orphan Recovery', icon: 'OR' },
     { path: '/admin/wallet-recharge', label: 'Wallet Recharge', icon: 'W' },
     { path: '/admin/weight-discrepancies', label: 'Weight Discrepancies', icon: 'WD' },
     { path: '/admin/notifications', label: 'Notifications', icon: 'NF' },

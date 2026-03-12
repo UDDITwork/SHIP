@@ -138,7 +138,7 @@ const AdminTransactionsView: React.FC = () => {
 
   const formatWeight = (weight: number | null) => {
     if (!weight) return 'N/A';
-    return `${Math.round(weight)} g`;
+    return `${(weight / 1000).toFixed(2)} kg`;
   };
 
   // Filter transactions locally by AWB search

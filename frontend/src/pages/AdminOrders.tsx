@@ -8,6 +8,7 @@ import {
   AdminOrderPickupAddress
 } from '../services/adminService';
 import AWBLink from '../components/AWBLink';
+import DateRangeFilter from '../components/DateRangeFilter';
 import './AdminOrders.css';
 
 interface OrdersClientSummary {
@@ -343,6 +344,8 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeStatus, setActiveStatus] = useState<OrderStatusKey>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [selectedOrderSummary, setSelectedOrderSummary] = useState<AdminOrder | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orderDetails, setOrderDetails] = useState<AdminOrderDetails | null>(null);
@@ -581,7 +584,20 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
     };
   }, [groupedOrders, orders.length]);
 
-  const activeOrders = groupedOrders[activeStatus] || [];
+  const activeOrders = useMemo(() => {
+    let filtered = groupedOrders[activeStatus] || [];
+    if (dateFrom || dateTo) {
+      filtered = filtered.filter((order) => {
+        const orderDateStr = order.order_date || order.createdAt;
+        if (!orderDateStr) return true;
+        const orderDate = new Date(orderDateStr).toISOString().split('T')[0];
+        if (dateFrom && orderDate < dateFrom) return false;
+        if (dateTo && orderDate > dateTo) return false;
+        return true;
+      });
+    }
+    return filtered;
+  }, [groupedOrders, activeStatus, dateFrom, dateTo]);
 
   const handleOrderRowClick = useCallback(
     (order: AdminOrder) => {
@@ -752,6 +768,10 @@ const ClientOrdersView: React.FC<{ clientId: string }> = ({ clientId }) => {
           onChange={(event) => setSearchInput(event.target.value)}
           placeholder="Search orders by Order ID, reference ID, buyer, or AWB"
           className="admin-orders__search-input"
+        />
+        <DateRangeFilter
+          onApply={(start, end) => { setDateFrom(start); setDateTo(end); }}
+          onReset={() => { setDateFrom(''); setDateTo(''); }}
         />
       </div>
 

@@ -8693,7 +8693,7 @@ router.post('/orders/manual-mapping/upload', upload.single('file'), async (req, 
         });
 
         if (!client) {
-          throw new Error(`Client not found with email: ${clientEmail}`);
+          throw new Error(`No registered client found with email "${clientEmail}". Please ensure the client has signed up on Shipsarthi.`);
         }
 
         // Validate phone format
@@ -9148,12 +9148,12 @@ router.post('/orders/recover-orphan', async (req, res) => {
       order_id: generateOrderId(),
       order_date: new Date(),
       customer_info: {
-        buyer_name: trackingData.Consignee || 'Unknown (Recovered)',
-        phone: trackingData.DestRecievePhone || '0000000000'
+        buyer_name: trackingData.ConsigneeName || 'Unknown (Recovered)',
+        phone: trackingData.ConsigneePhone || '0000000000'
       },
       delivery_address: {
-        address_line_1: trackingData.Destination || 'Unknown',
-        full_address: trackingData.Destination || 'Unknown',
+        address_line_1: trackingData.ConsigneeAddress || trackingData.Destination || 'Unknown',
+        full_address: trackingData.ConsigneeAddress || trackingData.Destination || 'Unknown',
         city: trackingData.DestinationCity || 'Unknown',
         state: trackingData.DestinationState || 'Unknown',
         pincode: trackingData.DestinationPincode || trackingData.Destination?.match(/\d{6}/)?.[0] || '000000',
@@ -9170,26 +9170,31 @@ router.post('/orders/recover-orphan', async (req, res) => {
       products: [{
         product_name: 'Recovered Order',
         quantity: 1,
-        unit_price: 0
+        unit_price: trackingData.DeclaredValue || 0
       }],
       package_info: {
         package_type: 'Single Package (B2C)',
-        weight: trackingData.ChargedWeight || 0.5,
+        weight: trackingData.ChargedWeight || trackingData.Weight || 0.5,
         dimensions: { length: 10, width: 10, height: 10 }
       },
       payment_info: {
         payment_mode: trackingData.PaymentMode || 'Prepaid',
-        order_value: trackingData.InvoiceAmount || 0,
-        total_amount: trackingData.InvoiceAmount || 0,
+        order_value: trackingData.DeclaredValue || 0,
+        total_amount: trackingData.DeclaredValue || 0,
         cod_amount: trackingData.CODAmount || 0
       },
       delhivery_data: {
         waybill: awb,
-        status: 'Success'
+        status: 'Success',
+        remarks: ['Recovered via admin orphan recovery']
       },
       status: mappedStatus,
       shipping_mode: 'Surface',
-      order_type: 'forward'
+      order_type: 'forward',
+      is_manually_mapped: true,
+      manually_mapped_by: req.admin?.email || 'admin',
+      manually_mapped_at: new Date(),
+      manual_mapping_source: 'orphan_recovery'
     });
 
     await recoveredOrder.save();
@@ -9224,6 +9229,223 @@ router.post('/orders/recover-orphan', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to recover orphaned AWB',
+      error: error.message
+    });
+  }
+});
+
+// ====================================================
+// BULK ORPHAN AWB RECOVERY — Recover multiple AWBs at once
+// ====================================================
+
+// @desc    Recover multiple orphaned AWBs from Delhivery into Shipsarthi
+// @route   POST /api/admin/orders/recover-orphan/bulk
+// @access  Admin
+router.post('/orders/recover-orphan/bulk', async (req, res) => {
+  try {
+    const { awbs, user_id } = req.body;
+
+    if (!awbs || !Array.isArray(awbs) || awbs.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '"awbs" must be a non-empty array of waybill numbers'
+      });
+    }
+
+    if (awbs.length > 20) {
+      return res.status(400).json({
+        success: false,
+        message: 'Maximum 20 AWBs per bulk recovery request'
+      });
+    }
+
+    if (!user_id) {
+      return res.status(400).json({
+        success: false,
+        message: '"user_id" (client MongoDB ID) is required'
+      });
+    }
+
+    // Validate user exists
+    const user = await User.findById(user_id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'Client user_id not found in database'
+      });
+    }
+
+    const delhiveryService = require('../services/delhiveryService');
+    const { generateOrderId } = require('../utils/orderIdGenerator');
+    const results = [];
+    let recovered = 0;
+    let alreadyExists = 0;
+    let notFound = 0;
+    let failed = 0;
+
+    for (const awb of awbs) {
+      const trimmedAwb = String(awb).trim();
+      if (!trimmedAwb) {
+        results.push({ awb: trimmedAwb, status: 'failed', error: 'Empty AWB' });
+        failed++;
+        continue;
+      }
+
+      try {
+        // Check if AWB already exists in DB
+        const existingOrder = await Order.findOne({
+          $or: [
+            { 'delhivery_data.waybill': trimmedAwb },
+            { 'shipping_info.awb_number': trimmedAwb }
+          ]
+        });
+
+        if (existingOrder) {
+          results.push({
+            awb: trimmedAwb,
+            status: 'already_exists',
+            order_id: existingOrder.order_id,
+            current_status: existingOrder.status
+          });
+          alreadyExists++;
+          continue;
+        }
+
+        // Track on Delhivery
+        const trackingResult = await delhiveryService.trackShipment(trimmedAwb);
+
+        if (!trackingResult.success) {
+          results.push({ awb: trimmedAwb, status: 'not_found', error: 'AWB not found on Delhivery' });
+          notFound++;
+          // Delay between API calls
+          await new Promise(r => setTimeout(r, 500));
+          continue;
+        }
+
+        const trackingData = trackingResult.data;
+
+        // Map status
+        const delhiveryStatusMap = {
+          'Manifested': 'ready_to_ship',
+          'In Transit': 'in_transit',
+          'Pending': 'ready_to_ship',
+          'Out For Delivery': 'out_for_delivery',
+          'Delivered': 'delivered',
+          'RTO': 'rto',
+          'Returned': 'rto_delivered',
+          'Cancelled': 'cancelled'
+        };
+        const mappedStatus = delhiveryStatusMap[trackingData.Status] || 'ready_to_ship';
+
+        // Create order
+        const recoveredOrder = new Order({
+          user_id: user_id,
+          order_id: generateOrderId(),
+          order_date: new Date(),
+          customer_info: {
+            buyer_name: trackingData.ConsigneeName || 'Unknown (Recovered)',
+            phone: trackingData.ConsigneePhone || '0000000000'
+          },
+          delivery_address: {
+            address_line_1: trackingData.ConsigneeAddress || trackingData.Destination || 'Unknown',
+            full_address: trackingData.ConsigneeAddress || trackingData.Destination || 'Unknown',
+            city: trackingData.DestinationCity || 'Unknown',
+            state: trackingData.DestinationState || 'Unknown',
+            pincode: trackingData.DestinationPincode || '000000',
+            country: 'India'
+          },
+          pickup_address: {
+            name: trackingData.Origin || 'Unknown',
+            full_address: trackingData.Origin || 'Unknown',
+            city: trackingData.OriginCity || 'Unknown',
+            state: trackingData.OriginState || 'Unknown',
+            pincode: trackingData.OriginPincode || '000000',
+            phone: '0000000000'
+          },
+          products: [{
+            product_name: 'Recovered Order',
+            quantity: 1,
+            unit_price: trackingData.DeclaredValue || 0
+          }],
+          package_info: {
+            package_type: 'Single Package (B2C)',
+            weight: trackingData.ChargedWeight || trackingData.Weight || 0.5,
+            dimensions: { length: 10, width: 10, height: 10 }
+          },
+          payment_info: {
+            payment_mode: trackingData.PaymentMode || 'Prepaid',
+            order_value: trackingData.DeclaredValue || 0,
+            total_amount: trackingData.DeclaredValue || 0,
+            cod_amount: trackingData.CODAmount || 0
+          },
+          delhivery_data: {
+            waybill: trimmedAwb,
+            status: 'Success',
+            remarks: ['Recovered via admin bulk orphan recovery']
+          },
+          status: mappedStatus,
+          shipping_mode: 'Surface',
+          order_type: 'forward',
+          is_manually_mapped: true,
+          manually_mapped_by: req.admin?.email || 'admin',
+          manually_mapped_at: new Date(),
+          manual_mapping_source: 'orphan_recovery'
+        });
+
+        await recoveredOrder.save();
+
+        logger.info('BULK ORPHAN RECOVERY — AWB recovered', {
+          awb: trimmedAwb,
+          order_id: recoveredOrder.order_id,
+          status: mappedStatus,
+          client: user.company_name || user.name,
+          admin: req.admin?.email || 'unknown'
+        });
+
+        results.push({
+          awb: trimmedAwb,
+          status: 'recovered',
+          order_id: recoveredOrder.order_id,
+          mapped_status: mappedStatus,
+          customer: trackingData.ConsigneeName || 'Unknown'
+        });
+        recovered++;
+
+        // Delay between API calls to avoid rate limiting
+        await new Promise(r => setTimeout(r, 500));
+
+      } catch (awbError) {
+        logger.error('BULK ORPHAN RECOVERY — AWB failed', {
+          awb: trimmedAwb,
+          error: awbError.message
+        });
+        results.push({ awb: trimmedAwb, status: 'failed', error: awbError.message });
+        failed++;
+      }
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Processed ${awbs.length} AWBs: ${recovered} recovered, ${alreadyExists} already exist, ${notFound} not found, ${failed} failed`,
+      summary: {
+        total: awbs.length,
+        recovered,
+        already_exists: alreadyExists,
+        not_found: notFound,
+        failed
+      },
+      results,
+      client: user.company_name || user.name
+    });
+
+  } catch (error) {
+    logger.error('Bulk orphan recovery failed', {
+      error: error.message,
+      stack: error.stack
+    });
+    res.status(500).json({
+      success: false,
+      message: 'Bulk orphan recovery failed',
       error: error.message
     });
   }

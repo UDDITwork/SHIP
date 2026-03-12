@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminService, AdminTicket, PrioritySummary } from '../services/adminService';
-import { formatDate } from '../utils/dateFormat';
+import { formatDate, formatDateTime } from '../utils/dateFormat';
 import PriorityOverview from '../components/PriorityOverview';
 import DateRangeFilter from '../components/DateRangeFilter';
 import './AdminTickets.css';
@@ -337,8 +337,8 @@ const AdminTickets: React.FC = () => {
                         <span className="no-data">-</span>
                       )}
                     </td>
-                    <td>{formatDate(ticket.created_at)}</td>
-                    <td>{formatDate(ticket.updated_at)}</td>
+                    <td>{formatDateTime(ticket.created_at)}</td>
+                    <td>{formatDateTime(ticket.updated_at)}</td>
                     <td>
                       <select
                         className={getPriorityBadgeClass(ticket.priority)}
